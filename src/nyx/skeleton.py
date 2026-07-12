@@ -31,12 +31,45 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping
 
+from . import immune, projection, storage
+from .events import OBSERVATION_RECORDED, ORIGIN_OBSERVED, build_event
+
 
 def record_observation(db_path: str | Path, observation: Mapping[str, Any]) -> dict[str, Any]:
     """Drive one observation_recorded event through immune Stage 1 → append → fold,
     and return the resolved belief. The one seam of the walking skeleton (§6).
+
+    Path: immune Stage 1 (schema validation) → build hashed envelope+payload →
+    safe_append_event (idempotency + hash chain + synchronous index) → delta-reducer
+    fold into resolved_beliefs → read back. Stages 2–4 and every other event type
+    are out of this slice.
     """
-    raise NotImplementedError(
-        "record_observation — the walking skeleton seam; implement TEST-FIRST in "
-        "commit 2. See spec/NYX_V0_IMPLEMENTATION.md §6."
-    )
+    result = immune.stage1_schema_validate(observation)
+    if not result.accepted:
+        # Rejections should ultimately be logged events (§3); the reject-and-RECORD
+        # path is a later slice (§8). The skeleton's happy path never rejects.
+        raise ValueError(f"immune stage 1 rejected input: {result.reason}")
+
+    conn = storage.init_db(db_path)
+    try:
+        payload = {
+            "belief_id": observation["belief_id"],
+            "value": observation["value"],
+            "verifiability": observation["verifiability"],
+        }
+        envelope, payload_row = build_event(
+            event_type=OBSERVATION_RECORDED,
+            origin_type=ORIGIN_OBSERVED,
+            source=observation["source"],
+            source_class=observation["source_class"],
+            occurred_at=observation["occurred_at"],
+            payload=payload,
+            prev_event_hash=storage.last_event_hash(conn),
+        )
+        appended = storage.safe_append_event(conn, envelope, payload_row)
+        if appended:
+            prior = storage.read_belief(conn, payload["belief_id"])
+            storage.upsert_belief(conn, projection.fold(prior, envelope, payload))
+        return storage.read_belief(conn, payload["belief_id"])
+    finally:
+        conn.close()

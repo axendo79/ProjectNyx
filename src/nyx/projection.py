@@ -17,38 +17,89 @@ does NOT supersede the newer value — the offline-reconnection seam.
 
 from __future__ import annotations
 
-from typing import Any, Mapping
+from datetime import datetime, timezone
+from typing import Any
 
-from .events import Envelope
+from . import hashing
+from .events import OBSERVATION_RECORDED, Envelope
+
+# Genesis seed for a belief's view_version_hash lineage (empty string) — the value
+# folded against for the first event that touches a belief. spec/NYX_V0_IMPLEMENTATION.md §1.
+_GENESIS_VIEW_HASH = ""
 
 
-def fold(prior_view: Mapping[str, Any], new_event: Envelope) -> dict[str, Any]:
-    """Fold one event into the materialized belief state (incremental delta-reducer).
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
-    Applies the value-recency guard and recomputes
-    `view_version_hash = SHA256(prior.view_version_hash || new_event.event_hash)`.
-    `apply_event_to_belief` is event-type-specific; the walking skeleton needs only
-    `observation_recorded` (sets a value). spec/NYX_V0_IMPLEMENTATION.md §1, §6.
-    Other handlers (correction_appended, entity_merge_accepted, ...) are §8 (open).
+
+def fold(prior_view: dict[str, Any] | None, envelope: Envelope, payload: dict[str, Any]) -> dict[str, Any]:
+    """Fold one event into a belief's materialized state (incremental delta-reducer).
+
+    Recomputes `view_version_hash = SHA256(prior || event_hash)` and applies the
+    value-recency guard (§1): fold ORDER is rowid, but a value-setting event whose
+    occurred_at predates the current value updates provenance only — it does NOT
+    supersede the newer value (the offline-reconnection seam).
+
+    Only `observation_recorded` is handled — the one event type on §6's seam. Other
+    handlers (correction_appended, entity_merge_accepted, ...) are §8 (open) and
+    fail loud rather than silently mis-fold.
     """
-    raise NotImplementedError(
-        "fold — implement in walking skeleton (observation_recorded handler only); "
-        "see spec/NYX_V0_IMPLEMENTATION.md §1, §6"
-    )
+    if envelope.event_type != OBSERVATION_RECORDED:
+        raise NotImplementedError(
+            f"fold handler for {envelope.event_type!r} not implemented — "
+            "see spec/NYX_V0_IMPLEMENTATION.md §8"
+        )
+
+    now = _now_iso()
+    prior_hash = _GENESIS_VIEW_HASH if prior_view is None else prior_view["view_version_hash"]
+    supporting = [] if prior_view is None else list(prior_view["supporting_events"])
+    opposing = [] if prior_view is None else list(prior_view["opposing_events"])
+    new_view_hash = hashing._sha256_hex(prior_hash + envelope.event_hash)
+    supporting.append(envelope.event_id)
+
+    # Value-recency guard: an older-than-current value-setting event contributes
+    # provenance but must not clobber the newer materialized value (§1/§4).
+    if prior_view is not None and envelope.occurred_at < prior_view["value_occurred_at"]:
+        view = dict(prior_view)
+        view["supporting_events"] = supporting
+        view["view_version_hash"] = new_view_hash
+        view["projected_as_of"] = now
+        view["updated_at"] = now
+        return view
+
+    # observation_recorded sets the value. A direct observation is a world-oracle
+    # class signal (Invariant 4 / architecture §5: "world oracle ... direct
+    # observation ..."), so it lands the belief at `verified` without violating No
+    # Silent Promotion (Inv. 3) — the independent signal is the observation itself.
+    return {
+        "belief_id": payload["belief_id"],
+        "current_value": payload["value"],
+        "value_occurred_at": envelope.occurred_at,
+        "verification_state": "verified",
+        "verifiability": payload["verifiability"],
+        "display_origin": envelope.origin_type,
+        "supporting_events": supporting,
+        "opposing_events": opposing,
+        "resolution_basis": "direct observation (world-oracle class, Inv. 4)",
+        "view_version_hash": new_view_hash,
+        "projected_as_of": now,
+        "updated_at": now,
+    }
 
 
-def project(events: list[Envelope], as_of: str, projector_version: str) -> dict[str, Any]:
+def project(events: list[tuple[Envelope, dict]], as_of: str, projector_version: str) -> dict[str, Any]:
     """Full replay: project(event_log, as_of, projector_version) from empty.
 
     The crash-recovery path AND the determinism oracle — a fresh full replay must
-    produce a view_version_hash identical to the incrementally-folded view
-    (spec/NYX_V0_IMPLEMENTATION.md §6 acceptance bar). Deterministic, time-aware,
-    versioned (Invariant 9). Implement in the walking skeleton.
+    produce, per belief, a view_version_hash identical to the incrementally-folded
+    view (spec/NYX_V0_IMPLEMENTATION.md §6 acceptance bar). Folds in insertion
+    (rowid) order; deterministic, versioned (Invariant 9). Returns belief_id -> view.
     """
-    raise NotImplementedError(
-        "project (full replay) — implement in walking skeleton; "
-        "see spec/NYX_V0_IMPLEMENTATION.md §6, spec/NYX_ARCHITECTURE.md §1"
-    )
+    view: dict[str, Any] = {}
+    for envelope, payload in events:
+        belief_id = payload["belief_id"]
+        view[belief_id] = fold(view.get(belief_id), envelope, payload)
+    return view
 
 
 def is_stale(view_version_hash_lineage: str, latest_event_hash: str) -> bool:

@@ -12,17 +12,29 @@ byte-for-byte reproducible across machines (see .gitattributes / CLAUDE.md).
 
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any, Mapping, Sequence
+
+# Field separator for concatenated hash material. A fixed, non-printable delimiter
+# so ("ab","c") and ("a","bc") never collide — a v0 disambiguation of the spec's
+# `||` concatenation (spec §1). Internal-only (idempotency dedup within one DB), so
+# a stable separator is safe and strictly more correct than bare concatenation.
+_SEP = "\x1f"
 
 
 def canonical_json(obj: Mapping[str, Any]) -> str:
-    """Serialize to canonical JSON: sorted keys, fixed float format, no whitespace
+    """Serialize to canonical JSON: sorted keys, compact separators, no whitespace
     variance. Standard content-addressing practice — spec/NYX_V0_IMPLEMENTATION.md §1.
+    (Python's float repr is shortest-round-trip and deterministic; the skeleton
+    carries no floats. A stricter fixed float format is a later concern, not needed
+    to start — §3 defer-don't-invent.)
     """
-    raise NotImplementedError(
-        "canonical_json — implement in walking skeleton; "
-        "see spec/NYX_V0_IMPLEMENTATION.md §1"
-    )
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _sha256_hex(material: str) -> str:
+    return hashlib.sha256(material.encode("utf-8")).hexdigest()
 
 
 def idempotency_key(source_id: str, occurred_at: str, payload: Mapping[str, Any]) -> str:
@@ -30,32 +42,24 @@ def idempotency_key(source_id: str, occurred_at: str, payload: Mapping[str, Any]
 
     Source-scoped duplicate guard — spec/NYX_V0_IMPLEMENTATION.md §1.
     """
-    raise NotImplementedError(
-        "idempotency_key — implement in walking skeleton; "
-        "see spec/NYX_V0_IMPLEMENTATION.md §1"
-    )
+    return _sha256_hex(_SEP.join([source_id, occurred_at, canonical_json(payload)]))
 
 
 def event_hash(envelope_minus_hash_fields: Mapping[str, Any], prev_event_hash: str | None) -> str:
     """SHA256(canonical_json(event_minus_hash_fields) || prev_event_hash).
 
     Tamper-evidence chain over ENVELOPE fields only (not payload), so a destroyed
-    payload never breaks verification (Invariant 14). spec/NYX_V0_IMPLEMENTATION.md §1.
+    payload never breaks verification (Invariant 14). The genesis link uses the
+    empty string for a missing prev hash. spec/NYX_V0_IMPLEMENTATION.md §1.
     """
-    raise NotImplementedError(
-        "event_hash — implement in walking skeleton; "
-        "see spec/NYX_V0_IMPLEMENTATION.md §1"
-    )
+    return _sha256_hex(canonical_json(envelope_minus_hash_fields) + (prev_event_hash or ""))
 
 
 def dep_hash(dependency_event_hashes: Sequence[str]) -> str:
     """SHA256(sorted([event_hash for event in dependency_set])).
 
     Hashes the event_hashes (not ids) so the dependency hash also changes when an
-    upstream event is *superseded*, not only when one disappears. Shared by the
-    Liver (§3) and the process trace (§7) — spec/NYX_V0_IMPLEMENTATION.md §1.
+    upstream event is *superseded* (new event_hash chained on), not only when one
+    disappears. Shared by the Liver (§3) and the process trace (§7).
     """
-    raise NotImplementedError(
-        "dep_hash — implement when the Liver / process-trace lands; "
-        "see spec/NYX_V0_IMPLEMENTATION.md §1"
-    )
+    return _sha256_hex(canonical_json(sorted(dependency_event_hashes)))

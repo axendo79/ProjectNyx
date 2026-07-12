@@ -11,7 +11,12 @@ content-addressed, and separately destroyable via crypto-shredding.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Mapping
+
+from . import SCHEMA_VERSION
+from . import hashing
+from .ids import new_event_id
 
 # Event taxonomy — spec/NYX_ARCHITECTURE.md §1. Process-trace records live in a
 # SEPARATE store (§7): model-performance facts are not claims about the world.
@@ -95,10 +100,43 @@ def build_event(
 
     Wires ids (§1), hashing (§1), and the affect-split write path
     (spec/NYX_ARCHITECTURE.md §1: semantic payload → extraction; affect metadata
-    parallel, never through extraction — Invariant 11). Implement in the walking
-    skeleton (commit 2); the skeleton only needs `observation_recorded`.
+    parallel, never through extraction — Invariant 11). The skeleton only carries a
+    semantic payload; there is no affect metadata to split off yet.
     """
-    raise NotImplementedError(
-        "build_event — implement in walking skeleton; "
-        "see spec/NYX_V0_IMPLEMENTATION.md §6 and spec/NYX_ARCHITECTURE.md §1"
+    source_str = hashing.canonical_json(source)
+    entity_refs_str = hashing.canonical_json(entity_refs) if entity_refs is not None else None
+    payload_hash = hashing.canonical_json(payload)
+    payload_hash = hashing._sha256_hex(payload_hash)
+
+    envelope_minus_hash = {
+        "event_id": new_event_id(),
+        "idempotency_key": hashing.idempotency_key(source["actor_id"], occurred_at, payload),
+        "schema_version": SCHEMA_VERSION,
+        "event_type": event_type,
+        "occurred_at": occurred_at,
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "source": source_str,
+        "source_class": source_class,
+        "origin_type": origin_type,
+        "payload_hash": payload_hash,
+        "entity_refs": entity_refs_str,
+    }
+    digest = hashing.event_hash(envelope_minus_hash, prev_event_hash)
+
+    envelope = Envelope(
+        prev_event_hash=prev_event_hash,
+        event_hash=digest,
+        **envelope_minus_hash,
     )
+    # v0: the payload is stored as plaintext canonical JSON in the ciphertext column.
+    # At-rest encryption (crypto-shredding, per-canonical-entity key, Invariant 14)
+    # is Phase 3 (spec/NYX_ARCHITECTURE.md §12) — deliberately NOT built in the
+    # skeleton; the column name is the eventual home for the ciphertext.
+    payload_row = Payload(
+        payload_hash=payload_hash,
+        event_id=envelope.event_id,
+        canonical_entity_id=None,
+        ciphertext=hashing.canonical_json(payload),
+        redacted=False,
+    )
+    return envelope, payload_row
