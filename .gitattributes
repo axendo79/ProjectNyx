@@ -1,0 +1,47 @@
+# Nyx line-ending policy.
+#
+# This is a HASH-DETERMINISM REQUIREMENT, not a style preference.
+# Layer A's tamper-evidence chain (event_hash = SHA256(canonical_json(...) || prev_event_hash))
+# and the Resolved View's view_version_hash must be reproducible byte-for-byte across
+# machines. A CRLF/LF difference in any file that feeds a hash — or in a golden
+# fixture / test vector — silently breaks replay equivalence. See:
+#   spec/NYX_V0_IMPLEMENTATION.md §1 (Event hash, Delta-reducer fold)
+#   spec/NYX_ARCHITECTURE.md §12 (executable invariants: fold ≡ replay-from-genesis)
+#
+# The global git config on the build machine has core.autocrlf=true; this file
+# overrides it for the whole repo. Every text file is stored and checked out as LF.
+
+# Default: treat everything as text, normalize to LF on checkout everywhere.
+* text=auto eol=lf
+
+# Be explicit for the source/spec/test surfaces that matter most.
+*.py    text eol=lf
+*.pyi   text eol=lf
+*.sql   text eol=lf
+*.md    text eol=lf
+*.txt   text eol=lf
+*.toml  text eol=lf
+*.cfg   text eol=lf
+*.ini   text eol=lf
+*.json  text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.sh    text eol=lf
+
+# Test fixtures / golden hash vectors: LF is mandatory — a CRLF here changes the hash.
+tests/**        text eol=lf
+**/fixtures/**  text eol=lf
+
+# Binary corpus material (founding purpose is document ingestion) must never be
+# line-ending-normalized. Mark common intake types explicit-binary.
+*.pdf   binary
+*.epub  binary
+*.mp4   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.zip   binary
+*.db    binary
+*.sqlite binary
+*.sqlite3 binary

@@ -1,0 +1,10 @@
+# Intentionally empty in the scaffold (commit 1).
+#
+# Commit 2 is the walking skeleton, written TEST-FIRST: the first file here is the
+# acceptance test from spec/NYX_V0_IMPLEMENTATION.md §6 (one observation_recorded
+# event → immune Stage 1 → append → fold → read back → full-replay hash matches),
+# written BEFORE the code that makes it pass.
+#
+# Later, the five pre-coding seam traces (spec/NYX_V0_IMPLEMENTATION.md §5) become
+# permanent property-based tests: assert fold ≡ replay-from-genesis, support graph
+# stays a DAG, no state transition promotes via redaction/merge.

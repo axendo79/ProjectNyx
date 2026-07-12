@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "nyx"
+version = "0.0.0"
+description = "Nyx — an epistemic kernel governing what a system believes and how beliefs are earned."
+requires-python = ">=3.11"
+# Runtime deps intentionally empty for the scaffold. The walking skeleton (commit 2)
+# uses only the standard library (sqlite3, hashlib, uuid, json). Add deps only when
+# a spec'd component actually needs one — not speculatively.
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nyx"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
