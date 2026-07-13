@@ -63,6 +63,15 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any])
             "value": submission["value"],
             "verifiability": submission["verifiability"],
         }
+
+        # Read the prior head BEFORE the append — the append is the commit point
+        # (Inv. 8) and Layer A is append-only (Inv. 1), so anything the fold would
+        # refuse must be refused here, while refusing is still possible. A backdated
+        # correction appended and only THEN rejected at fold time would sit in the log
+        # permanently, and every future replay would raise on it. See decisions/0005.
+        prior = storage.read_belief(conn, payload["belief_id"])
+        projection.assert_not_backdated(prior, event_type, submission["occurred_at"])
+
         envelope, payload_row = build_event(
             event_type=event_type,
             origin_type=ORIGIN_OBSERVED,
@@ -74,7 +83,6 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any])
         )
         appended = storage.safe_append_event(conn, envelope, payload_row)
         if appended:
-            prior = storage.read_belief(conn, payload["belief_id"])
             storage.upsert_belief(conn, projection.fold(prior, envelope, payload))
         return storage.read_belief(conn, payload["belief_id"])
     finally:

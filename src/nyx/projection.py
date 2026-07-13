@@ -41,6 +41,55 @@ _RESOLUTION_BASIS = {
 }
 
 
+class BackdatedCorrectionError(NotImplementedError):
+    """A `correction_appended` whose occurred_at PREDATES the value it corrects.
+
+    This is an INTERIM fail-loud stance, NOT decided semantics — see decisions/0005.
+    The open question it defers:
+
+      (A) A correction is *newer information*, governed by the §1 value-recency guard
+          like any other value-setting event → a backdated one folds as provenance
+          only and does NOT take the head.
+      (B) A correction is an *authoritative override* — a deliberate "no, it was
+          always X" — and takes the head regardless of its date.
+
+    Both are defensible and the spec settles neither. Silently doing (A) — which is
+    what the guard does if left alone — would read to the next person as a decision
+    rather than an unexamined default, and it fails *quietly*: the correction is
+    accepted, the head just doesn't move. That is the failure mode worth refusing.
+
+    Subclasses NotImplementedError deliberately: this is the §7 gap protocol's
+    "stub that fails loudly", not a validation error about bad user input. When the
+    semantics are decided, grep `BackdatedCorrectionError` — every site that assumed
+    the question was open is at the other end.
+    """
+
+
+def assert_not_backdated(
+    prior_view: dict[str, Any] | None, event_type: str, occurred_at: str
+) -> None:
+    """Refuse a backdated correction. The single predicate, called from TWO places.
+
+    Called by `fold` (so a replay is honest about a log that somehow contains one) and
+    — crucially — by the write path BEFORE the append. Layer A is append-only and
+    engine-enforced (Inv. 1): an appended event can never be removed. If this were
+    only checked at fold time, the correction would already be durably in the log, and
+    every subsequent full replay would re-fold it and raise. An unreplayable log is an
+    unrecoverable one — replay IS the crash-recovery path (§6). So the rejection must
+    happen before the commit point, not after it.
+    """
+    if event_type != CORRECTION_APPENDED or prior_view is None:
+        return
+    if occurred_at < prior_view["value_occurred_at"]:
+        raise BackdatedCorrectionError(
+            f"backdated correction: occurred_at {occurred_at!r} predates the value it "
+            f"corrects ({prior_view['value_occurred_at']!r}) on belief "
+            f"{prior_view['belief_id']!r}. Semantics UNDECIDED — see decisions/0005 "
+            "(recency-governed vs. authoritative-override). Refusing rather than "
+            "silently folding it as provenance-only."
+        )
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -83,6 +132,11 @@ def fold(prior_view: dict[str, Any] | None, envelope: Envelope, payload: dict[st
             f"fold handler for {envelope.event_type!r} not implemented — "
             "see spec/NYX_V0_IMPLEMENTATION.md §8"
         )
+
+    # Backdated corrections are refused, not quietly absorbed by the guard below
+    # (decisions/0005 — interim fail-loud, semantics open). The write path checks this
+    # BEFORE appending; this call is the replay-side backstop.
+    assert_not_backdated(prior_view, envelope.event_type, envelope.occurred_at)
 
     now = _now_iso()
     prior_hash = _GENESIS_VIEW_HASH if prior_view is None else prior_view["view_version_hash"]

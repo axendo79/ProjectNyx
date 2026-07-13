@@ -37,6 +37,7 @@ import sqlite3
 import pytest
 
 from nyx import projection, storage
+from nyx.projection import BackdatedCorrectionError
 from nyx.skeleton import record_correction, record_observation
 
 BELIEF_ID = "entity:legion/property:ram"
@@ -192,6 +193,53 @@ def test_correction_resubmit_is_idempotent(db_path):
         conn.close()
     assert corrections == 1
     assert total == 2  # the observation and exactly one correction
+
+
+def test_backdated_correction_raises(db_path):
+    """A BACKDATED correction (occurred_at OLDER than the value it corrects) fails
+    loud. This is an INTERIM fail-loud stance, not a decided semantics: whether such a
+    correction is newer-information-governed-by-recency (folds as provenance only) or
+    an authoritative override (takes the head regardless of date) is OPEN — see
+    decisions/0005. Raising a specific, identifiable type is what keeps the open
+    question findable: when the semantics are decided, this test is the thing to
+    delete, and `BackdatedCorrectionError` greps straight to every site that assumed it.
+    """
+    record_observation(db_path, {**OBSERVATION, "occurred_at": "2026-07-12T09:30:00+00:00"})
+    backdated = {**CORRECTION, "occurred_at": "2026-07-12T00:00:00+00:00"}  # BEFORE the value
+    with pytest.raises(BackdatedCorrectionError):
+        record_correction(db_path, backdated)
+
+
+def test_backdated_correction_does_not_poison_layer_a(db_path):
+    """The rejected correction must never reach Layer A.
+
+    Layer A is append-only and engine-enforced (Inv. 1) — an appended event can NEVER
+    be removed. So a correction that the fold refuses must be rejected BEFORE the
+    append, not after: otherwise the event is durably in the log, every subsequent
+    full replay re-folds it, and replay raises forever. An unreplayable log is an
+    unrecoverable one (replay is the crash-recovery path, §6).
+    """
+    record_observation(db_path, {**OBSERVATION, "occurred_at": "2026-07-12T09:30:00+00:00"})
+    with pytest.raises(BackdatedCorrectionError):
+        record_correction(db_path, {**CORRECTION, "occurred_at": "2026-07-12T00:00:00+00:00"})
+
+    conn = storage.init_db(db_path)
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        assert count == 1  # the observation only — the correction never landed
+
+        # The belief is untouched, and the log still replays.
+        belief = storage.read_belief(conn, BELIEF_ID)
+        assert belief["current_value"] == "64GB"
+        assert belief["superseding_events"] == []
+        replayed = projection.project(
+            storage.read_all_events(conn),
+            as_of="2026-07-12T12:00:00+00:00",
+            projector_version="0",
+        )
+        assert replayed[BELIEF_ID]["view_version_hash"] == belief["view_version_hash"]
+    finally:
+        conn.close()
 
 
 def test_append_only_triggers_still_hold_with_a_correction(db_path):
