@@ -21,15 +21,50 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import hashing
-from .events import OBSERVATION_RECORDED, Envelope
+from .events import CORRECTION_APPENDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED, Envelope
 
 # Genesis seed for a belief's view_version_hash lineage (empty string) — the value
 # folded against for the first event that touches a belief. spec/NYX_V0_IMPLEMENTATION.md §1.
 _GENESIS_VIEW_HASH = ""
 
+# The value-setting event types (§8: "the value-recency guard applies to all
+# value-setting handlers"). Both resolve a belief's current_value; they differ in
+# the provenance they record, not in how the guard treats them.
+_VALUE_SETTING = (OBSERVATION_RECORDED, CORRECTION_APPENDED)
+
+_RESOLUTION_BASIS = {
+    # A direct observation is a world-oracle class signal (Invariant 4 / architecture
+    # §5), so it lands the belief at `verified` without violating No Silent Promotion
+    # (Inv. 3) — the independent signal IS the observation. See decisions/0001.
+    OBSERVATION_RECORDED: "direct observation (world-oracle class, Inv. 4)",
+    CORRECTION_APPENDED: "correction supersedes prior value (Inv. 6 superseding event)",
+}
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _state_for_origin(origin_type: str) -> str:
+    """Resolve verification_state from the event's ORIGIN — never from its event type.
+
+    A correction does not promote a belief by virtue of being a correction (Inv. 3:
+    no silent promotion; only an independent world-oracle signal promotes). It
+    resolves to whatever its own origin earns, exactly as an observation does.
+
+    Only `observed` is mapped. `user_stated` in particular is NOT: architecture §2's
+    user-stated split ("User asserted X" vs "X is true" — the user is a *source*, not
+    ground truth, outside preference claims) means it cannot simply reuse this table,
+    and no worked mapping exists yet. Fail loud rather than silently promote (§7 gap
+    protocol, case 3 / case 4). See decisions/0004.
+    """
+    if origin_type != ORIGIN_OBSERVED:
+        raise NotImplementedError(
+            f"origin -> verification_state mapping for {origin_type!r} not decided — "
+            "only `observed` is worked (decisions/0001). See spec/NYX_V0_IMPLEMENTATION.md §8 "
+            "and architecture §2 (the user-stated split)."
+        )
+    return "verified"
 
 
 def fold(prior_view: dict[str, Any] | None, envelope: Envelope, payload: dict[str, Any]) -> dict[str, Any]:
@@ -40,11 +75,10 @@ def fold(prior_view: dict[str, Any] | None, envelope: Envelope, payload: dict[st
     occurred_at predates the current value updates provenance only — it does NOT
     supersede the newer value (the offline-reconnection seam).
 
-    Only `observation_recorded` is handled — the one event type on §6's seam. Other
-    handlers (correction_appended, entity_merge_accepted, ...) are §8 (open) and
-    fail loud rather than silently mis-fold.
+    Handles the two value-setting types. Others (entity_merge_accepted, ...) are §8
+    (open) and fail loud rather than silently mis-fold.
     """
-    if envelope.event_type != OBSERVATION_RECORDED:
+    if envelope.event_type not in _VALUE_SETTING:
         raise NotImplementedError(
             f"fold handler for {envelope.event_type!r} not implemented — "
             "see spec/NYX_V0_IMPLEMENTATION.md §8"
@@ -54,33 +88,52 @@ def fold(prior_view: dict[str, Any] | None, envelope: Envelope, payload: dict[st
     prior_hash = _GENESIS_VIEW_HASH if prior_view is None else prior_view["view_version_hash"]
     supporting = [] if prior_view is None else list(prior_view["supporting_events"])
     opposing = [] if prior_view is None else list(prior_view["opposing_events"])
+    superseding = [] if prior_view is None else list(prior_view["superseding_events"])
     new_view_hash = hashing._sha256_hex(prior_hash + envelope.event_hash)
     supporting.append(envelope.event_id)
 
+    # Supersession is a property of the EVENT TYPE, not of what happened to be folded
+    # first. A correction_appended is a superseding event (Inv. 6's class) whether or
+    # not the value it supersedes has been folded yet — and it MUST be, or the fold
+    # stops converging: on the correction-first ordering the correction meets
+    # prior_view=None (nothing to supersede), and gating this on "a prior head exists"
+    # would leave superseding_events empty in one order and populated in the other,
+    # for the same two events. Order-independence of resolved state (§5 trace 2)
+    # dies there. See decisions/0004.
+    if envelope.event_type == CORRECTION_APPENDED:
+        superseding.append(envelope.event_id)
+
     # Value-recency guard: an older-than-current value-setting event contributes
-    # provenance but must not clobber the newer materialized value (§1/§4).
+    # provenance but must not clobber the newer materialized value (§1/§4). This is
+    # what makes the two fold orders converge — not any ordering of the fold itself.
     if prior_view is not None and envelope.occurred_at < prior_view["value_occurred_at"]:
         view = dict(prior_view)
         view["supporting_events"] = supporting
+        view["superseding_events"] = superseding
         view["view_version_hash"] = new_view_hash
         view["projected_as_of"] = now
         view["updated_at"] = now
         return view
 
-    # observation_recorded sets the value. A direct observation is a world-oracle
-    # class signal (Invariant 4 / architecture §5: "world oracle ... direct
-    # observation ..."), so it lands the belief at `verified` without violating No
-    # Silent Promotion (Inv. 3) — the independent signal is the observation itself.
+    # This event sets the value. Note the belief head is NEVER parked in
+    # verification_state='superseded': this row holds the LIVE corrected value, and a
+    # one-row-per-attribute projection (§4) has no second row for the value that was
+    # superseded. The superseded value is recorded as provenance (it stays in
+    # supporting_events; the correction lands in superseding_events), never as the
+    # head's state. Architecture line 104 (`any -> superseded`) reads as a belief-row
+    # transition the §4 schema cannot express; two-file provenance makes that row the
+    # bug. See decisions/0004.
     return {
         "belief_id": payload["belief_id"],
         "current_value": payload["value"],
         "value_occurred_at": envelope.occurred_at,
-        "verification_state": "verified",
+        "verification_state": _state_for_origin(envelope.origin_type),
         "verifiability": payload["verifiability"],
         "display_origin": envelope.origin_type,
         "supporting_events": supporting,
         "opposing_events": opposing,
-        "resolution_basis": "direct observation (world-oracle class, Inv. 4)",
+        "superseding_events": superseding,
+        "resolution_basis": _RESOLUTION_BASIS[envelope.event_type],
         "view_version_hash": new_view_hash,
         "projected_as_of": now,
         "updated_at": now,

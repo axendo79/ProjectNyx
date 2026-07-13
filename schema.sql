@@ -70,6 +70,19 @@ CREATE TABLE resolved_beliefs (
     display_origin            TEXT,
     supporting_events          TEXT NOT NULL, -- JSON array of event_id
     opposing_events             TEXT NOT NULL, -- JSON array of event_id
+    superseding_events           TEXT NOT NULL, -- JSON array of event_id. Invariant 6 names four
+                                           -- event classes a belief exposes -- supporting, opposing,
+                                           -- SUPERSEDING, gap -- and the §4 DDL carried columns for
+                                           -- only two. A correction lands here; the value it
+                                           -- superseded STAYS in supporting_events, unmoved and
+                                           -- unretagged (Inv. 6: verification adds to the set,
+                                           -- never rewrites a member). NOTE this column is an
+                                           -- ADDITION to §4's DDL, decided in decisions/0004 -- the
+                                           -- only way to record supersession without either
+                                           -- retagging a support-set member or parking the LIVE
+                                           -- corrected head in verification_state='superseded'.
+                                           -- `gap_events` is the remaining Inv. 6 class with no
+                                           -- column; unbuilt (no gap_recorded handler yet).
     resolution_basis              TEXT,
     view_version_hash              TEXT NOT NULL,  -- SHA256(prior_hash || latest folded event_hash)
     projected_as_of                 TEXT NOT NULL,  -- Invariant 9, explicit evaluation time

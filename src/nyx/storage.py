@@ -115,7 +115,7 @@ def read_belief(conn: sqlite3.Connection, belief_id: str) -> dict | None:
     row = conn.execute(
         "SELECT belief_id, current_value, value_occurred_at, verification_state, "
         "verifiability, display_origin, supporting_events, opposing_events, "
-        "resolution_basis, view_version_hash, projected_as_of, updated_at "
+        "superseding_events, resolution_basis, view_version_hash, projected_as_of, updated_at "
         "FROM resolved_beliefs WHERE belief_id = ?",
         (belief_id,),
     ).fetchone()
@@ -125,8 +125,8 @@ def read_belief(conn: sqlite3.Connection, belief_id: str) -> dict | None:
         "belief_id": row[0], "current_value": row[1], "value_occurred_at": row[2],
         "verification_state": row[3], "verifiability": row[4], "display_origin": row[5],
         "supporting_events": json.loads(row[6]), "opposing_events": json.loads(row[7]),
-        "resolution_basis": row[8], "view_version_hash": row[9],
-        "projected_as_of": row[10], "updated_at": row[11],
+        "superseding_events": json.loads(row[8]), "resolution_basis": row[9],
+        "view_version_hash": row[10], "projected_as_of": row[11], "updated_at": row[12],
     }
     return belief
 
@@ -138,18 +138,21 @@ def upsert_belief(conn: sqlite3.Connection, belief: dict) -> None:
         conn.execute(
             "INSERT INTO resolved_beliefs (belief_id, current_value, value_occurred_at, "
             "verification_state, verifiability, display_origin, supporting_events, "
-            "opposing_events, resolution_basis, view_version_hash, projected_as_of, updated_at) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?) "
+            "opposing_events, superseding_events, resolution_basis, view_version_hash, "
+            "projected_as_of, updated_at) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) "
             "ON CONFLICT(belief_id) DO UPDATE SET "
             "current_value=excluded.current_value, value_occurred_at=excluded.value_occurred_at, "
             "verification_state=excluded.verification_state, verifiability=excluded.verifiability, "
             "display_origin=excluded.display_origin, supporting_events=excluded.supporting_events, "
-            "opposing_events=excluded.opposing_events, resolution_basis=excluded.resolution_basis, "
+            "opposing_events=excluded.opposing_events, "
+            "superseding_events=excluded.superseding_events, "
+            "resolution_basis=excluded.resolution_basis, "
             "view_version_hash=excluded.view_version_hash, projected_as_of=excluded.projected_as_of, "
             "updated_at=excluded.updated_at",
             (belief["belief_id"], belief["current_value"], belief["value_occurred_at"],
              belief["verification_state"], belief["verifiability"], belief["display_origin"],
              json.dumps(belief["supporting_events"]), json.dumps(belief["opposing_events"]),
-             belief["resolution_basis"], belief["view_version_hash"],
-             belief["projected_as_of"], belief["updated_at"]),
+             json.dumps(belief["superseding_events"]), belief["resolution_basis"],
+             belief["view_version_hash"], belief["projected_as_of"], belief["updated_at"]),
         )
