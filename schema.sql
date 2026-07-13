@@ -42,13 +42,43 @@ CREATE UNIQUE INDEX idx_events_idempotency ON events(idempotency_key);
 -- (NOT per-mention -- a mention's key has no owner once entities merge/split).
 -- A redacted payload is deleted here; the envelope row above is untouched,
 -- so replay yields a typed REDACTED sentinel, never a broken chain.
+-- KEYED BY event_id, NOT payload_hash. §4's DDL says `payload_hash TEXT PRIMARY KEY`;
+-- that is the authoritative document's bug, and this deviates from it deliberately
+-- (decisions/0007). Content-keying was wrong for two independent reasons:
+--
+--   1. It BLOCKS CORROBORATION. Two independent sources reporting the SAME value
+--      produce byte-identical payloads -> the same payload_hash -> a PK collision on
+--      the second. But that IS corroboration, and §2 makes it the sole promotion path
+--      ("2 independent corroborating sources required for unverified -> verified").
+--      A table that cannot store the second source makes the gate unreachable.
+--   2. It POOLS PAYLOADS ACROSS EVENTS, violating Invariant 14. Payloads are separately
+--      destroyable per event by crypto-shredding. Under one shared content-keyed row,
+--      redacting one event would destroy another event's payload as collateral —
+--      silent erasure of a record nobody asked to erase.
+--
+-- The table always carried event_id (1:1 with events) while being keyed by content
+-- (n:1). Both could not hold. event_id is the identity it always implied.
 CREATE TABLE payloads (
-    payload_hash    TEXT PRIMARY KEY,
-    event_id        TEXT NOT NULL REFERENCES events(event_id),
+    event_id        TEXT PRIMARY KEY REFERENCES events(event_id),
+    payload_hash    TEXT NOT NULL,      -- content address; NOT the row identity (see above)
     canonical_entity_id TEXT,           -- key-binding target; nullable pre-resolution
     ciphertext      TEXT,               -- NULL after redaction (key destroyed)
     redacted        INTEGER NOT NULL DEFAULT 0
 );
+
+-- Content-addressing survives as an INDEX, and it has a JOB: this is the corroboration
+-- lookup key. Identical claim content still yields an identical payload_hash, so
+-- "which other events assert this same claim?" is:
+--
+--     SELECT e.event_id, e.source_class FROM payloads p
+--       JOIN events e ON e.event_id = p.event_id
+--      WHERE p.payload_hash = ?
+--
+-- which is what the §2 corroboration gate must run to count DISTINCT source_class
+-- (§2 counts distinct CLASSES, not raw events — correlated ingestion must not
+-- self-corroborate). Deliberately NON-unique: n events per content is the whole point.
+-- The gate itself is not built yet (§8); this is the lookup it will stand on.
+CREATE INDEX idx_payloads_corroboration ON payloads(payload_hash);
 
 -- Append-only is a MECHANISM, not a convention (Invariant 1):
 CREATE TRIGGER no_update_events BEFORE UPDATE ON events

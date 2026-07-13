@@ -73,10 +73,18 @@ def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Pay
         )
         if cur.rowcount == 0:
             return False  # duplicate idempotency_key — no-op, no second row
+        # Keyed by event_id (decisions/0007). No conflict clause, deliberately: the
+        # events INSERT OR IGNORE above already returned False on a duplicate
+        # idempotency_key, so this line is reached ONLY for a freshly-appended event —
+        # whose event_id is new by construction. A PK violation here would therefore be
+        # a real bug (a reused event_id), and must fail loudly rather than be absorbed
+        # by an ON CONFLICT. Note payload_hash is deliberately NOT unique: two
+        # independent sources reporting the same value share a content hash, and that
+        # is corroboration, not duplication.
         conn.execute(
-            "INSERT INTO payloads (payload_hash, event_id, canonical_entity_id, ciphertext, redacted) "
+            "INSERT INTO payloads (event_id, payload_hash, canonical_entity_id, ciphertext, redacted) "
             "VALUES (?,?,?,?,?)",
-            (payload.payload_hash, payload.event_id, payload.canonical_entity_id,
+            (payload.event_id, payload.payload_hash, payload.canonical_entity_id,
              payload.ciphertext, int(payload.redacted)),
         )
         # Synchronous stale-read index, keyed by the belief's entity (§1/§4). For the
