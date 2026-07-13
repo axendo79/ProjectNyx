@@ -41,6 +41,38 @@ _RESOLUTION_BASIS = {
 }
 
 
+def _instant(occurred_at: str) -> datetime:
+    """Parse an ISO8601 `occurred_at` to a UTC-aware datetime, for COMPARISON only.
+
+    Ordering of `occurred_at` is chronological, never lexical. Lexical order over ISO8601
+    text is not chronological order once offsets vary: the same instant has several
+    spellings (`Z` sorts after `+00:00`, though both mean UTC), and a non-UTC offset makes
+    a later instant sort earlier (`09:00-05:00` is two hours AFTER `12:00Z`, but sorts
+    before it). Comparing the raw strings corrupts the value-recency guard in BOTH
+    directions — see decisions/0006.
+
+    The stored string is NEVER rewritten. `occurred_at` sits inside the hashed envelope,
+    so canonicalizing it at rest would change every `event_hash` and break
+    `fold == replay-from-genesis` (§6). Normalization happens at the point of comparison
+    and nowhere else.
+
+    A NAIVE (offset-less) timestamp is refused rather than assumed to be UTC. Its instant
+    is genuinely unknown, and silently picking one would reintroduce exactly the class of
+    quiet wrong answer this function exists to remove. The real fix is canonicalizing
+    timezone-bearing timestamps at the INGESTION boundary (immune Stage 1), so the system
+    does not rely on compare-time normalization forever — logged as a follow-on gap in
+    decisions/0006, not built here.
+    """
+    parsed = datetime.fromisoformat(occurred_at)
+    if parsed.tzinfo is None:
+        raise ValueError(
+            f"occurred_at {occurred_at!r} has no timezone offset — its instant is "
+            "ambiguous and will not be guessed. Timestamps must carry an offset (`Z` or "
+            "`±HH:MM`). Boundary canonicalization is a follow-on gap; see decisions/0006."
+        )
+    return parsed.astimezone(timezone.utc)
+
+
 class BackdatedCorrectionError(NotImplementedError):
     """A `correction_appended` whose occurred_at PREDATES the value it corrects.
 
@@ -80,7 +112,8 @@ def assert_not_backdated(
     """
     if event_type != CORRECTION_APPENDED or prior_view is None:
         return
-    if occurred_at < prior_view["value_occurred_at"]:
+    # Instant-based, never lexical (decisions/0006).
+    if _instant(occurred_at) < _instant(prior_view["value_occurred_at"]):
         raise BackdatedCorrectionError(
             f"backdated correction: occurred_at {occurred_at!r} predates the value it "
             f"corrects ({prior_view['value_occurred_at']!r}) on belief "
@@ -160,7 +193,10 @@ def fold(prior_view: dict[str, Any] | None, envelope: Envelope, payload: dict[st
     # Value-recency guard: an older-than-current value-setting event contributes
     # provenance but must not clobber the newer materialized value (§1/§4). This is
     # what makes the two fold orders converge — not any ordering of the fold itself.
-    if prior_view is not None and envelope.occurred_at < prior_view["value_occurred_at"]:
+    # The comparison is instant-based, never lexical (decisions/0006).
+    if prior_view is not None and _instant(envelope.occurred_at) < _instant(
+        prior_view["value_occurred_at"]
+    ):
         view = dict(prior_view)
         view["supporting_events"] = supporting
         view["superseding_events"] = superseding
