@@ -148,11 +148,16 @@ truth, outside preference claims) means it must earn its state differently.
   `SHA256(source_id || occurred_at || canonicalize(payload))`. An observation and a
   correction with identical source, time, and payload would collide into one row. §1 is
   explicit, so this was not changed — recorded as a latent edge. ([ADR 0004](decisions/0004-correction-appended-supersedes-via-superseding-events.md))
-- **Python version.** Runtime is **3.14.2**; `CLAUDE.md` says 3.11/3.12 ("the spec's earlier
-  3.14 target was walked back"). Suite is green on 3.14. One of the two is stale.
+- ~~**Python version.** Runtime is **3.14.2**; `CLAUDE.md` says 3.11/3.12 ("the spec's earlier
+  3.14 target was walked back"). Suite is green on 3.14. One of the two is stale.~~ **RESOLVED
+  ([ADR 0009](decisions/0009-python-314-re-adopted-as-target.md)):** 3.14 re-adopted as the
+  target. The architecture §402 downgrade P0 was never enforced, 3.14 is the only interpreter
+  installed, and the suite is green on it. `CLAUDE.md` and §402 updated to match.
 - **`gap_events` has no column.** Invariant 6 names four event classes a belief exposes
   (supporting, opposing, superseding, gap); `resolved_beliefs` now carries three. No
   `gap_recorded` handler exists yet, so this is an absence, not a decision.
-- **V0 §4's DDL is wrong about the `payloads` primary key.** Corrected in `schema.sql` per
+- ~~**V0 §4's DDL is wrong about the `payloads` primary key.** Corrected in `schema.sql` per
   [ADR 0007](decisions/0007-payloads-keyed-by-event-id-not-payload-hash.md); the spec file
-  itself still needs fixing.
+  itself still needs fixing.~~ **RESOLVED:** §4's DDL now matches `schema.sql`
+  (`event_id` PRIMARY KEY, `payload_hash` NOT NULL + corroboration index), with an inline
+  note pointing at ADR 0007.

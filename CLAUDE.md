@@ -108,4 +108,5 @@ same discipline at the data layer (`NYX_V0_IMPLEMENTATION.md` §1).
 - Target: `D:\ProjectNyx`, Git Bash on Windows, branch `main`.
 - Remote: `https://github.com/axendo79/ProjectNyx.git` (auth via Windows
   Credential Manager). Public repo — Code owns the first commit.
-- Python 3.11/3.12 (the spec's earlier 3.14 target was walked back — see handoff).
+- Python 3.14 (target ratified in decisions/0009; this re-adopts the version the
+  runtime has been on all along and supersedes the handoff's 3.14→3.11/3.12 P0).

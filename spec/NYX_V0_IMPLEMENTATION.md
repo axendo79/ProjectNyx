@@ -132,13 +132,28 @@ CREATE UNIQUE INDEX idx_events_idempotency ON events(idempotency_key);
 -- (NOT per-mention -- a mention's key has no owner once entities merge/split).
 -- A redacted payload is deleted here; the envelope row above is untouched,
 -- so replay yields a typed REDACTED sentinel, never a broken chain.
+-- KEYED BY event_id, NOT payload_hash (corrected in decisions/0007). The earlier
+-- `payload_hash TEXT PRIMARY KEY` here was wrong for two independent reasons:
+--   1. It BLOCKS CORROBORATION. Two independent sources reporting the SAME value
+--      produce byte-identical payloads -> one payload_hash -> a PK collision on the
+--      second. But that IS corroboration, the sole §2 promotion path; a table that
+--      cannot store the second source makes the unverified->verified gate unreachable.
+--   2. It POOLS PAYLOADS ACROSS EVENTS, violating Invariant 14. Payloads are separately
+--      destroyable per event; a content-keyed row makes redacting one event silently
+--      erase another event's payload as collateral.
+-- event_id is 1:1 with events and is the identity this table always implied.
 CREATE TABLE payloads (
-    payload_hash    TEXT PRIMARY KEY,
-    event_id        TEXT NOT NULL REFERENCES events(event_id),
+    event_id        TEXT PRIMARY KEY REFERENCES events(event_id),
+    payload_hash    TEXT NOT NULL,      -- content address; NOT the row identity (see above)
     canonical_entity_id TEXT,           -- key-binding target; nullable pre-resolution
     ciphertext      TEXT,               -- NULL after redaction (key destroyed)
     redacted        INTEGER NOT NULL DEFAULT 0
 );
+
+-- Content-addressing survives as a NON-unique INDEX: it is the corroboration lookup
+-- key (§2 counts DISTINCT source_class over events sharing a payload_hash). n events
+-- per content is the point; the gate itself is unbuilt (§8). See decisions/0007.
+CREATE INDEX idx_payloads_corroboration ON payloads(payload_hash);
 
 -- Append-only is a MECHANISM, not a convention (Invariant 1):
 CREATE TRIGGER no_update_events BEFORE UPDATE ON events
