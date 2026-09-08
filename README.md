@@ -29,7 +29,9 @@ promotion of derived claims into world truth. Current event handling supports
 observed-origin value-setting events; unsupported semantics fail loudly. See
 [GAPS.md](GAPS.md) for concrete limitations, including redaction and cross-belief
 handling. The [shared-time whole-view equality contract](decisions/0012-whole-view-equality.md)
-is accepted; its implementation remains pending.
+is implemented by `nyx.storage.evaluate_whole_view(conn, as_of, projector_version="0")`.
+This explicit operation reconstructs from the log; ordinary materialized reads
+are unchanged.
 
 ## Install and run the suite
 

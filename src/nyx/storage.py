@@ -19,6 +19,7 @@ import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import projection
 from .events import Envelope, Payload
 from .projection import _instant
 
@@ -261,6 +262,25 @@ def read_all_events(conn: sqlite3.Connection) -> list[tuple[Envelope, dict]]:
         payload_dict = json.loads(row[-1]) if row[-1] is not None else None
         out.append((env, payload_dict))
     return out
+
+
+def evaluate_whole_view(
+    conn: sqlite3.Connection,
+    as_of: str,
+    projector_version: str = "0",
+) -> dict[str, dict]:
+    """Evaluate the complete view at an explicit shared time (ADR 0012).
+
+    This opt-in operation reconstructs from one log read. It does not reuse or
+    rewrite materialized rows: their cutoff/version cannot be established from
+    their timestamps alone. Ordinary read_belief remains a materialized read.
+    The selected projector evaluates every included event at as_of, including
+    any time-dependent fields; no result is obtained by relabeling cached rows.
+    """
+    if not isinstance(as_of, str):
+        raise ValueError("whole-view evaluation requires an explicit as_of timestamp")
+    _instant(as_of, "as_of")
+    return projection.project(read_all_events(conn), as_of, projector_version)
 
 
 def read_belief(conn: sqlite3.Connection, belief_id: str) -> dict | None:

@@ -73,23 +73,22 @@ distinct: this one is a missing *dispatch*, that one is a missing *shape*.
 bounds `recorded_at` inclusively and selects a versioned fold from a registry;
 unsupported versions raise. `fold()` receives an explicit evaluation time for
 `projected_as_of`, and `updated_at` comes from the last included event's `recorded_at`.
-Regression tests compare complete serialized views across incremental fold and replay at a shared evaluation time, and cover a single-belief live write. They do not establish whole-view equality for live materialized beliefs updated at different times; the decision is now accepted in ADR 0012, with implementation pending below.
+Regression tests compare complete serialized views across incremental fold and replay at a shared evaluation time, and cover a single-belief live write. They do not establish whole-view equality for live materialized beliefs updated at different times; ADR 0012 defines and implements a separate explicit whole-view evaluation operation, described below.
 
 ---
 
 ### Whole-view equality across live materialized beliefs and replay
-**RESOLVED - decision accepted ([ADR 0012](decisions/0012-whole-view-equality.md)); implementation pending.**
+**RESOLVED ([ADR 0012](decisions/0012-whole-view-equality.md)):**
+`storage.evaluate_whole_view(conn, as_of, projector_version="0")` reconstructs
+from the log at an explicit shared evaluation time and selected projector version.
+It leaves raw materialized rows and Layer A unchanged. Ordinary `read_belief()`
+continues to read materialized state without replay.
 
-The equality-contract ambiguity is closed: whole-view equality is defined at an
-explicit shared evaluation time, includes every projected field, and cannot be
-established by hash-only comparison. Raw materialized rows are not automatically
-a shared-time snapshot. Future time-dependent behavior must be evaluated at T,
-not merely relabeled.
-
-The existing multi-belief timestamp discrepancy has not been fixed. Implementing
-the accepted contract and its acceptance tests is a separate outstanding task;
-this decision closure does not claim that current live materialization already
-satisfies whole-view equality. ADR 0008's cross-belief event-shape blocker remains open.
+All seven ADR acceptance cases are covered in `tests/test_whole_view_equality.py`,
+including complete-field comparisons, historical cutoffs, and a controlled
+time-dependent projector. Different timestamps on raw live materialized rows
+remain expected; those rows are not automatically a shared-time snapshot.
+ADR 0008's cross-belief event-shape blocker remains open.
 
 ---
 
