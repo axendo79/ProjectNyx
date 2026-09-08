@@ -144,7 +144,7 @@ The proposed `/audit` and `/selftest` interfaces and retrieval-coherence measure
 ## Proposed sequencing against existing gaps
 
 1. Preserve this direction and its non-authoritative status; ratify concrete contracts before dependent implementation.
-2. Address the existing ingestion timestamp-canonicalization and database-version-check gaps before persistent temporal data. Require migrations when persistent data needs conversion.
+2. Address the outstanding ingestion timestamp-canonicalization gap before persistent temporal data. Database version checking is implemented under [ADR 0011](../decisions/0011-database-schema-versioning.md). Any future migration mechanism for persistent data conversion requires a separate decision; this direction does not authorize one.
 3. Ratify temporal meanings, then build the smallest read-side temporal surface using existing projection behavior where appropriate. Preserve fail-loud behavior for unsettled corrections and origins.
 4. Establish baseline retrieval and observable relevance outcomes before ranking bias. Specify proposed audit/selftest interfaces and address the existing stale-read detection stub as part of the read path.
 5. Ratify activation's storage, authority, replay, update, and ranking contracts. Implement and evaluate only the minimal components after those decisions, with versioned operational defaults and explicit retuning criteria.

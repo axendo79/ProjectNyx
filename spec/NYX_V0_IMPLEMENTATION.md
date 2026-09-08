@@ -28,7 +28,7 @@ Hashing the **event_hashes**, not just the event_ids, matters: it means the depe
 
 **Delta-reducer fold.** Fold *order* is rowid (insertion) for hash determinism, but a value-setting event must not clobber a newer value just because it was *folded* later — the offline-reconnection seam (architecture §4/§5) appends old-`occurred_at` events at high rowid.
 ```
-function fold(prior_view, new_event):
+function fold(prior_view, new_event, as_of):
     # value-recency guard: a value-setting event older than the current value
     # updates provenance/support-set but does NOT supersede the newer value
     if new_event.sets_value and new_event.occurred_at < prior_view.value_occurred_at:
@@ -38,10 +38,13 @@ function fold(prior_view, new_event):
         if new_event.sets_value:
             updated_view.value_occurred_at = new_event.occurred_at
     updated_view.view_version_hash = SHA256(prior_view.view_version_hash || new_event.event_hash)
-    updated_view.projected_as_of = now()
+    updated_view.projected_as_of = as_of
+    updated_view.updated_at = new_event.recorded_at
     return updated_view
 ```
 `apply_event_to_belief` is event-type-specific (`observation_recorded` sets a value; `correction_appended` supersedes; `entity_merge_accepted` re-points affected mentions per the `as_of` rule in §4). Handlers are deterministic — no scoring. The `value_occurred_at` field is added to `resolved_beliefs` (§4) so the guard has state to compare against; without it, out-of-order reconnection events silently corrupt current values.
+
+[ADR 0010](../decisions/0010-projection-parameters.md) supplies the explicit evaluation-time contract: the live write path passes the current time at the call site; replay passes its `as_of` cutoff. The reducer does not sample the clock. The whole-view equality discrepancy remains unresolved in [GAPS.md](../GAPS.md#whole-view-equality-across-live-materialized-beliefs-and-replay); this pseudocode update does not resolve it.
 
 **Stale-projection check.** Reader compares the materialized `view_version_hash` lineage against `entity_event_index.latest_event_hash` for that belief's entity (the index is updated synchronously with the append, §4, so this check does not race). Mismatch → serve **stale-labeled**, do not block on a re-fold (architecture §8: a labeled stale read beats a stalled one for local single-user); match → serve as current.
 
@@ -101,7 +104,16 @@ This is a discrete gate, not a continuous weight — lower-risk to set now than 
 
 ## 4. Schema (SQLite, WAL mode) — mechanical translation of already-decided fields
 
+[ADR 0011](../decisions/0011-database-schema-versioning.md) governs database initialization and compatibility validation. `init_db(path, create=False)` validates an existing database; only explicit `create=True` authorizes initialization of an empty database under the ADR's escaped-prefix test. Fresh schema and metadata initialization is transactional. Every new connection validates the exactly-one-row invariant, stored types, and metadata structure, including CHECK constraints and the prohibition on extra or generated columns. Existing metadata is never repaired or auto-stamped; migration and database-identity monitoring remain outside scope. The `schema_meta` DDL below is reproduced from that ADR; the database version is distinct from the event-envelope `schema_version`.
+
 ```sql
+CREATE TABLE schema_meta (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    version INTEGER NOT NULL CHECK (typeof(version) = 'integer' AND version > 0),
+    created_at TEXT NOT NULL,
+    created_by TEXT NOT NULL
+);
+
 -- Layer A: Reality Layer. Append-only, ENGINE-enforced (Invariant 1).
 -- ENVELOPE / PAYLOAD SPLIT (architecture Invariant 14): the hash chain covers
 -- envelopes only, so a destroyed payload never breaks verification.

@@ -1,6 +1,6 @@
 # ProjectNyx - Agent Instructions
 
-Runtime: Python 3.14.2 in .venv. Tests: pytest -q, 19 must pass.
+Runtime: Python 3.14.2 in .venv. Tests: run the full pytest suite (`pytest -q`); all tests must pass.
 
 ## Authority
 - spec/NYX_ARCHITECTURE.md is authoritative for what and why.
