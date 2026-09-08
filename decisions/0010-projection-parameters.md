@@ -88,6 +88,10 @@ separate parameter, not a redefinition of this one.
 
 
 
+### 1a. Append enforces recorded_at monotonicity.
+
+Append refuses an event whose recorded_at is earlier than the previous event's recorded_at. The refusal fails loudly, consistent with the backdated-correction rule. There is no clamping, reordering, or silent correction.
+
 ### 2. projector_version is a registry; unsupported versions fail loud
 
 
@@ -155,6 +159,10 @@ one-belief-in, one-belief-out shape, which remains blocked on ADR 0008.
 
 The prohibition on changing the fold signature refers to that shape, not to
 adding an evaluation-time parameter.
+
+## Acceptance tests
+
+- **Backward clock adjustment at append:** after an event has been appended, a backward clock adjustment produces an event whose recorded_at is earlier than the previous event's recorded_at. Append refuses it loudly without changing the log; it does not clamp timestamps, reorder events, or silently correct the event.
 
 ## Rationale
 

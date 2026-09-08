@@ -36,6 +36,8 @@ No `CHECK (version = 1)` is added. The table remains capable of representing fut
 
 **SQLite type-affinity requirement:** Validation checks the actual storage type of `version` using `typeof(version) = 'integer'`, not whether the value can be coerced to an integer. The same requirement applies to the diagnostic fields: validation checks `typeof(created_at) = 'text'` and `typeof(created_by) = 'text'`, not whether their values can be coerced to text.
 
+**Structural validation requirement:** Validation compares CHECK constraints as well as column names and declared types. Metadata must contain both required CHECK constraints, `CHECK (id = 1)` and `CHECK (typeof(version) = 'integer' AND version > 0)`, and must not contain the prohibited `CHECK (version = 1)`. Generated or extra columns are rejected.
+
 ### The single-row invariant
 
 `id INTEGER PRIMARY KEY CHECK (id = 1)` guarantees **at most one row**, not exactly one. A table with zero rows satisfies that constraint.
@@ -56,7 +58,9 @@ A file-watcher or continuous identity-monitoring subsystem is outside the curren
 
 ## Fresh initialization authorization
 
-Fresh initialization is authorized explicitly by an `init_db(path, create=False)` parameter. `create` defaults to `False`: ordinary calls validate an existing database and never create one. `create=True` permits initialization only when the database contains no user-defined schema objects — that is, when `SELECT count(*) FROM sqlite_master WHERE type IN ('table','index','view','trigger') AND name NOT LIKE 'sqlite_%'` returns zero. A `create=True` call against a database that is not empty by that test refuses; it does not fall back to validation and does not stamp metadata. File existence and file size are not used as emptiness tests.
+Fresh initialization is authorized explicitly by an `init_db(path, create=False)` parameter. `create` defaults to `False`: ordinary calls validate an existing database and never create one. `create=True` permits initialization only when the database contains no user-defined schema objects — that is, when `SELECT count(*) FROM sqlite_master WHERE type IN ('table','index','view','trigger') AND name NOT LIKE 'sqlite\_%' ESCAPE '\'` returns zero. A `create=True` call against a database that is not empty by that test refuses; it does not fall back to validation and does not stamp metadata. File existence and file size are not used as emptiness tests.
+
+The underscore in `sqlite\_%` must be escaped so it is matched literally. An unescaped underscore is a single-character wildcard in `LIKE` and would incorrectly exclude user tables such as `sqliteX_existing` from the emptiness test.
 
 ## Initialization decision tree
 
@@ -88,6 +92,10 @@ The general reopening path does not use `CREATE TABLE IF NOT EXISTS schema_meta`
 - **Repeated `init_db()`:** validates again and detects an incompatible database substituted between invocations.
 - **Fold-versus-replay equality:** remains unchanged by the introduction of schema metadata.
 - **Non-empty creation refusal:** `create=True` against a non-empty database refuses without mutation.
+- **Escaped-prefix creation refusal:** `create=True` refuses without mutation a database containing a user table such as `sqliteX_existing`, whose name matches the unescaped pattern.
+- **Missing CHECK constraints:** metadata missing `CHECK (id = 1)` or `CHECK (typeof(version) = 'integer' AND version > 0)` refuses without mutation; each missing constraint is tested separately.
+- **Prohibited version CHECK:** metadata carrying `CHECK (version = 1)` refuses without mutation.
+- **Extra or generated columns:** metadata with a fifth column or a generated column refuses without mutation.
 
 For the no-mutation tests, compare database content before and after, not only whether an exception was raised. SQLite may create auxiliary journal or WAL files as part of normal connection behavior, so define the assertion around the database's logical state rather than requiring the filesystem directory to be byte-for-byte identical.
 
