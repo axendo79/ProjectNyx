@@ -167,7 +167,7 @@ def test_fold_equals_replay_within_each_order(tmp_path, order):
     try:
         replayed = projection.project(
             storage.read_all_events(conn),
-            as_of="2026-07-12T12:00:00+00:00",
+            as_of=belief["projected_as_of"],
             projector_version="0",
         )
         assert replayed[BELIEF_ID]["view_version_hash"] == belief["view_version_hash"]
@@ -234,7 +234,7 @@ def test_backdated_correction_does_not_poison_layer_a(db_path):
         assert belief["superseding_events"] == []
         replayed = projection.project(
             storage.read_all_events(conn),
-            as_of="2026-07-12T12:00:00+00:00",
+            as_of=belief["projected_as_of"],
             projector_version="0",
         )
         assert replayed[BELIEF_ID]["view_version_hash"] == belief["view_version_hash"]

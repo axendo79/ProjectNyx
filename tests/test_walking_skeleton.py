@@ -90,9 +90,10 @@ def test_full_replay_hash_matches(db_path):
         ("entity:legion/property:ram",),
     ).fetchone()[0]
 
+    log = storage.read_all_events(conn)
     replayed_view = projection.project(
-        storage.read_all_events(conn),
-        as_of="2026-07-12T00:00:00+00:00",
+        log,
+        as_of=log[-1][0].recorded_at,
         projector_version="0",
     )
     conn.close()

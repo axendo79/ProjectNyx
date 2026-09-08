@@ -41,8 +41,10 @@ _RESOLUTION_BASIS = {
 }
 
 
-def _instant(occurred_at: str) -> datetime:
-    """Parse an ISO8601 `occurred_at` to a UTC-aware datetime, for COMPARISON only.
+def _instant(timestamp: str, field: str = "occurred_at") -> datetime:
+    """Parse an ISO8601 timestamp to a UTC-aware datetime, for COMPARISON only.
+
+    Also used for recorded_at/as_of cutoff comparisons (decisions/0009).
 
     Ordering of `occurred_at` is chronological, never lexical. Lexical order over ISO8601
     text is not chronological order once offsets vary: the same instant has several
@@ -63,10 +65,10 @@ def _instant(occurred_at: str) -> datetime:
     does not rely on compare-time normalization forever — logged as a follow-on gap in
     decisions/0006, not built here.
     """
-    parsed = datetime.fromisoformat(occurred_at)
+    parsed = datetime.fromisoformat(timestamp)
     if parsed.tzinfo is None:
         raise ValueError(
-            f"occurred_at {occurred_at!r} has no timezone offset — its instant is "
+            f"{field} {timestamp!r} has no timezone offset — its instant is "
             "ambiguous and will not be guessed. Timestamps must carry an offset (`Z` or "
             "`±HH:MM`). Boundary canonicalization is a follow-on gap; see decisions/0006."
         )
@@ -149,7 +151,12 @@ def _state_for_origin(origin_type: str) -> str:
     return "verified"
 
 
-def fold(prior_view: dict[str, Any] | None, envelope: Envelope, payload: dict[str, Any]) -> dict[str, Any]:
+def fold(
+    prior_view: dict[str, Any] | None,
+    envelope: Envelope,
+    payload: dict[str, Any],
+    as_of: str,
+) -> dict[str, Any]:
     """Fold one event into a belief's materialized state (incremental delta-reducer).
 
     Recomputes `view_version_hash = SHA256(prior || event_hash)` and applies the
@@ -159,6 +166,9 @@ def fold(prior_view: dict[str, Any] | None, envelope: Envelope, payload: dict[st
 
     Handles the two value-setting types. Others (entity_merge_accepted, ...) are §8
     (open) and fail loud rather than silently mis-fold.
+
+    The caller supplies the evaluation time (decisions/0009 §3b). This reducer
+    never reads the clock; updated_at comes from the folded event's recorded_at.
     """
     if envelope.event_type not in _VALUE_SETTING:
         raise NotImplementedError(
@@ -171,7 +181,6 @@ def fold(prior_view: dict[str, Any] | None, envelope: Envelope, payload: dict[st
     # BEFORE appending; this call is the replay-side backstop.
     assert_not_backdated(prior_view, envelope.event_type, envelope.occurred_at)
 
-    now = _now_iso()
     prior_hash = _GENESIS_VIEW_HASH if prior_view is None else prior_view["view_version_hash"]
     supporting = [] if prior_view is None else list(prior_view["supporting_events"])
     opposing = [] if prior_view is None else list(prior_view["opposing_events"])
@@ -201,8 +210,8 @@ def fold(prior_view: dict[str, Any] | None, envelope: Envelope, payload: dict[st
         view["supporting_events"] = supporting
         view["superseding_events"] = superseding
         view["view_version_hash"] = new_view_hash
-        view["projected_as_of"] = now
-        view["updated_at"] = now
+        view["projected_as_of"] = as_of
+        view["updated_at"] = envelope.recorded_at
         return view
 
     # This event sets the value. Note the belief head is NEVER parked in
@@ -225,23 +234,43 @@ def fold(prior_view: dict[str, Any] | None, envelope: Envelope, payload: dict[st
         "superseding_events": superseding,
         "resolution_basis": _RESOLUTION_BASIS[envelope.event_type],
         "view_version_hash": new_view_hash,
-        "projected_as_of": now,
-        "updated_at": now,
+        "projected_as_of": as_of,
+        "updated_at": envelope.recorded_at,
     }
 
 
-def project(events: list[tuple[Envelope, dict]], as_of: str, projector_version: str) -> dict[str, Any]:
+# Version-pinned fold implementations; new versions are additive (ADR 0009 §2).
+PROJECTORS = {"0": fold}
+
+
+def project(
+    events: list[tuple[Envelope, dict]],
+    as_of: str | None = None,
+    projector_version: str = "0",
+) -> dict[str, Any]:
     """Full replay: project(event_log, as_of, projector_version) from empty.
 
     The crash-recovery path AND the determinism oracle — a fresh full replay must
     produce, per belief, a view_version_hash identical to the incrementally-folded
     view (spec/NYX_V0_IMPLEMENTATION.md §6 acceptance bar). Folds in insertion
     (rowid) order; deterministic, versioned (Invariant 9). Returns belief_id -> view.
+
+    ADR 0009: include recorded_at <= as_of, preserving log order, and pass the
+    evaluation time to the selected fold. Omitted as_of samples the clock once.
+    Before genesis the mapping is empty: no belief or update time exists.
     """
+    if not isinstance(projector_version, str) or projector_version not in PROJECTORS:
+        raise ValueError(f"Unsupported projector_version: {projector_version!r}")
+    reducer = PROJECTORS[projector_version]
+    if as_of is None:
+        as_of = _now_iso()
+    cutoff = _instant(as_of, "as_of")
     view: dict[str, Any] = {}
     for envelope, payload in events:
+        if _instant(envelope.recorded_at, "recorded_at") > cutoff:
+            continue
         belief_id = payload["belief_id"]
-        view[belief_id] = fold(view.get(belief_id), envelope, payload)
+        view[belief_id] = reducer(view.get(belief_id), envelope, payload, as_of)
     return view
 
 

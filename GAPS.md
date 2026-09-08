@@ -68,24 +68,12 @@ Any event whose payload has no `belief_id` — `entity_merge_accepted`, `redacti
 It stops holding at the first non-belief-scoped event type. Related to ADR 0008 but
 distinct: this one is a missing *dispatch*, that one is a missing *shape*.
 
-### `as_of` / `projector_version` are accepted and ignored
-`src/nyx/projection.py` · **Invariant 9** · silent
-
-```python
-def project(events, as_of, projector_version):   # neither parameter is ever read
-```
-
-Invariant 9 requires `Resolved View = project(log, as_of, version)` — deterministic,
-**time-aware**, versioned. The signature advertises exactly that. The body honours none of
-it: `as_of` does not bound which events are folded, and `projector_version` selects nothing.
-
-**This is the most deceptive gap in the list**, and the reason it is written down rather
-than left to be noticed: the other gaps announce themselves with an exception. This one
-looks implemented. A caller passing a historical `as_of` gets a confident answer computed
-from the *entire* log, including events after that instant — a plausible-looking wrong
-answer, which is the failure mode this project exists to refuse. Nothing depends on it yet
-(every caller passes a value that happens to be current), which is exactly why it can rot
-undetected.
+### `as_of` / `projector_version` — resolved
+**RESOLVED ([ADR 0009](decisions/0009-projection-parameters.md)):** `project()` now
+bounds `recorded_at` inclusively and selects a versioned fold from a registry;
+unsupported versions raise. `fold()` receives an explicit evaluation time for
+`projected_as_of`, and `updated_at` comes from the last included event's `recorded_at`.
+Regression tests compare complete serialized views across incremental fold and replay.
 
 ---
 

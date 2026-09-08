@@ -104,9 +104,10 @@ def test_identical_payloads_do_not_share_one_payload_row(db_path):
         assert len(payload_hashes) == 1
 
         # And the log still replays.
+        log = storage.read_all_events(conn)
         replayed = projection.project(
-            storage.read_all_events(conn),
-            as_of="2026-07-12T12:00:00+00:00",
+            log,
+            as_of=log[-1][0].recorded_at,
             projector_version="0",
         )
         assert replayed[BELIEF_ID]["current_value"] == "64GB"

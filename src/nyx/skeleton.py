@@ -28,6 +28,7 @@ ids/hashing/events/immune/storage/projection to make THIS pass. Nothing else.
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -83,7 +84,9 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any])
         )
         appended = storage.safe_append_event(conn, envelope, payload_row)
         if appended:
-            storage.upsert_belief(conn, projection.fold(prior, envelope, payload))
+            # Evaluation time belongs to the caller, not the fold (ADR 0009 §3b).
+            as_of = datetime.now(timezone.utc).isoformat()
+            storage.upsert_belief(conn, projection.fold(prior, envelope, payload, as_of))
         return storage.read_belief(conn, payload["belief_id"])
     finally:
         conn.close()
