@@ -44,7 +44,7 @@ _RESOLUTION_BASIS = {
 def _instant(timestamp: str, field: str = "occurred_at") -> datetime:
     """Parse an ISO8601 timestamp to a UTC-aware datetime, for COMPARISON only.
 
-    Also used for recorded_at/as_of cutoff comparisons (decisions/0009).
+    Also used for recorded_at/as_of cutoff comparisons (decisions/0010).
 
     Ordering of `occurred_at` is chronological, never lexical. Lexical order over ISO8601
     text is not chronological order once offsets vary: the same instant has several
@@ -167,7 +167,7 @@ def fold(
     Handles the two value-setting types. Others (entity_merge_accepted, ...) are §8
     (open) and fail loud rather than silently mis-fold.
 
-    The caller supplies the evaluation time (decisions/0009 §3b). This reducer
+    The caller supplies the evaluation time (decisions/0010 §3b). This reducer
     never reads the clock; updated_at comes from the folded event's recorded_at.
     """
     if envelope.event_type not in _VALUE_SETTING:
@@ -239,7 +239,7 @@ def fold(
     }
 
 
-# Version-pinned fold implementations; new versions are additive (ADR 0009 §2).
+# Version-pinned fold implementations; new versions are additive (ADR 0010 §2).
 PROJECTORS = {"0": fold}
 
 
@@ -255,7 +255,7 @@ def project(
     view (spec/NYX_V0_IMPLEMENTATION.md §6 acceptance bar). Folds in insertion
     (rowid) order; deterministic, versioned (Invariant 9). Returns belief_id -> view.
 
-    ADR 0009: include recorded_at <= as_of, preserving log order, and pass the
+    ADR 0010: include recorded_at <= as_of, preserving log order, and pass the
     evaluation time to the selected fold. Omitted as_of samples the clock once.
     Before genesis the mapping is empty: no belief or update time exists.
     """

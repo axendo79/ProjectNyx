@@ -56,7 +56,7 @@ These exclusions are distinct from the deferred experiments. Their intersection 
 | `relations` | Typed, provenance-backed relations versus operational associations. Proposed associations must not become accepted facts implicitly. |
 | Relative dates | Explicit reference time and timezone, including historical replay. “Yesterday” must not depend on the replay machine’s current clock. |
 
-The accepted [projection-parameters ADR](../decisions/0009-projection-parameters.md) supplies inclusive `recorded_at` cutoffs, explicit evaluation time, and version dispatch. It does not settle these temporal definitions or specify activation. The separate [Python-target ADR](../decisions/0009-python-314-re-adopted-as-target.md) currently shares its number; full filenames distinguish them.
+The accepted [projection-parameters ADR](../decisions/0010-projection-parameters.md) supplies inclusive `recorded_at` cutoffs, explicit evaluation time, and version dispatch. It does not settle these temporal definitions or specify activation. The separate [Python-target ADR](../decisions/0009-python-314-re-adopted-as-target.md) retains number 0009; the projection-parameters ADR is now 0010 (formerly 0009).
 
 ## Retrieval feedback loop
 

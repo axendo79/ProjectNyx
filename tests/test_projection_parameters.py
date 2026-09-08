@@ -1,4 +1,4 @@
-"""ADR 0009: historical knowledge, version dispatch, and deterministic views."""
+"""ADR 0010: historical knowledge, version dispatch, and deterministic views."""
 
 from dataclasses import asdict, replace
 from datetime import datetime, timezone

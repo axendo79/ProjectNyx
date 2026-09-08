@@ -1,8 +1,10 @@
-# ADR 0009: Projection Parameters — as_of, projector_version, projected_as_of
+# ADR 0010: Projection Parameters — as_of, projector_version, projected_as_of
 
 
 
 Status: Accepted
+
+**Numbering history (2026-09-08):** This ADR was originally committed and referenced as 0009. It was renumbered to 0010 to distinguish it from the Python-target ADR, which retains 0009. Commit history will continue to refer to this projection-parameters decision as 0009.
 
 Date: 2026-09-07
 
@@ -164,7 +166,7 @@ present is the exact failure Nyx exists to prevent. The A/B split and
 
 deterministic replay are load-bearing for that reason, not as architectural
 
-taste. Recording this here so a future reader does not mistake ADR 0009 for a
+taste. Recording this here so a future reader does not mistake ADR 0010 for a
 
 technicality.
 
@@ -181,4 +183,3 @@ technicality.
 - Callers passing version "0" are unaffected.
 
 - Historical-truth queries (bounding occurred_at) remain
-
