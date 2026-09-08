@@ -1,4 +1,4 @@
-\# ADR 0009: Projection Parameters — as\_of, projector\_version, projected\_as\_of
+# ADR 0009: Projection Parameters — as_of, projector_version, projected_as_of
 
 
 
@@ -8,17 +8,17 @@ Date: 2026-09-07
 
 Supersedes: nothing
 
-Related: Invariant 9; GAPS.md (as\_of and projector\_version silently ignored)
+Related: Invariant 9; GAPS.md (as_of and projector_version silently ignored)
 
 
 
-\## Context
+## Context
 
 
 
-project() accepts as\_of and projector\_version and ignores both. Invariant 9
+project() accepts as_of and projector_version and ignores both. Invariant 9
 
-requires Resolved View = project(log, as\_of, version), so the current signature
+requires Resolved View = project(log, as_of, version), so the current signature
 
 promises a guarantee the implementation does not provide. This is the most
 
@@ -34,7 +34,7 @@ together because they are one decision about what a projection is.
 
 
 
-Separately, the fold algorithm sets projected\_as\_of = now(). This contradicts
+Separately, the fold algorithm sets projected_as_of = now(). This contradicts
 
 fold is equivalent to replay-from-genesis: replaying an identical log twice
 
@@ -42,29 +42,29 @@ produces different output. This ADR treats that as in scope.
 
 
 
-\## Decision
+## Decision
 
 
 
-\### 1. as\_of bounds recorded\_at, inclusive
+### 1. as_of bounds recorded_at, inclusive
 
 
 
-An event is included in a projection when recorded\_at <= as\_of.
+An event is included in a projection when recorded_at <= as_of.
 
 
 
-occurred\_at is a claim carried in the payload and a later correction may assert
+occurred_at is a claim carried in the payload and a later correction may assert
 
-a different occurred\_at for the same fact. Bounding on it would make a
+a different occurred_at for the same fact. Bounding on it would make a
 
 historical view depend on knowledge that arrived after the moment being
 
-reconstructed. recorded\_at is a property of the log, monotonic, never revised.
+reconstructed. recorded_at is a property of the log, monotonic, never revised.
 
 
 
-Where multiple events share a recorded\_at value, they are ordered by the
+Where multiple events share a recorded_at value, they are ordered by the
 
 existing sequence and hash-chain order. The projector introduces no additional
 
@@ -72,7 +72,7 @@ ordering rule.
 
 
 
-as\_of earlier than the genesis event yields an empty view. No knowledge had
+as_of earlier than the genesis event yields an empty view. No knowledge had
 
 been recorded.
 
@@ -86,7 +86,7 @@ separate parameter, not a redefinition of this one.
 
 
 
-\### 2. projector\_version is a registry; unsupported versions fail loud
+### 2. projector_version is a registry; unsupported versions fail loud
 
 
 
@@ -110,13 +110,13 @@ adding a version is additive rather than a growing conditional.
 
 
 
-\### 3. projected\_as\_of is the as\_of parameter, never now()
+### 3. projected_as_of is the as_of parameter, never now()
 
 
 
-projected\_as\_of is set to the as\_of value the projection was called with. For a
+projected_as_of is set to the as_of value the projection was called with. For a
 
-live projection as\_of defaults to the current time, so behavior in the common
+live projection as_of defaults to the current time, so behavior in the common
 
 path is unchanged. For a replay it is the historical cutoff.
 
@@ -130,7 +130,21 @@ in a projected value that an executable invariant compares.
 
 
 
-\## Rationale
+### 3a. updated_at is the recorded_at of the last included event.
+
+
+
+updated_at is set to the recorded_at of the last event included in the
+
+projection, not now(). It records when the view last changed, which is a
+
+property of the log rather than of the computation. For an empty view
+
+(as_of earlier than genesis), updated_at is null.
+
+
+
+## Rationale
 
 
 
@@ -146,15 +160,15 @@ technicality.
 
 
 
-\## Consequences
+## Consequences
 
 
 
-\- project() honors both parameters or raises. It never silently ignores them.
+- project() honors both parameters or raises. It never silently ignores them.
 
-\- Same log plus same as\_of plus same version yields a byte-identical view.
+- Same log plus same as_of plus same version yields a byte-identical view.
 
-\- Callers passing version "0" are unaffected.
+- Callers passing version "0" are unaffected.
 
-\- Historical-truth queries (bounding occurred\_at) remain
+- Historical-truth queries (bounding occurred_at) remain
 
