@@ -44,6 +44,10 @@ If decay, state, ranking, or any other projected field depends on evaluation tim
 that behavior must be evaluated using T before the whole view is compared with
 replay. Timestamp normalization alone is not a general evaluation algorithm.
 
+## Explicit whole-view evaluation exception
+
+An explicit whole-view evaluation at T may reconstruct from the log. This is a narrow, named exception to the recovery-only replay rule in [spec/NYX_ARCHITECTURE.md](../spec/NYX_ARCHITECTURE.md). Ordinary materialized reads are unchanged and still must not rebuild on every read. Historical evaluation at an explicit T is a distinct operation from serving a current read; the prohibition addresses read-path cost, not replay itself. Cached rows may be reused only when they already represent the same log cutoff and projector version at T.
+
 ## Consequences
 
 This decision resolves the equality-contract ambiguity without requiring every
