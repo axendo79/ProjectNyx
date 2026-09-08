@@ -73,28 +73,23 @@ distinct: this one is a missing *dispatch*, that one is a missing *shape*.
 bounds `recorded_at` inclusively and selects a versioned fold from a registry;
 unsupported versions raise. `fold()` receives an explicit evaluation time for
 `projected_as_of`, and `updated_at` comes from the last included event's `recorded_at`.
-Regression tests compare complete serialized views across incremental fold and replay at a shared evaluation time, and cover a single-belief live write. They do not establish whole-view equality for live materialized beliefs updated at different times; that finding remains open below.
+Regression tests compare complete serialized views across incremental fold and replay at a shared evaluation time, and cover a single-belief live write. They do not establish whole-view equality for live materialized beliefs updated at different times; the decision is now accepted in ADR 0012, with implementation pending below.
 
 ---
 
 ### Whole-view equality across live materialized beliefs and replay
-**OPEN - decision required** | `src/nyx/skeleton.py`, `src/nyx/projection.py` | Invariant 9 |
-[ADR 0010](decisions/0010-projection-parameters.md)
+**RESOLVED - decision accepted ([ADR 0012](decisions/0012-whole-view-equality.md)); implementation pending.**
 
-The live write path passes its call-time evaluation timestamp to `fold()` and updates
-only the affected belief. If belief A is updated at T1 and belief B at T2, their
-materialized `projected_as_of` values differ. A full `project(log, T2, version)` assigns
-T2 to both included beliefs, so the complete materialized mapping and replay result
-are not byte-identical. The reproduced difference is in evaluation timestamps;
-belief values and hashes matched.
+The equality-contract ambiguity is closed: whole-view equality is defined at an
+explicit shared evaluation time, includes every projected field, and cannot be
+established by hash-only comparison. Raw materialized rows are not automatically
+a shared-time snapshot. Future time-dependent behavior must be evaluated at T,
+not merely relabeled.
 
-The shared-time incremental/replay tests supply one evaluation time to every fold;
-the live-path equality tests cover one belief. Neither resolves the multi-belief case.
-The call-time rule and the claimed whole-view equality therefore need an explicit
-decision on the equality contract and evaluation-time semantics. No resolution is
-ratified here: this finding does not authorize timestamp normalization, relabeling,
-a weaker equality assertion, or any behavior change. The cross-belief event-shape
-blocker in ADR 0008 remains a separate open issue.
+The existing multi-belief timestamp discrepancy has not been fixed. Implementing
+the accepted contract and its acceptance tests is a separate outstanding task;
+this decision closure does not claim that current live materialization already
+satisfies whole-view equality. ADR 0008's cross-belief event-shape blocker remains open.
 
 ---
 
