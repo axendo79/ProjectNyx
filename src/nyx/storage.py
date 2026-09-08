@@ -14,11 +14,13 @@ it, stale-read detection races the async projection).
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
 from .events import Envelope, Payload
+from .projection import _instant
 
 # schema.sql lives at the repo root: src/nyx/storage.py -> parents[2].
 _SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schema.sql"
@@ -47,18 +49,63 @@ class SchemaCompatibilityError(RuntimeError):
         super().__init__(f"{reason}: {detail}")
 
 
+# Ignore comments, whitespace, keyword case and identifier quoting when
+# comparing CHECK expressions. Quoted text must not supply decoy constraints.
+_SQL_TOKEN = re.compile(
+    r"--[^\n]*|/\*.*?\*/|'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|"
+    r"`(?:``|[^`])*`|\[[^\]]*\]|[A-Za-z_][A-Za-z_0-9]*|[0-9]+|[^\s]",
+    re.DOTALL,
+)
+
+
+def _check_constraints(sql: str) -> list[tuple[str, ...]]:
+    tokens = [m.group() for m in _SQL_TOKEN.finditer(sql)
+              if not m.group().startswith(("--", "/*"))]
+    checks = []
+    for index, token in enumerate(tokens):
+        if token.lower() != "check" or tokens[index + 1:index + 2] != ["("]:
+            continue
+        depth = 1
+        expression = []
+        for part in tokens[index + 2:]:
+            if part == "(":
+                depth += 1
+            elif part == ")":
+                depth -= 1
+            if depth == 0:
+                break
+            if part.startswith(('"', "`", "[")):
+                part = part[1:-1]
+            expression.append(part if part.startswith("'") else part.lower())
+        if depth:
+            raise SchemaCompatibilityError("malformed_metadata", "unterminated CHECK constraint")
+        checks.append(tuple(expression))
+    return sorted(checks)
+
+
+class BackdatedRecordingError(ValueError):
+    """ADR 0010: a new event cannot precede the log tip's recording time."""
+
+
 def _validate_schema(conn: sqlite3.Connection) -> None:
     """Inspect metadata without modifying it (ADR 0011)."""
     meta = conn.execute(
-        "SELECT type FROM sqlite_master WHERE name = 'schema_meta'"
+        "SELECT type, sql FROM sqlite_master WHERE name = 'schema_meta'"
     ).fetchone()
     if meta is None:
         raise SchemaCompatibilityError("missing_metadata", "schema_meta is absent")
     if meta[0] != "table":
         raise SchemaCompatibilityError("malformed_metadata", "schema_meta is not a table")
-    columns = conn.execute("PRAGMA table_info(schema_meta)").fetchall()
+    columns = conn.execute("PRAGMA table_xinfo(schema_meta)").fetchall()
     if [column[1] for column in columns] != ["id", "version", "created_at", "created_by"]:
         raise SchemaCompatibilityError("malformed_metadata", "schema_meta must have four fields")
+    if any(column[6] != 0 for column in columns):
+        raise SchemaCompatibilityError("malformed_metadata", "generated metadata columns are prohibited")
+    if _check_constraints(meta[1]) != sorted([
+        ("id", "=", "1"),
+        ("typeof", "(", "version", ")", "=", "'integer'", "and", "version", ">", "0"),
+    ]):
+        raise SchemaCompatibilityError("malformed_metadata", "invalid schema_meta CHECK constraints")
     count = conn.execute("SELECT count(*) FROM schema_meta").fetchone()[0]
     if count != 1:
         raise SchemaCompatibilityError("malformed_metadata", "schema_meta must contain exactly one row")
@@ -106,7 +153,7 @@ def init_db(db_path: str | Path, create: bool = False) -> sqlite3.Connection:
             emptiness_sql = (
                 "SELECT count(*) FROM sqlite_master "
                 "WHERE type IN ('table','index','view','trigger') "
-                "AND name NOT LIKE 'sqlite_%'"
+                r"AND name NOT LIKE 'sqlite\_%' ESCAPE '\'"
             )
             if conn.execute(emptiness_sql).fetchone()[0]:
                 raise SchemaCompatibilityError("nonempty_database", "fresh initialization requires an empty database")
@@ -160,6 +207,17 @@ def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Pay
         )
         if cur.rowcount == 0:
             return False  # duplicate idempotency_key — no-op, no second row
+        # The tentative insert acquires the write lock. A refusal rolls it back
+        # before payload/index writes; duplicates remain idempotent no-ops.
+        previous = conn.execute(
+            "SELECT recorded_at FROM events WHERE rowid < ? ORDER BY rowid DESC LIMIT 1",
+            (cur.lastrowid,),
+        ).fetchone()
+        recorded_at = _instant(envelope.recorded_at, "recorded_at")
+        if previous and recorded_at < _instant(previous[0], "recorded_at"):
+            raise BackdatedRecordingError(
+                f"recorded_at {envelope.recorded_at!r} precedes previous event {previous[0]!r}"
+            )
         # Keyed by event_id (decisions/0007). No conflict clause, deliberately: the
         # events INSERT OR IGNORE above already returned False on a duplicate
         # idempotency_key, so this line is reached ONLY for a freshly-appended event —
