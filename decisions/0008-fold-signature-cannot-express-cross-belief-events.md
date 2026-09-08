@@ -1,3 +1,5 @@
+> **Resolved 2026-09-08:** [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md) supersedes this recorded blocker by deciding reducer shape and hash lineage together. The original finding below is retained as historical context. Implementation is separate; ADR 0014 explicitly refuses merges with differing predecessor verification states pending a further decision.
+
 # 0008 — The `fold` signature structurally cannot express a cross-belief event (Phase 2 blocker)
 
 - **Status:** **OPEN — this is a FLAG, not a decision.** No fix is proposed here and none
