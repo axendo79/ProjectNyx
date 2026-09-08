@@ -144,6 +144,16 @@ property of the log rather than of the computation. For an empty view
 
 
 
+### 3b. fold takes an explicit evaluation time.
+
+fold accepts the evaluation time as a parameter rather than calling now().
+The live write path passes the current time at the call site; a replay passes
+the as_of cutoff. This is an additive parameter and does not change fold's
+one-belief-in, one-belief-out shape, which remains blocked on ADR 0008.
+
+The prohibition on changing the fold signature refers to that shape, not to
+adding an evaluation-time parameter.
+
 ## Rationale
 
 
