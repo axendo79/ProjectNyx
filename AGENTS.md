@@ -5,9 +5,11 @@ Runtime: Python 3.14.2 in .venv. Tests: pytest -q, 19 must pass.
 ## Authority
 - spec/NYX_ARCHITECTURE.md is authoritative for what and why.
 - spec/NYX_V0_IMPLEMENTATION.md is authoritative for how: schema, algorithms, defaults, tests.
-- decisions/ADR-*.md supersede the spec where they conflict.
+- Accepted ADRs in decisions/[0-9][0-9][0-9][0-9]-*.md supersede the spec where they conflict.
 - GAPS.md lists logged, not-yet-fixed findings. Do not fix a gap outside your task scope.
 - CLAUDE.md was written for a different agent. Ignore it.
+
+Accepted specifications and ADRs govern implementation. Material under `design/` is non-authoritative and may be analyzed or drafted when requested. It does not authorize implementation, supply missing defaults, or supersede accepted decisions. When implementation requires an unresolved decision, stop the dependent work and report it. Ratification must be recorded explicitly before implementation proceeds.
 
 ## Standing rule
 The spec is complete. Build it, do not redesign it. Never edit anything under
