@@ -69,7 +69,7 @@ It stops holding at the first non-belief-scoped event type. Related to ADR 0008 
 distinct: this one is a missing *dispatch*, that one is a missing *shape*.
 
 ### `as_of` / `projector_version` — resolved
-**RESOLVED ([ADR 0009](decisions/0009-projection-parameters.md)):** `project()` now
+**RESOLVED ([ADR 0009](decisions/0009-projection-parameters.md), commit `101007b`):** `project()` now
 bounds `recorded_at` inclusively and selects a versioned fold from a registry;
 unsupported versions raise. `fold()` receives an explicit evaluation time for
 `projected_as_of`, and `updated_at` comes from the last included event's `recorded_at`.
