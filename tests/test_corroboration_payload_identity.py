@@ -52,7 +52,9 @@ SECOND_SOURCE = {
 
 @pytest.fixture()
 def db_path(tmp_path):
-    return str(tmp_path / "nyx.db")
+    path = str(tmp_path / "nyx.db")
+    storage.init_db(path, create=True).close()
+    return path
 
 
 def test_two_sources_reporting_the_same_value_both_persist(db_path):

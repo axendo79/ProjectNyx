@@ -34,20 +34,107 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def init_db(db_path: str | Path) -> sqlite3.Connection:
-    """Open the database, applying schema.sql exactly once (WAL, append-only
-    triggers). Idempotent: safe to call on an already-initialised database.
-    spec/NYX_V0_IMPLEMENTATION.md §4.
-    """
-    conn = sqlite3.connect(str(db_path))
-    conn.execute("PRAGMA journal_mode=WAL")
-    already = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='events'"
+DATABASE_SCHEMA_VERSION = 1
+# Initialization diagnostics, not an identity or compatibility signal.
+CREATED_BY = "nyx/0.0.0"
+
+
+class SchemaCompatibilityError(RuntimeError):
+    """ADR 0011 refusal, with a stable classification for diagnostics."""
+
+    def __init__(self, reason: str, detail: str):
+        self.reason = reason
+        super().__init__(f"{reason}: {detail}")
+
+
+def _validate_schema(conn: sqlite3.Connection) -> None:
+    """Inspect metadata without modifying it (ADR 0011)."""
+    meta = conn.execute(
+        "SELECT type FROM sqlite_master WHERE name = 'schema_meta'"
     ).fetchone()
-    if not already:
-        conn.executescript(_SCHEMA_PATH.read_text(encoding="utf-8"))
-        conn.commit()
-    return conn
+    if meta is None:
+        raise SchemaCompatibilityError("missing_metadata", "schema_meta is absent")
+    if meta[0] != "table":
+        raise SchemaCompatibilityError("malformed_metadata", "schema_meta is not a table")
+    columns = conn.execute("PRAGMA table_info(schema_meta)").fetchall()
+    if [column[1] for column in columns] != ["id", "version", "created_at", "created_by"]:
+        raise SchemaCompatibilityError("malformed_metadata", "schema_meta must have four fields")
+    count = conn.execute("SELECT count(*) FROM schema_meta").fetchone()[0]
+    if count != 1:
+        raise SchemaCompatibilityError("malformed_metadata", "schema_meta must contain exactly one row")
+    row = conn.execute(
+        "SELECT id, version, created_at, created_by, typeof(id), typeof(version), "
+        "typeof(created_at), typeof(created_by) FROM schema_meta"
+    ).fetchone()
+    identifier, version, created_at, created_by, *types = row
+    if types != ["integer", "integer", "text", "text"] or identifier != 1:
+        raise SchemaCompatibilityError("malformed_metadata", "invalid ID or metadata storage types")
+    if version == 0:
+        raise SchemaCompatibilityError("zero_version", "explicit schema version zero is unsupported")
+    if version < 0:
+        raise SchemaCompatibilityError("malformed_metadata", "schema version must be positive")
+    if version != DATABASE_SCHEMA_VERSION:
+        raise SchemaCompatibilityError("unsupported_version", f"unsupported schema version {version}")
+    expected_columns = [("INTEGER", 0, 1), ("INTEGER", 1, 0), ("TEXT", 1, 0), ("TEXT", 1, 0)]
+    if [(col[2].upper(), col[3], col[5]) for col in columns] != expected_columns:
+        raise SchemaCompatibilityError("malformed_metadata", "invalid schema_meta column definitions")
+
+
+def _schema_statements(script: str):
+    """Keep trigger bodies intact without executescript's implicit COMMIT."""
+    statement = ""
+    for line in script.splitlines(keepends=True):
+        statement += line
+        if sqlite3.complete_statement(statement):
+            yield statement
+            statement = ""
+    # A trailing comment is harmless; execute also rejects incomplete SQL.
+    if statement.strip():
+        yield statement
+
+
+def init_db(db_path: str | Path, create: bool = False) -> sqlite3.Connection:
+    """Validate each new connection; initialize only with explicit authorization.
+
+    ADR 0011: no migration, repair, auto-stamping, or identity monitoring.
+    Existing databases are opened without SQLite's implicit file creation.
+    """
+    uri = Path(db_path).resolve().as_uri() + ("?mode=rwc" if create else "?mode=rw")
+    conn = sqlite3.connect(uri, uri=True)
+    try:
+        if create:
+            emptiness_sql = (
+                "SELECT count(*) FROM sqlite_master "
+                "WHERE type IN ('table','index','view','trigger') "
+                "AND name NOT LIKE 'sqlite_%'"
+            )
+            if conn.execute(emptiness_sql).fetchone()[0]:
+                raise SchemaCompatibilityError("nonempty_database", "fresh initialization requires an empty database")
+            # WAL cannot be selected inside a transaction. Do it before creating
+            # any schema, so a configuration failure cannot leave committed DDL.
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("BEGIN IMMEDIATE")
+            # Recheck under the write lock before creating anything.
+            if conn.execute(emptiness_sql).fetchone()[0]:
+                raise SchemaCompatibilityError("nonempty_database", "fresh initialization requires an empty database")
+            for statement in _schema_statements(_SCHEMA_PATH.read_text(encoding="utf-8")):
+                conn.execute(statement)
+            conn.execute(
+                "INSERT INTO schema_meta (id, version, created_at, created_by) VALUES (1, 1, ?, ?)",
+                (_now_iso(), CREATED_BY),
+            )
+            _validate_schema(conn)
+            conn.commit()
+        else:
+            # One consistent read transaction for row count and metadata inspection.
+            conn.execute("BEGIN")
+            _validate_schema(conn)
+            conn.commit()
+        return conn
+    except BaseException:
+        conn.rollback()
+        conn.close()
+        raise
 
 
 def last_event_hash(conn: sqlite3.Connection) -> str | None:

@@ -41,7 +41,9 @@ OBSERVATION = {
 
 @pytest.fixture()
 def db_path(tmp_path):
-    return str(tmp_path / "nyx.db")
+    path = str(tmp_path / "nyx.db")
+    storage.init_db(path, create=True).close()
+    return path
 
 
 def test_single_row_with_valid_event_hash(db_path):

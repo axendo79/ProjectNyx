@@ -180,6 +180,7 @@ def test_live_projection_defaults_to_one_current_time(monkeypatch):
 
 def test_live_materialized_view_matches_replay(tmp_path):
     path = tmp_path / "nyx.db"
+    storage.init_db(path, create=True).close()
     before = datetime.now(timezone.utc)
     belief = record_observation(path, {
         "belief_id": BELIEF_ID, "value": "64GB",

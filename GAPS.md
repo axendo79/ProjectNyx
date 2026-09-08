@@ -79,21 +79,14 @@ Regression tests compare complete serialized views across incremental fold and r
 
 ## Schema / operational gaps
 
-### No schema migration path, and no schema versioning
-`src/nyx/storage.py` (`init_db`) · **fix before any database outlives a test run** ·
-found while landing [ADR 0007](decisions/0007-payloads-keyed-by-event-id-not-payload-hash.md)
-
-`init_db` applies `schema.sql` only when the `events` table is **absent**. A pre-existing
-database therefore keeps its old DDL silently — it is neither migrated nor rejected.
-
-The concrete case is not hypothetical: **ADR 0007 changed the `payloads` primary key.** Had
-any persistent database existed, it would still be running the old content-keyed PK — still
-unable to corroborate, with nothing whatsoever announcing the mismatch. Harmless today
-(every database is an ephemeral `tmp_path` fixture), and a landmine the moment ingestion
-starts persisting a real corpus.
-
-Minimum fix: a schema-version row, checked on open, that **refuses** a mismatched database
-rather than proceeding against it.
+### Database schema versioning — resolved
+**RESOLVED ([ADR 0011](decisions/0011-database-schema-versioning.md)):** `init_db()`
+validates metadata on every new connection. Ordinary opens never create or stamp
+metadata. Explicit `create=True` initializes only an empty database, with schema
+and metadata in one transaction; non-empty creation requests refuse. Missing,
+zero, unsupported, or malformed metadata refuses without repair or migration.
+The ADR acceptance tests cover refusal without mutation and rollback on failure.
+Automatic migrations remain outside scope; incompatible databases are rejected.
 
 ### Timestamp canonicalization belongs at the ingestion boundary
 `src/nyx/immune.py` · follow-on from

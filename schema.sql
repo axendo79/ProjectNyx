@@ -8,7 +8,13 @@
 -- Do not "improve" this schema. The spec is complete; build it, don't redesign it.
 -- If something here looks wrong, flag it — do not silently change it.
 
-PRAGMA journal_mode = WAL;
+-- Database compatibility metadata (ADR 0011); distinct from event schema_version.
+CREATE TABLE schema_meta (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    version INTEGER NOT NULL CHECK (typeof(version) = 'integer' AND version > 0),
+    created_at TEXT NOT NULL,
+    created_by TEXT NOT NULL
+);
 
 -- ---------------------------------------------------------------------------
 -- Layer A: Reality Layer. Append-only, ENGINE-enforced (Invariant 1).

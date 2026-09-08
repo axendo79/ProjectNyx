@@ -68,7 +68,9 @@ CORRECTION = {
 
 @pytest.fixture()
 def db_path(tmp_path):
-    return str(tmp_path / "nyx.db")
+    path = str(tmp_path / "nyx.db")
+    storage.init_db(path, create=True).close()
+    return path
 
 
 def _logical(conn: sqlite3.Connection, event_ids: list[str]) -> set[tuple[str, str]]:
@@ -90,6 +92,7 @@ def _fold_in_order(db_path: str, first: dict, second: dict) -> tuple[dict, sqlit
     exactly "fold in this rowid order". Returns the resolved belief and an open
     connection for inspection.
     """
+    storage.init_db(db_path, create=True).close()
     record = {"observation_recorded": record_observation, "correction_appended": record_correction}
     for event in (first, second):
         record[event["_event_type"]](db_path, {k: v for k, v in event.items() if k != "_event_type"})
