@@ -54,6 +54,10 @@ That catches a database that has been replaced between calls. However, it does *
 
 A file-watcher or continuous identity-monitoring subsystem is outside the current scope. **Each newly opened connection, or each connection checkout if pooling is introduced, must validate compatibility before use.** If Nyx later needs to detect replacement of a same-version database, that is a separate database-identity problem; a schema version cannot solve it.
 
+## Fresh initialization authorization
+
+Fresh initialization is authorized explicitly by an `init_db(path, create=False)` parameter. `create` defaults to `False`: ordinary calls validate an existing database and never create one. `create=True` permits initialization only when the database contains no user-defined schema objects — that is, when `SELECT count(*) FROM sqlite_master WHERE type IN ('table','index','view','trigger') AND name NOT LIKE 'sqlite_%'` returns zero. A `create=True` call against a database that is not empty by that test refuses; it does not fall back to validation and does not stamp metadata. File existence and file size are not used as emptiness tests.
+
 ## Initialization decision tree
 
 The critical distinction is between a genuinely fresh database and an existing database that lacks metadata.
@@ -83,6 +87,7 @@ The general reopening path does not use `CREATE TABLE IF NOT EXISTS schema_meta`
 - **Failed fresh initialization:** leaves no partial schema or metadata.
 - **Repeated `init_db()`:** validates again and detects an incompatible database substituted between invocations.
 - **Fold-versus-replay equality:** remains unchanged by the introduction of schema metadata.
+- **Non-empty creation refusal:** `create=True` against a non-empty database refuses without mutation.
 
 For the no-mutation tests, compare database content before and after, not only whether an exception was raised. SQLite may create auxiliary journal or WAL files as part of normal connection behavior, so define the assertion around the database's logical state rather than requiring the filesystem directory to be byte-for-byte identical.
 
