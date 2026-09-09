@@ -2,8 +2,8 @@
 
 # 0008 — The `fold` signature structurally cannot express a cross-belief event (Phase 2 blocker)
 
-- **Status:** **OPEN — this is a FLAG, not a decision.** No fix is proposed here and none
-  should be improvised. Ratified as a recorded blocker by Josh, 2026-07-13.
+- **Status:** Superseded by ADR 0014 (accepted 2026-09-08). Recorded blocker resolved;
+  implementation pending.
 - **Date:** 2026-07-13
 - **Severity:** **Phase 2 blocker.** Must be seen BEFORE entity-merge work starts —
   not discovered halfway through it.

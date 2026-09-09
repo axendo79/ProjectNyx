@@ -7,17 +7,20 @@ produce a plausible-looking wrong answer, it fails loudly instead.
 This file is the register. Where a gap carries enough reasoning that it must not be
 relitigated, it has an ADR in `decisions/` and this file points at it.
 
-> **Read [ADR 0008](decisions/0008-fold-signature-cannot-express-cross-belief-events.md)
-> before starting any entity-merge work.** It is a fold-seam redesign, not a new handler,
-> and it is the one gap here that changes what you are building rather than adding to it.
+> **Read [ADR 0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md)
+> before starting any entity-merge work.** It supersedes the recorded blocker in
+> [ADR 0008](decisions/0008-fold-signature-cannot-express-cross-belief-events.md)
+> by deciding reducer shape and hash lineage together. Implementation is pending;
+> differing predecessor verification states remain subject to explicit refusal.
 
 ---
 
-## BLOCKER — read before Phase 2
+## Cross-belief reducer — decision resolved; implementation pending
 
 ### The `fold` signature cannot express a cross-belief event
 **→ [ADR 0008](decisions/0008-fold-signature-cannot-express-cross-belief-events.md)** ·
-Phase 2 blocker · `src/nyx/projection.py`
+Recorded blocker resolved by [ADR 0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md)
+(accepted 2026-09-08); implementation pending · `src/nyx/projection.py`
 
 `fold(prior_view, envelope, payload, as_of) -> dict` takes **one** belief and returns **one**
 belief; `project` keys every event to exactly one `belief_id`. `entity_merge_accepted`
@@ -33,8 +36,9 @@ sits §5 trace 4 (merge-pooling), whose Invariant 15 rule — pooled evidence cr
 threshold must land at *hold-plus-gated-proposal*, never automatic promotion — requires a
 fold that can see both beliefs at once to evaluate at all.
 
-Budget for the seam. Do not bodge around it; ADR 0008 lists the two tempting bodges and why
-both break `fold == replay`.
+Implement the seam according to ADR 0014; ADR 0008 retains the historical finding
+and the warning against ad hoc workarounds. ADR 0014 refuses entire merges with
+differing predecessor verification states pending a separate decision.
 
 ---
 
@@ -88,7 +92,8 @@ All seven ADR acceptance cases are covered in `tests/test_whole_view_equality.py
 including complete-field comparisons, historical cutoffs, and a controlled
 time-dependent projector. Different timestamps on raw live materialized rows
 remain expected; those rows are not automatically a shared-time snapshot.
-ADR 0008's cross-belief event-shape blocker remains open.
+ADR 0008's cross-belief event-shape blocker is resolved by ADR 0014; implementation
+remains pending, and differing-predecessor verification semantics remain undecided.
 
 ---
 

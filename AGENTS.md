@@ -23,8 +23,10 @@ halted task with a clearly stated gap is a success. A completed task built on a
 guessed decision is a failure that costs more to unwind than it saved.
 
 Halt cases (NYX_V0_IMPLEMENTATION.md section 7): backdated corrections;
-origin-to-state transitions beyond observed; anything requiring the fold
-signature to handle cross-belief events, which is blocked on ADR 0008.
+origin-to-state transitions beyond observed; unspecified cross-belief verification
+transitions. ADR 0014 supersedes ADR 0008 and resolves reducer shape and hash
+lineage; implementation is pending. Merges with differing predecessor verification
+states are refused under ADR 0014 pending a separate decision.
 
 ## Invariants
 Event-sourced store. Layer A is append-only. fold is equivalent to

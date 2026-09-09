@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "nyx"
 version = "0.0.0"
 description = "Nyx — an epistemic kernel governing what a system believes and how beliefs are earned."
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 # Runtime deps intentionally empty for the scaffold. The walking skeleton (commit 2)
 # uses only the standard library (sqlite3, hashlib, uuid, json). Add deps only when
 # a spec'd component actually needs one — not speculatively.
