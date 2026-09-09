@@ -96,20 +96,18 @@ Validation refuses before append; replay applies the same checks against its
 pre-event prefix and fails loudly on an invalid recorded transition. A retry of
 an already committed event is not a second acceptance of its IDs as fresh.
 
-### 4. Verification boundary remains unresolved
+### 4. Verification boundary resolved by ADR 0015
 
-Aggregate verification state when predecessors differ is not decided. A merge
-whose predecessor beliefs for a resulting belief carry differing verification
-states is refused before append. The entire merge refuses; it does not publish
-only the outputs whose states happen to agree. Replay also refuses such an
-unsupported transition rather than inventing a result.
+Superseded 2026-09-09 by [ADR 0015](0015-candidate-scoped-verification.md).
+Verification is scoped to candidates, with no aggregate belief-level state.
+Differing predecessor candidate states are not by themselves grounds to refuse
+a merge. Candidate identity, inherited standing, gated corroboration, and
+support-dependent restrictions follow ADR 0015. Invariant 15 remains in force.
 
-No minimum, maximum, or preferred-predecessor rule is implied. Dependent
-implementation remains blocked pending a separate decision. This refusal does
-not add a verification state or conflate verification with conflict resolution.
-Agreement between predecessor states does not authorize promotion: Invariant 15
-and the existing gated-promotion requirements remain in force. Any other
-unspecified verification transition remains subject to the gap protocol.
+ADR 0015 also supersedes this document's corresponding differing-state refusal
+acceptance case and references below to that verification boundary as unresolved.
+Other acceptance requirements remain in force. Implementation is a separate task;
+any still-unspecified verification transition remains subject to the gap protocol.
 
 ### 5. Lineage covers ancestry and result
 
