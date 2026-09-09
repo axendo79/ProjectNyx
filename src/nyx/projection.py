@@ -22,6 +22,7 @@ from typing import Any
 
 from . import hashing
 from .events import CORRECTION_APPENDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED, Envelope
+from .reducer import ReducerProjector, Snapshot
 
 # Genesis seed for a belief's view_version_hash lineage (empty string) — the value
 # folded against for the first event that touches a belief. spec/NYX_V0_IMPLEMENTATION.md §1.
@@ -239,8 +240,8 @@ def fold(
     }
 
 
-# Version-pinned fold implementations; new versions are additive (ADR 0010 §2).
-PROJECTORS = {"0": fold}
+# Version-pinned implementations; the snapshot boundary is additive (ADR 0014).
+PROJECTORS = {"0": fold, "1": ReducerProjector()}
 
 
 def project(
@@ -266,11 +267,23 @@ def project(
         as_of = _now_iso()
     cutoff = _instant(as_of, "as_of")
     view: dict[str, Any] = {}
+    position = 0
+    previous_id = None
     for envelope, payload in events:
         if _instant(envelope.recorded_at, "recorded_at") > cutoff:
             continue
-        belief_id = payload["belief_id"]
-        view[belief_id] = reducer(view.get(belief_id), envelope, payload, as_of)
+        if isinstance(reducer, ReducerProjector):
+            snapshot = Snapshot(view, position, previous_id, projector_version)
+            delta = reducer.reduce(snapshot, envelope, payload, as_of)
+            view.update(delta.beliefs)
+        else:
+            # Refuse unsupported identity events before requiring belief_id.
+            if projector_version == "0" and envelope.event_type not in _VALUE_SETTING:
+                raise NotImplementedError(f"fold handler for {envelope.event_type!r} not implemented")
+            belief_id = payload["belief_id"]
+            view[belief_id] = reducer(view.get(belief_id), envelope, payload, as_of)
+        position += 1
+        previous_id = envelope.event_id
     return view
 
 

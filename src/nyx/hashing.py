@@ -23,7 +23,7 @@ from typing import Any, Mapping, Sequence
 _SEP = "\x1f"
 
 
-def canonical_json(obj: Mapping[str, Any]) -> str:
+def canonical_json(obj: Any) -> str:
     """Serialize to canonical JSON: sorted keys, compact separators, no whitespace
     variance. Standard content-addressing practice — spec/NYX_V0_IMPLEMENTATION.md §1.
     (Python's float repr is shortest-round-trip and deterministic; the skeleton
@@ -31,6 +31,38 @@ def canonical_json(obj: Mapping[str, Any]) -> str:
     to start — §3 defer-don't-invent.)
     """
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def canonical_set(members: Sequence[Any]) -> list[Any]:
+    """ADR 0014: deduplicate sets and order by canonical UTF-8 bytes.
+
+    Call only for collections with set semantics; recorded sequences (including
+    edges within a provenance path) retain their order.
+    """
+    encoded = {canonical_json(member).encode("utf-8"): member for member in members}
+    return [encoded[key] for key in sorted(encoded)]
+
+
+def belief_lineage(
+    projector_version: str,
+    event_id: str,
+    event_digest: str,
+    predecessors: Sequence[Mapping[str, Any]],
+    result: Mapping[str, Any],
+) -> dict[str, Any]:
+    """ADR 0014 lineage record, distinct from Layer A's unchanged hashing.
+
+    Result collections must already be canonical in the projected result. The
+    current ordinary-event reducer has only one evaluation-only field.
+    """
+    return {
+        "lineage_format": "nyx-belief-lineage/1",
+        "projector_version": projector_version,
+        "producing_event": {"event_id": event_id, "event_hash": event_digest},
+        "predecessors": canonical_set(predecessors),
+        "result": {key: value for key, value in result.items()
+                   if key not in ("view_version_hash", "projected_as_of")},
+    }
 
 
 def _sha256_hex(material: str) -> str:

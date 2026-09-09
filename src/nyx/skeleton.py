@@ -36,7 +36,8 @@ from . import immune, projection, storage
 from .events import CORRECTION_APPENDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED, build_event
 
 
-def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any]) -> dict[str, Any]:
+def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any],
+            projector_version: str = "0") -> dict[str, Any]:
     """Drive one value-setting event through immune Stage 1 → append → fold, and
     return the resolved belief. The one seam of the walking skeleton (§6).
 
@@ -51,6 +52,7 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any])
     hashed, or appended. A correction is an ordinary append; it supersedes by being
     a later event, never by editing one (Invariant 1).
     """
+    storage._registered_projector(projector_version)
     result = immune.stage1_schema_validate(submission)
     if not result.accepted:
         # Rejections should ultimately be logged events (§3); the reject-and-RECORD
@@ -70,8 +72,10 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any])
         # refuse must be refused here, while refusing is still possible. A backdated
         # correction appended and only THEN rejected at fold time would sit in the log
         # permanently, and every future replay would raise on it. See decisions/0005.
-        prior = storage.read_belief(conn, payload["belief_id"])
-        projection.assert_not_backdated(prior, event_type, submission["occurred_at"])
+        storage.materialize_pending(conn, datetime.now(timezone.utc).isoformat(), projector_version)
+        if projector_version == "0":
+            prior = storage.read_belief(conn, payload["belief_id"])
+            projection.assert_not_backdated(prior, event_type, submission["occurred_at"])
 
         envelope, payload_row = build_event(
             event_type=event_type,
@@ -82,22 +86,24 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any])
             payload=payload,
             prev_event_hash=storage.last_event_hash(conn),
         )
-        appended = storage.safe_append_event(conn, envelope, payload_row)
-        if appended:
-            # Evaluation time belongs to the caller, not the fold (ADR 0010 §3b).
-            as_of = datetime.now(timezone.utc).isoformat()
-            storage.upsert_belief(conn, projection.fold(prior, envelope, payload, as_of))
-        return storage.read_belief(conn, payload["belief_id"])
+        storage.safe_append_event(conn, envelope, payload_row, projector_version)
+        # Separate derived transaction, including retries after an append
+        # committed but publication/worker acknowledgement did not finish.
+        # Evaluation time belongs to the caller (ADR 0010 section 3b).
+        storage.materialize_pending(conn, datetime.now(timezone.utc).isoformat(), projector_version)
+        return storage.read_belief(conn, payload["belief_id"], projector_version)
     finally:
         conn.close()
 
 
-def record_observation(db_path: str | Path, observation: Mapping[str, Any]) -> dict[str, Any]:
+def record_observation(db_path: str | Path, observation: Mapping[str, Any],
+                       projector_version: str = "0") -> dict[str, Any]:
     """Record one `observation_recorded` event and return the resolved belief (§6)."""
-    return _record(db_path, OBSERVATION_RECORDED, observation)
+    return _record(db_path, OBSERVATION_RECORDED, observation, projector_version)
 
 
-def record_correction(db_path: str | Path, correction: Mapping[str, Any]) -> dict[str, Any]:
+def record_correction(db_path: str | Path, correction: Mapping[str, Any],
+                      projector_version: str = "0") -> dict[str, Any]:
     """Record one `correction_appended` event and return the resolved belief.
 
     The correction carries a NEW value and a LATER `occurred_at` than the value it
@@ -108,4 +114,4 @@ def record_correction(db_path: str | Path, correction: Mapping[str, Any]) -> dic
     semantics have not been decided. Flagged as an open gap in decisions/0004; do not
     infer the behaviour from what this code happens to do.
     """
-    return _record(db_path, CORRECTION_APPENDED, correction)
+    return _record(db_path, CORRECTION_APPENDED, correction, projector_version)

@@ -1,0 +1,116 @@
+{
+  "as_of": "2026-07-14T00:00:00Z",
+  "events": [
+    [
+      {
+        "event_id": "e-5",
+        "idempotency_key": "20084f5f021435b55c11718a1ea4581e690b0749569f9059f4f709b2bbfbee55",
+        "schema_version": "0",
+        "event_type": "observation_recorded",
+        "occurred_at": "2026-07-12T12:00:00Z",
+        "recorded_at": "2026-07-13T00:00:00Z",
+        "source": "{\"actor_id\":\"sensor\",\"config\":{}}",
+        "source_class": "direct_observation",
+        "origin_type": "observed",
+        "payload_hash": "d885e91866783b56b3ebf22b8e44557f3472d83087b54a9cd54077c97cdd451c",
+        "entity_refs": null,
+        "prev_event_hash": null,
+        "event_hash": "2985c38c8f4ef8912cb7dfa9455d1eb028ca03bd6d6231e89bfef8ff4865d109"
+      },
+      {
+        "belief_id": "a",
+        "value": "64GB ? ??",
+        "verifiability": "externally_checkable"
+      }
+    ],
+    [
+      {
+        "event_id": "e-4",
+        "idempotency_key": "366830584cec854622316ff7f92618b8aed78f666253db288bca092c95ff30e0",
+        "schema_version": "0",
+        "event_type": "observation_recorded",
+        "occurred_at": "2026-07-12T13:00:00+01:00",
+        "recorded_at": "2026-07-13T00:00:00Z",
+        "source": "{\"actor_id\":\"sensor\",\"config\":{}}",
+        "source_class": "direct_observation",
+        "origin_type": "observed",
+        "payload_hash": "bd91c6e91f9db2f0e99aafb6f39d556006ad2cc3b4c6bbbc20654776a2b02b52",
+        "entity_refs": null,
+        "prev_event_hash": "2985c38c8f4ef8912cb7dfa9455d1eb028ca03bd6d6231e89bfef8ff4865d109",
+        "event_hash": "491d94c1628c1a1d2f11f54701d3537cc70242e0882b4c3a19a89daed84c7114"
+      },
+      {
+        "belief_id": "b",
+        "value": "other",
+        "verifiability": "externally_checkable"
+      }
+    ],
+    [
+      {
+        "event_id": "e-3",
+        "idempotency_key": "3d843e143b24329711091a9889e2742da090be89e2c77db932ca9e53ee7956ef",
+        "schema_version": "0",
+        "event_type": "observation_recorded",
+        "occurred_at": "2026-07-12T10:00:00Z",
+        "recorded_at": "2026-07-13T00:00:00Z",
+        "source": "{\"actor_id\":\"sensor\",\"config\":{}}",
+        "source_class": "direct_observation",
+        "origin_type": "observed",
+        "payload_hash": "6db80fe9aa432b261e7afa5dacee13c4d786c7843fbcba96cff47196a25c1539",
+        "entity_refs": null,
+        "prev_event_hash": "491d94c1628c1a1d2f11f54701d3537cc70242e0882b4c3a19a89daed84c7114",
+        "event_hash": "1f48fa7033c86fd07b139342959f95318ced29ae2ca57f7065011814b8235530"
+      },
+      {
+        "belief_id": "a",
+        "value": "32GB",
+        "verifiability": "externally_checkable"
+      }
+    ],
+    [
+      {
+        "event_id": "e-2",
+        "idempotency_key": "cf747024bb35fe2a525d6a96d6fe600c28af5711a8901230bd60a51fff10ae25",
+        "schema_version": "0",
+        "event_type": "correction_appended",
+        "occurred_at": "2026-07-12T14:00:00Z",
+        "recorded_at": "2026-07-13T00:00:00Z",
+        "source": "{\"actor_id\":\"sensor\",\"config\":{}}",
+        "source_class": "direct_observation",
+        "origin_type": "observed",
+        "payload_hash": "91d42a4f9bd41af72bdfe848366694014e560394e905aecc17d32bcac9bd8fc1",
+        "entity_refs": null,
+        "prev_event_hash": "1f48fa7033c86fd07b139342959f95318ced29ae2ca57f7065011814b8235530",
+        "event_hash": "e404158b93efda808a843ac4303d0e8dc184e5e91e78b5ee94d27d9415195b23"
+      },
+      {
+        "belief_id": "a",
+        "value": "128GB",
+        "verifiability": "externally_checkable"
+      }
+    ],
+    [
+      {
+        "event_id": "e-1",
+        "idempotency_key": "6d45f466b5b85263c1c13eed5fbc03a9510394476599d4f88c4198f812f116a3",
+        "schema_version": "0",
+        "event_type": "observation_recorded",
+        "occurred_at": "2026-07-12T10:00:00-04:00",
+        "recorded_at": "2026-07-13T00:00:00Z",
+        "source": "{\"actor_id\":\"sensor\",\"config\":{}}",
+        "source_class": "direct_observation",
+        "origin_type": "observed",
+        "payload_hash": "bb740e5bc48af593946ad06d7d0f6ae1e5d1b6758b4ddc57e428dd359c3e2e00",
+        "entity_refs": null,
+        "prev_event_hash": "e404158b93efda808a843ac4303d0e8dc184e5e91e78b5ee94d27d9415195b23",
+        "event_hash": "146b4cb9bc954f8bd5ec6efc436f194456540b248db5b4cb647d1b06af69b591"
+      },
+      {
+        "belief_id": "a",
+        "value": "256GB",
+        "verifiability": "externally_checkable"
+      }
+    ]
+  ],
+  "expected_canonical": "{\"a\":{\"belief_id\":\"a\",\"current_value\":\"256GB\",\"display_origin\":\"observed\",\"opposing_events\":[],\"projected_as_of\":\"2026-07-14T00:00:00Z\",\"resolution_basis\":\"direct observation (world-oracle class, Inv. 4)\",\"superseding_events\":[\"e-2\"],\"supporting_events\":[\"e-5\",\"e-3\",\"e-2\",\"e-1\"],\"updated_at\":\"2026-07-13T00:00:00Z\",\"value_occurred_at\":\"2026-07-12T10:00:00-04:00\",\"verifiability\":\"externally_checkable\",\"verification_state\":\"verified\",\"view_version_hash\":\"c53986937a244282c24a7eca6757256b7553dd9c10b4398c0851eb4760cb9ed3\"},\"b\":{\"belief_id\":\"b\",\"current_value\":\"other\",\"display_origin\":\"observed\",\"opposing_events\":[],\"projected_as_of\":\"2026-07-14T00:00:00Z\",\"resolution_basis\":\"direct observation (world-oracle class, Inv. 4)\",\"superseding_events\":[],\"supporting_events\":[\"e-4\"],\"updated_at\":\"2026-07-13T00:00:00Z\",\"value_occurred_at\":\"2026-07-12T13:00:00+01:00\",\"verifiability\":\"externally_checkable\",\"verification_state\":\"verified\",\"view_version_hash\":\"d254b68cf8dbd96adee7eeef8014b97aac2ebe9af3bf9f2d5d68b146bbbf9b1a\"}}"
+}

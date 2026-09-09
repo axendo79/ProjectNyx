@@ -136,6 +136,24 @@ CREATE TABLE entity_event_index (
     updated_at              TEXT NOT NULL
 );
 
+-- ADRs 0014/0016: version-isolated ordinary-event materialization. JSON stores
+-- the complete logical result using the shared canonical serializer. Version 0
+-- continues to use resolved_beliefs above with its original bytes and lineage.
+CREATE TABLE projected_beliefs (
+    projector_version TEXT NOT NULL,
+    belief_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    PRIMARY KEY (projector_version, belief_id)
+);
+
+-- Derived publication checkpoint, never written by the append transaction.
+-- rowid/log position disambiguates events with the same recorded_at.
+CREATE TABLE derived_progress (
+    projector_version TEXT PRIMARY KEY,
+    log_position INTEGER NOT NULL CHECK (log_position > 0),
+    event_id TEXT NOT NULL
+);
+
 -- ---------------------------------------------------------------------------
 -- Process trace: SEPARATE store. Crash-durable (WAL + fsync) but MUTABLE --
 -- explicitly NOT append-only. Grading updates a trace in place (ungraded ->

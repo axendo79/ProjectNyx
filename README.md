@@ -33,6 +33,33 @@ is implemented by `nyx.storage.evaluate_whole_view(conn, as_of, projector_versio
 This explicit operation reconstructs from the log; ordinary materialized reads
 are unchanged.
 
+[ADR 0014 stage one](decisions/0014-cross-belief-reducer-and-hash-lineage.md)
+is available as projector version `"1"` for ordinary observed-origin observations
+and corrections. Pass `projector_version="1"` to `record_observation`,
+`record_correction`, or `evaluate_whole_view` to select it. Version `"0"` remains
+the default and keeps its original fold and lineage. The versions have separate
+materializations and processing progress.
+
+The new reducer reads a consistent pre-event snapshot and returns one complete
+event delta. Its structured lineage covers predecessor hashes, resulting belief
+content, and retained observation/correction records; set collections use canonical
+UTF-8 ordering. Candidate verification, identity relations, merges, splits, and
+recorded identity output IDs remain later stages.
+
+`storage.materialize_pending(conn, as_of, projector_version="1")` publishes each
+pending event and its progress atomically after append. `read_belief(...,
+projector_version="1")` includes a `stale` label; `read_belief_status` exposes the
+belief, append freshness, and derived progress separately, including an appended
+belief that has no materialization yet. These reads do not replay. After a crash,
+use `storage.rebuild_projection(conn, as_of, projector_version="1")` for full
+replay from Layer A; it replaces the selected new-version materialization in one
+transaction. The walking-skeleton calls drive publication synchronously after
+the separate append commit; they do not start a background worker.
+
+Database schema version `2` is required under
+[ADR 0016](decisions/0016-schema-version-2.md). Version-1 databases are refused
+unchanged; there is no migration, and recreation is an operator action.
+
 ## Install and run the suite
 
 Use Python 3.14, the accepted target in

@@ -25,7 +25,7 @@ META_DDL = """CREATE TABLE schema_meta (
     created_at TEXT NOT NULL,
     created_by TEXT NOT NULL
 )"""
-VALID_ROW = (1, 1, "2026-09-08T00:00:00Z", "nyx/0.0.0")
+VALID_ROW = (1, 2, "2026-09-08T00:00:00Z", "nyx/0.0.0")
 
 
 def metadata_fixture(path, row=VALID_ROW, *, ddl=META_DDL, rows=None):
@@ -65,7 +65,7 @@ def test_fresh_initialization(path, existing):
     before = datetime.now(timezone.utc)
     with closing(storage.init_db(path, create=True)) as conn:
         row = conn.execute("SELECT * FROM schema_meta").fetchone()
-        assert row[:2] == (1, 1)
+        assert row[:2] == (1, 2)
         assert before <= datetime.fromisoformat(row[2]) <= datetime.now(timezone.utc)
         assert datetime.fromisoformat(row[2]).utcoffset().total_seconds() == 0
         assert row[3] == "nyx/0.0.0"
@@ -81,7 +81,7 @@ def test_fresh_initialization(path, existing):
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute("UPDATE schema_meta SET version = 1.5")
         conn.rollback()
-        conn.execute("UPDATE schema_meta SET version = 2")  # no CHECK(version = 1)
+        conn.execute("UPDATE schema_meta SET version = 3")  # no version-specific CHECK
         conn.rollback()
 
 
@@ -166,9 +166,11 @@ def test_multiple_metadata_rows(path):
 
 
 
-@pytest.mark.parametrize("version, reason", [(0, "zero_version"), (2, "unsupported_version")])
+@pytest.mark.parametrize("version, reason", [
+    (0, "zero_version"), (1, "unsupported_version"), (3, "unsupported_version"),
+])
 def test_older_and_newer_versions(path, version, reason):
-    # Version 1 is the first positive version; explicit zero is the older case.
+    # ADR 0016 exercises refuse-and-preserve for version 1; no migration.
     metadata_fixture(path, (1, version, "time", "software"))
     refused_unchanged(path, reason)
 
@@ -204,7 +206,7 @@ def test_failed_fresh_initialization(path, tmp_path, monkeypatch, failure):
 def test_repeated_init_detects_substitution(path, tmp_path):
     storage.init_db(path, create=True).close()
     replacement = tmp_path / "replacement.db"
-    metadata_fixture(replacement, (1, 2, "time", "software"))
+    metadata_fixture(replacement, (1, 3, "time", "software"))
     replacement.replace(path)
     refused_unchanged(path, "unsupported_version")
 
@@ -241,7 +243,7 @@ def test_ordinary_open_never_creates(path):
 
 
 def test_write_connection_validates_before_use(path):
-    metadata_fixture(path, (1, 2, "time", "software"))
+    metadata_fixture(path, (1, 3, "time", "software"))
     before = snapshot(path)
     with pytest.raises(storage.SchemaCompatibilityError):
         record_observation(path, {
@@ -270,8 +272,9 @@ def test_missing_required_check_refuses(path, removed):
     refused_unchanged(path, "malformed_metadata", detail="CHECK constraints")
 
 
-def test_prohibited_version_check_refuses(path):
-    metadata_fixture(path, ddl=META_DDL.replace("version INTEGER NOT NULL", "version INTEGER NOT NULL CHECK(version = 1)"))
+@pytest.mark.parametrize("version", [1, 2])
+def test_prohibited_version_check_refuses(path, version):
+    metadata_fixture(path, ddl=META_DDL.replace("version INTEGER NOT NULL", f"version INTEGER NOT NULL CHECK(version = {version})"))
     refused_unchanged(path, "malformed_metadata", detail="CHECK constraints")
 
 

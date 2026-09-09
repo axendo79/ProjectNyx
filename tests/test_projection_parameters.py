@@ -100,7 +100,7 @@ def test_changing_cutoff_without_new_events_only_changes_evaluation_time():
     assert later == {**early, "projected_as_of": later_cutoff}
 
 
-@pytest.mark.parametrize("version", ["1", "", "latest", 0, None])
+@pytest.mark.parametrize("version", ["unknown", "", "latest", 0, None])
 def test_unsupported_versions_raise_even_for_empty_log(version):
     with pytest.raises(ValueError, match="Unsupported projector_version"):
         projection.project([], T1, version)
