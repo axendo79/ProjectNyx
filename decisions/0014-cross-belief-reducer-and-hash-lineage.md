@@ -227,6 +227,12 @@ boundary. No progress marker may claim completion while part of the delta is
 missing. The append and its freshness updates remain a separate earlier
 transaction; projection is not moved into the append transaction.
 
+Acceptance under the snapshot boundary requires derived progress at the actual
+pre-append prefix, so an append refuses while publication is behind. This couples
+append ordering to materialization without moving projection into the append
+transaction. An asynchronous worker running behind therefore blocks appends until
+it catches up.
+
 A crash after append leaves a durable accepted event and an older derived view.
 Recovery remains full replay from Layer A in log order. It reconstructs identity
 membership at each event, validates recorded output associations, and reproduces
