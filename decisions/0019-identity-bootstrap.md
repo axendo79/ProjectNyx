@@ -100,9 +100,12 @@ all of stage two implementable: initial link state and confidence treatment
 remain blockers, and associations with existing subjects require later ratified
 admissible bases.
 
-The explicit cost is two appends per ingested fact: a mention event and an
-observation event. The walking skeleton's single-event path becomes two under
-the identity-capable contract. Version "0" retains its existing semantics and
+The explicit bootstrap cost is two appends: a mention event and an observation
+event. As amended by [ADR 0023 section 3](0023-stage-two-contract.md#3-existing-mentions-and-the-bootstrap-cost),
+this describes bootstrap, not every ingested fact; an observation through an
+existing recorded mention requires only its observation event. The walking
+skeleton's single-event path becomes two for bootstrap under the identity-capable
+contract. Version "0" retains its existing semantics and
 its fixtures remain valid version-isolation tests; it is not retrofitted.
 
 Layer A remains append-only. This decision does not select a physical payload
