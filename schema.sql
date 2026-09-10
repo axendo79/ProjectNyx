@@ -146,6 +146,59 @@ CREATE TABLE projected_beliefs (
     PRIMARY KEY (projector_version, belief_id)
 );
 
+-- ADRs 0017/0022: exact property identity; only current containers participate.
+CREATE UNIQUE INDEX idx_current_subject_property ON projected_beliefs (
+    projector_version, json_extract(content, '$.subject_id'),
+    json_extract(content, '$.property_id')
+) WHERE json_extract(content, '$.lifecycle_status') = 'current';
+
+CREATE TABLE projected_entities (
+    projector_version TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    PRIMARY KEY (projector_version, subject_id)
+);
+CREATE TABLE projected_mentions (
+    projector_version TEXT NOT NULL,
+    mention_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    PRIMARY KEY (projector_version, mention_id)
+);
+CREATE TABLE projected_entity_links (
+    projector_version TEXT NOT NULL,
+    mention_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    link_state TEXT NOT NULL CHECK (link_state = 'constitutive'),
+    entity_link_confidence REAL CHECK (entity_link_confidence IS NULL),
+    PRIMARY KEY (projector_version, mention_id)
+);
+CREATE TABLE projected_claim_candidates (
+    projector_version TEXT NOT NULL,
+    claim_candidate_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    PRIMARY KEY (projector_version, claim_candidate_id)
+);
+CREATE TABLE projected_events (
+    projector_version TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    PRIMARY KEY (projector_version, event_id)
+);
+
+-- Append-side freshness, separate from derived publication and legacy ID scope.
+CREATE TABLE identity_event_index (
+    projector_version TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    latest_event_id TEXT NOT NULL,
+    PRIMARY KEY (projector_version, subject_id)
+);
+CREATE TABLE belief_event_index (
+    projector_version TEXT NOT NULL,
+    belief_id TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    PRIMARY KEY (projector_version, belief_id)
+);
+
 -- Derived publication checkpoint, never written by the append transaction.
 -- rowid/log position disambiguates events with the same recorded_at.
 CREATE TABLE derived_progress (

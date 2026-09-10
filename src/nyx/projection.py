@@ -266,6 +266,8 @@ def project(
     if as_of is None:
         as_of = _now_iso()
     cutoff = _instant(as_of, "as_of")
+    if isinstance(reducer, ReducerProjector):
+        return project_snapshot(events, as_of, projector_version).beliefs()
     view: dict[str, Any] = {}
     position = 0
     previous_id = None
@@ -285,6 +287,21 @@ def project(
         position += 1
         previous_id = envelope.event_id
     return view
+
+
+def project_snapshot(events, as_of: str, projector_version: str = "1") -> Snapshot:
+    """Replay the complete identity-capable view, including mention-only prefixes."""
+    projector = PROJECTORS.get(projector_version)
+    if not isinstance(projector, ReducerProjector):
+        raise ValueError("complete snapshot requires a registered snapshot projector")
+    cutoff = _instant(as_of, "as_of")
+    snapshot = Snapshot({}, projector_version=projector_version)
+    for position, (envelope, payload) in enumerate(events, 1):
+        if _instant(envelope.recorded_at, "recorded_at") > cutoff:
+            continue
+        delta = projector.reduce(snapshot, envelope, payload, as_of)
+        snapshot = snapshot.apply(delta, position)
+    return snapshot
 
 
 def is_stale(view_version_hash_lineage: str, latest_event_hash: str) -> bool:

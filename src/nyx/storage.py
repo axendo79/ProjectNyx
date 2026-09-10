@@ -16,13 +16,14 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 
 from . import hashing, projection
 from .events import Envelope, Payload
 from .projection import _instant
-from .reducer import EventDelta
+from .reducer import EventDelta, RECORD_KINDS, SUPPORTED_EVENTS
 
 # schema.sql lives at the repo root: src/nyx/storage.py -> parents[2].
 _SCHEMA_PATH = Path(__file__).resolve().parents[2] / "schema.sql"
@@ -38,7 +39,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-DATABASE_SCHEMA_VERSION = 2  # ADR 0016; version-1 databases refuse unchanged.
+DATABASE_SCHEMA_VERSION = 3  # ADR 0017; older databases refuse unchanged.
 # Initialization diagnostics, not an identity or compatibility signal.
 CREATED_BY = "nyx/0.0.0"
 
@@ -203,6 +204,8 @@ def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Pay
     `safe_write_jsonl` under the superseded flat-JSONL design (spec/HANDOFF_2026-07-11.md).
     """
     _registered_projector(projector_version)
+    if projector_version == "1":
+        return _append_stage_two(conn, envelope, payload)
     if envelope.event_type not in projection._VALUE_SETTING:
         raise NotImplementedError(f"append handler for {envelope.event_type!r} not implemented")
     with conn:  # atomic transaction
@@ -223,22 +226,6 @@ def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Pay
         if previous and recorded_at < _instant(previous[0], "recorded_at"):
             raise BackdatedRecordingError(
                 f"recorded_at {envelope.recorded_at!r} precedes previous event {previous[0]!r}"
-            )
-        if projector_version == "1":
-            # The tentative insert owns the write lock. Validate against the
-            # actual append prefix, not a head read before a concurrent append.
-            tip = conn.execute(
-                "SELECT rowid, event_id, event_hash FROM events WHERE rowid < ? "
-                "ORDER BY rowid DESC LIMIT 1", (cur.lastrowid,),
-            ).fetchone()
-            snapshot = _read_snapshot(conn, projector_version)
-            expected = (0, None) if tip is None else tip[:2]
-            if (snapshot.log_position, snapshot.event_id) != expected:
-                raise ProjectionBehindError("derived prefix is behind append position; publish pending events first")
-            if envelope.prev_event_hash != (None if tip is None else tip[2]):
-                raise ValueError("event was built against a different append position")
-            projection.PROJECTORS[projector_version].reduce(
-                snapshot, envelope, json.loads(payload.ciphertext), envelope.recorded_at,
             )
         # Keyed by event_id (decisions/0007). No conflict clause, deliberately: the
         # events INSERT OR IGNORE above already returned False on a duplicate
@@ -265,6 +252,73 @@ def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Pay
             "latest_event_hash=excluded.latest_event_hash, updated_at=excluded.updated_at",
             (entity_id, envelope.event_id, envelope.event_hash, _now_iso()),
         )
+    return True
+
+
+def _append_stage_two(conn, envelope, payload):
+    """Validate at the locked append prefix; exact retained submissions retry."""
+    if envelope.event_type not in SUPPORTED_EVENTS:
+        raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
+    if conn.in_transaction:
+        raise RuntimeError("append requires its own transaction")
+    with conn:
+        conn.execute("BEGIN IMMEDIATE")
+        existing = conn.execute(
+            f"SELECT {','.join(_EVENT_COLUMNS)} FROM events WHERE idempotency_key=?",
+            (envelope.idempotency_key,),
+        ).fetchone()
+        if existing is not None:
+            stored_payload = conn.execute(
+                "SELECT payload_hash,event_id,canonical_entity_id,ciphertext,redacted "
+                "FROM payloads WHERE event_id=?", (existing[0],),
+            ).fetchone()
+            if existing != tuple(getattr(envelope, col) for col in _EVENT_COLUMNS) or stored_payload != (
+                payload.payload_hash, payload.event_id, payload.canonical_entity_id,
+                payload.ciphertext, int(payload.redacted)
+            ):
+                raise ValueError("retry differs from retained recorded IDs or submitted contents")
+            return False
+        if payload.redacted or payload.ciphertext is None or payload.canonical_entity_id is not None:
+            raise NotImplementedError("stage two does not implement redaction or canonical key binding")
+        data = json.loads(payload.ciphertext)
+        if (payload.event_id != envelope.event_id or payload.payload_hash != envelope.payload_hash
+                or hashing._sha256_hex(hashing.canonical_json(data)) != envelope.payload_hash):
+            raise ValueError("envelope/payload identity or hash mismatch")
+        material = asdict(envelope)
+        del material["event_hash"], material["prev_event_hash"]
+        if hashing.event_hash(material, envelope.prev_event_hash) != envelope.event_hash:
+            raise ValueError("envelope hash mismatch")
+        if hashing.idempotency_key(json.loads(envelope.source)["actor_id"], envelope.occurred_at, data) != envelope.idempotency_key:
+            raise ValueError("idempotency key does not match submitted contents")
+        tip = conn.execute(
+            "SELECT rowid,event_id,event_hash,recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
+        ).fetchone()
+        if tip and _instant(envelope.recorded_at, "recorded_at") < _instant(tip[3], "recorded_at"):
+            raise BackdatedRecordingError("recorded_at precedes previous event")
+        snapshot = _read_snapshot(conn, "1")
+        if (snapshot.log_position, snapshot.event_id) != ((0, None) if tip is None else tip[:2]):
+            raise ProjectionBehindError("derived prefix is behind append position; publish pending events first")
+        if envelope.prev_event_hash != (None if tip is None else tip[2]):
+            raise ValueError("event was built against a different append position")
+        delta = projection.PROJECTORS["1"].reduce(snapshot, envelope, data, envelope.recorded_at)
+        conn.execute(
+            f"INSERT INTO events ({','.join(_EVENT_COLUMNS)}) VALUES ({','.join('?' for _ in _EVENT_COLUMNS)})",
+            tuple(getattr(envelope, col) for col in _EVENT_COLUMNS),
+        )
+        conn.execute("INSERT INTO payloads VALUES (?,?,?,?,?)", (
+            payload.event_id, payload.payload_hash, payload.canonical_entity_id,
+            payload.ciphertext, int(payload.redacted)))
+        subjects = set(delta.entities) | {b["subject_id"] for b in delta.beliefs.values()}
+        for subject_id in subjects:
+            conn.execute(
+                "INSERT INTO identity_event_index VALUES ('1',?,?) "
+                "ON CONFLICT(projector_version,subject_id) DO UPDATE SET latest_event_id=excluded.latest_event_id",
+                (subject_id, envelope.event_id))
+        for belief_id, belief in delta.beliefs.items():
+            conn.execute(
+                "INSERT INTO belief_event_index VALUES ('1',?,?) "
+                "ON CONFLICT(projector_version,belief_id) DO NOTHING",
+                (belief_id, belief["subject_id"]))
     return True
 
 
@@ -386,6 +440,16 @@ def _snapshot_projector(version: str):
     return projector
 
 
+_RECORD_TABLES = {
+    "beliefs": ("projected_beliefs", "belief_id"),
+    "entities": ("projected_entities", "subject_id"),
+    "mentions": ("projected_mentions", "mention_id"),
+    "entity_links": ("projected_entity_links", "mention_id"),
+    "claim_candidates": ("projected_claim_candidates", "claim_candidate_id"),
+    "events": ("projected_events", "event_id"),
+}
+
+
 def _read_snapshot(conn: sqlite3.Connection, version: str) -> projection.Snapshot:
     """Caller owns one transaction across these reads and publication/acceptance."""
     if not conn.in_transaction:
@@ -394,23 +458,84 @@ def _read_snapshot(conn: sqlite3.Connection, version: str) -> projection.Snapsho
         "SELECT log_position, event_id FROM derived_progress WHERE projector_version = ?",
         (version,),
     ).fetchone()
+    records = {}
     if version == "0":
         beliefs = {key: read_belief(conn, key) for (key,) in conn.execute(
             "SELECT belief_id FROM resolved_beliefs"
         ).fetchall()}
     else:
-        beliefs = {key: json.loads(content) for key, content in conn.execute(
-            "SELECT belief_id, content FROM projected_beliefs WHERE projector_version = ?",
-            (version,),
-        )}
+        for kind, (table, column) in _RECORD_TABLES.items():
+            records[kind] = {key: json.loads(content) for key, content in conn.execute(
+                f"SELECT {column}, content FROM {table} WHERE projector_version = ?", (version,))}
+        beliefs = records.pop("beliefs")
     if progress is None:
-        if beliefs:
+        if beliefs or any(records.values()):
             raise RuntimeError("unproven derived rows; recover by full replay")
         return projection.Snapshot({}, projector_version=version)
     applied = conn.execute("SELECT event_id FROM events WHERE rowid = ?", (progress[0],)).fetchone()
     if applied != (progress[1],):
         raise RuntimeError("derived progress does not identify a log prefix; recover by full replay")
-    return projection.Snapshot(beliefs, *progress, projector_version=version)
+    return projection.Snapshot(beliefs, *progress, projector_version=version, **records)
+
+
+def read_snapshot(conn, projector_version="1"):
+    """Read all derived records and progress in one consistent transaction."""
+    _snapshot_projector(projector_version)
+    if conn.in_transaction:
+        return _read_snapshot(conn, projector_version)
+    with conn:
+        conn.execute("BEGIN")
+        return _read_snapshot(conn, projector_version)
+
+
+def _read_record(conn, kind, identifier, projector_version="1"):
+    _snapshot_projector(projector_version)
+    table, column = _RECORD_TABLES[kind]
+    row = conn.execute(f"SELECT content FROM {table} WHERE projector_version=? AND {column}=?",
+                       (projector_version, identifier)).fetchone()
+    return None if row is None else json.loads(row[0])
+
+
+def read_entity(conn, subject_id, projector_version="1"):
+    return _read_record(conn, "entities", subject_id, projector_version)
+
+
+def read_mention(conn, mention_id, projector_version="1"):
+    return _read_record(conn, "mentions", mention_id, projector_version)
+
+
+def read_entity_link(conn, mention_id, projector_version="1"):
+    return _read_record(conn, "entity_links", mention_id, projector_version)
+
+
+def read_claim_candidate(conn, claim_candidate_id, projector_version="1"):
+    return _read_record(conn, "claim_candidates", claim_candidate_id, projector_version)
+
+
+def read_claim_candidate_value(conn, claim_candidate_id, projector_version="1"):
+    candidate = read_claim_candidate(conn, claim_candidate_id, projector_version)
+    if candidate is None:
+        raise KeyError(f"unknown ClaimCandidate: {claim_candidate_id!r}")
+    return candidate["value"]
+
+
+def read_belief_scalar(conn, belief_id, projector_version="1"):
+    from .reducer import scalar_belief_value
+    belief = read_belief(conn, belief_id, projector_version)
+    if belief is None:
+        raise KeyError(f"unknown belief: {belief_id!r}")
+    return scalar_belief_value(belief)
+
+
+def lookup_current_belief_id(conn, subject_id, property_id, projector_version="1"):
+    """Writer lookup uses the recorded pair, with exact string equality."""
+    _snapshot_projector(projector_version)
+    row = conn.execute(
+        "SELECT belief_id FROM projected_beliefs WHERE projector_version=? "
+        "AND json_extract(content,'$.subject_id')=? AND json_extract(content,'$.property_id')=? "
+        "AND json_extract(content,'$.lifecycle_status')='current'",
+        (projector_version, subject_id, property_id)).fetchone()
+    return None if row is None else row[0]
 
 
 def _publish_delta(conn: sqlite3.Connection, version: str, position: int, delta) -> None:
@@ -430,6 +555,25 @@ def _publish_delta(conn: sqlite3.Connection, version: str, position: int, delta)
                 "ON CONFLICT(projector_version, belief_id) DO UPDATE SET content=excluded.content",
                 (version, key, hashing.canonical_json(belief)),
             )
+    if version != "0":
+        for kind in RECORD_KINDS:
+            if kind == "beliefs":
+                continue
+            table, column = _RECORD_TABLES[kind]
+            for key, record in getattr(delta, kind).items():
+                if kind == "entity_links":
+                    conn.execute(
+                        "INSERT INTO projected_entity_links VALUES (?,?,?,?,?) "
+                        "ON CONFLICT(projector_version,mention_id) DO UPDATE SET "
+                        "content=excluded.content,link_state=excluded.link_state,"
+                        "entity_link_confidence=excluded.entity_link_confidence",
+                        (version, key, hashing.canonical_json(record), record["link_state"],
+                         record["entity_link_confidence"]))
+                else:
+                    conn.execute(
+                        f"INSERT INTO {table} VALUES (?,?,?) ON CONFLICT(projector_version,{column}) "
+                        "DO UPDATE SET content=excluded.content",
+                        (version, key, hashing.canonical_json(record)))
     conn.execute(
         "INSERT INTO derived_progress (projector_version, log_position, event_id) VALUES (?, ?, ?) "
         "ON CONFLICT(projector_version) DO UPDATE SET "
@@ -498,27 +642,25 @@ def rebuild_projection(conn: sqlite3.Connection, as_of: str,
     with conn:
         conn.execute("BEGIN IMMEDIATE")
         log = _pending_events(conn, 0)
-        conn.execute("DELETE FROM projected_beliefs WHERE projector_version = ?", (projector_version,))
+        for table, _ in _RECORD_TABLES.values():
+            conn.execute(f"DELETE FROM {table} WHERE projector_version = ?", (projector_version,))
         conn.execute("DELETE FROM derived_progress WHERE projector_version = ?", (projector_version,))
-        beliefs = {}
-        position, event_id = 0, None
+        snapshot = projection.Snapshot({}, projector_version=projector_version)
         for next_position, envelope, payload in log:
             if _instant(envelope.recorded_at, "recorded_at") > cutoff:
                 break
-            snapshot = projection.Snapshot(beliefs, position, event_id, projector_version)
             delta = projector.reduce(snapshot, envelope, payload, as_of)
-            beliefs.update(delta.beliefs)
+            snapshot = snapshot.apply(delta, next_position)
             _publish_delta(conn, projector_version, next_position, delta)
-            position, event_id = next_position, envelope.event_id
-    return beliefs
+    return snapshot.beliefs()
 
 
 def read_belief_status(conn: sqlite3.Connection, belief_id: str,
                        projector_version: str = "1") -> dict:
     """One consistent materialized read with append freshness and derived progress.
 
-    No reconstruction or digest comparison. Ordinary stage-one events use the
-    skeleton's belief-scoped append index; identity coverage is a later stage.
+    No reconstruction or digest comparison. The append-side belief association
+    also locates a subject before the first belief has been materialized.
     """
     _snapshot_projector(projector_version)
     row = conn.execute(
@@ -528,7 +670,11 @@ def read_belief_status(conn: sqlite3.Connection, belief_id: str,
         "LEFT JOIN projected_beliefs b ON b.belief_id=request.belief_id "
         "AND b.projector_version=request.projector_version "
         "LEFT JOIN derived_progress d ON d.projector_version=request.projector_version "
-        "LEFT JOIN entity_event_index i ON i.entity_id=request.belief_id "
+        "LEFT JOIN belief_event_index bi ON bi.belief_id=request.belief_id "
+        "AND bi.projector_version=request.projector_version "
+        "LEFT JOIN identity_event_index i ON i.subject_id=COALESCE("
+        "json_extract(b.content,'$.subject_id'),bi.subject_id) "
+        "AND i.projector_version=request.projector_version "
         "LEFT JOIN events e ON e.event_id=i.latest_event_id "
         "LEFT JOIN events applied ON applied.rowid=d.log_position",
         (belief_id, projector_version),

@@ -33,18 +33,51 @@ is implemented by `nyx.storage.evaluate_whole_view(conn, as_of, projector_versio
 This explicit operation reconstructs from the log; ordinary materialized reads
 are unchanged.
 
-[ADR 0014 stage one](decisions/0014-cross-belief-reducer-and-hash-lineage.md)
-is available as projector version `"1"` for ordinary observed-origin observations
-and corrections. Pass `projector_version="1"` to `record_observation`,
-`record_correction`, or `evaluate_whole_view` to select it. Version `"0"` remains
-the default and keeps its original fold and lineage. The versions have separate
-materializations and processing progress.
+[Stage two](decisions/0023-stage-two-contract.md) is available as projector version
+`"1"`. A separate `entity_mention_recorded` event creates a mention, its scoped
+subject, and a `constitutive` link with no numeric confidence. Observations name
+that mention and subject, an exact opaque `property_id`, the current `belief_id`,
+and fresh `claim_candidate_id` values. Each ClaimCandidate retains its own support
+and verification. Version `"0"` remains the default with its original fold,
+correction behavior, lineage, and byte fixtures.
+
+Version `"1"` exposes candidate collections with
+[no authoritative head](decisions/0024-no-authoritative-head.md). Later observations
+do not select a value by recency. Scalar belief requests with multiple candidates
+refuse even when the values agree. Use `storage.read_claim_candidate_value` for a
+named candidate. Single-candidate scalar belief requests also remain outside the
+implemented read contract; naming the candidate is available. Corrections, merges,
+splits, verification approvals, and associations with existing subjects refuse at
+both append and replay in this stage.
 
 The new reducer reads a consistent pre-event snapshot and returns one complete
 event delta. Its structured lineage covers predecessor hashes, resulting belief
-content, and retained observation/correction records; set collections use canonical
-UTF-8 ordering. Candidate verification, identity relations, merges, splits, and
-recorded identity output IDs remain later stages.
+content, candidate support and verification, and the observation and identity
+records explaining the result. Set collections use canonical UTF-8 ordering.
+`projection.project_snapshot(log, as_of)` returns the complete version `"1"`
+snapshot, including mention-only prefixes; `project` and `evaluate_whole_view`
+retain their belief-mapping return shape. `storage.read_snapshot` reads the complete
+materialization without replay.
+
+The version `"1"` writer uses `ingestion.prepare_mention` and
+`ingestion.prepare_observation`, then submits the returned `(Envelope, Payload)`
+pair through `ingestion.submit(conn, pair, as_of)` or the skeleton wrappers
+`record_mention(path, pair)` and `record_observation(path, pair, "1")`. Retain the
+complete pair before append and reuse it on retry; preparation is performed once,
+not again on retry. The observation preparer looks up existing belief IDs and
+refuses a conflicting supplied ID. For a new pair, supply a fresh belief ID.
+Every claim supplies its fresh candidate ID, mention, subject, property, value,
+and verifiability. The claim's containing observation is its explicit support.
+Bootstrap takes two appends; later observations through an existing mention take
+one. A committed mention remains valid if its observation never commits.
+
+The ADR 0023 scaling hazard is observable: a local in-memory probe with 32, 64,
+and 128 agreeing observations on one belief serialized approximately 0.88, 3.38,
+and 13.23 MB of cumulative lineage material and took 0.05, 0.18, and 0.70 seconds.
+The probe included event construction, reduction, diagnostic lineage serialization,
+and snapshot application, not database I/O. This demonstrates quadratic growth in
+this workload, not production throughput. Complete lineage coverage is retained;
+retention and coalescing remain undecided.
 
 `storage.materialize_pending(conn, as_of, projector_version="1")` publishes each
 pending event and its progress atomically after append. `read_belief(...,
@@ -56,8 +89,8 @@ replay from Layer A; it replaces the selected new-version materialization in one
 transaction. The walking-skeleton calls drive publication synchronously after
 the separate append commit; they do not start a background worker.
 
-Database schema version `2` is required under
-[ADR 0016](decisions/0016-schema-version-2.md). Version-1 databases are refused
+Database schema version `3` is required under
+[ADR 0017](decisions/0017-schema-version-3.md). Version-1 and version-2 databases are refused
 unchanged; there is no migration, and recreation is an operator action.
 
 ## Install and run the suite

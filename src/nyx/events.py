@@ -95,6 +95,8 @@ def build_event(
     payload: Mapping[str, Any],
     prev_event_hash: str | None,
     entity_refs: list[str] | None = None,
+    event_id: str | None = None,
+    recorded_at: str | None = None,
 ) -> tuple[Envelope, Payload]:
     """Assemble a hashed (Envelope, Payload) pair ready for append.
 
@@ -109,12 +111,12 @@ def build_event(
     payload_hash = hashing._sha256_hex(payload_hash)
 
     envelope_minus_hash = {
-        "event_id": new_event_id(),
+        "event_id": new_event_id() if event_id is None else event_id,
         "idempotency_key": hashing.idempotency_key(source["actor_id"], occurred_at, payload),
         "schema_version": SCHEMA_VERSION,
         "event_type": event_type,
         "occurred_at": occurred_at,
-        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "recorded_at": datetime.now(timezone.utc).isoformat() if recorded_at is None else recorded_at,
         "source": source_str,
         "source_class": source_class,
         "origin_type": origin_type,
