@@ -11,6 +11,15 @@ Runtime: Python 3.14.2 in .venv. Tests: run the full pytest suite (`pytest -q`);
 
 Accepted specifications and ADRs govern implementation. Material under `design/` is non-authoritative and may be analyzed or drafted when requested. It does not authorize implementation, supply missing defaults, or supersede accepted decisions. When implementation requires an unresolved decision, stop the dependent work and report it. Ratification must be recorded explicitly before implementation proceeds.
 
+## Required reading order
+Before consulting specification mechanics, read in this order:
+
+1. [README.md](README.md) for shipped state and the [decision-to-code map](README.md#decision-to-code-map).
+2. The applicable numbered ADR chain, including referenced amendments and superseding ADRs. An ADR's **Status** line governs its standing; use its **Implementation** line for current implementation status. Body text may describe decision-time state and must be read subject to those status markers and later accepted ADRs.
+3. [NYX_ARCHITECTURE.md](spec/NYX_ARCHITECTURE.md), then [NYX_V0_IMPLEMENTATION.md](spec/NYX_V0_IMPLEMENTATION.md), subject to that ADR chain. Check [GAPS.md](GAPS.md) before dependent implementation; silence in a specification alone does not establish a gap until the applicable ADRs have been read.
+
+For merge work, the required chain is [ADR 0013](decisions/0013-cross-belief-identity-semantics.md), then [ADR 0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md) as amended by [ADR 0015](decisions/0015-candidate-scoped-verification.md), with stage limits in [ADR 0023](decisions/0023-stage-two-contract.md).
+
 ## Standing rule
 Build the accepted specifications and ADRs; do not redesign them or fill unresolved decisions. Never edit anything under
 spec/ or decisions/. If you believe the spec is wrong, stop and report it;
