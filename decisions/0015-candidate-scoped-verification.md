@@ -8,7 +8,7 @@ Supersedes: [ADR 0014 section 4](0014-cross-belief-reducer-and-hash-lineage.md#4
 
 Related: [ADR 0013](0013-cross-belief-identity-semantics.md); [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md); [ADR 0012](0012-whole-view-equality.md); Invariants 3, 4, 9, and 15
 
-Implementation: Pending; implementation is a separate task.
+Implementation: Partial under projector "1": ClaimCandidates retain individual support and verification, with candidate-identity and evidence-event deduplication. Merge/split standing, gate-approved corroboration, and support-restriction transitions remain unimplemented. Current stage limits follow [ADR 0023](0023-stage-two-contract.md). Status updated 2026-09-11; implementation-status statements below describe the decision-time state.
 
 ## Context
 

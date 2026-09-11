@@ -1,9 +1,9 @@
-> **Resolved 2026-09-08:** [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md) supersedes this recorded blocker by deciding reducer shape and hash lineage together. The original finding below is retained as historical context. Implementation is separate; ADR 0014 explicitly refuses merges with differing predecessor verification states pending a further decision.
+> **Resolved 2026-09-08; implementation status updated 2026-09-11:** [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md) supersedes this recorded blocker. The original finding below is historical context. The reducer seam and lineage are implemented for stage two; merge/split handlers remain unimplemented. For the amended verification boundary see [ADR 0015](0015-candidate-scoped-verification.md), and for current stage limits see [ADR 0023](0023-stage-two-contract.md).
 
 # 0008 — The `fold` signature structurally cannot express a cross-belief event (Phase 2 blocker)
 
 - **Status:** Superseded by ADR 0014 (accepted 2026-09-08). Recorded blocker resolved;
-  implementation pending.
+  reducer seam implemented for stage two; merge/split handlers pending.
 - **Date:** 2026-07-13
 - **Severity:** **Phase 2 blocker.** Must be seen BEFORE entity-merge work starts —
   not discovered halfway through it.

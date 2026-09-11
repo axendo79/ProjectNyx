@@ -2,7 +2,7 @@
 
 **Purpose:** NYX_ARCHITECTURE.md is the Constitution — durable, and correctly refuses to invent epistemic coefficients (Invariant 2). This file is the opposite kind of document on purpose: **everything here is provisional, versioned, and expected to be replaced** once real usage data exists. Where the architecture says "rules, not formulas," this is where the *first* formula lives — labeled as a starting hypothesis, never presented as validated truth. Nothing in this file is a Constitution amendment.
 
-**Document authority:** architecture is authoritative for *what/why*; this file is authoritative for *how* (schema, algorithms, defaults, tests). On conflict, the more specific mechanical statement wins and the other file is the bug. This file therefore *decides* mechanics the architecture only names — e.g. the internal ordering scalar (§1) that the architecture's confidence split (§2) defers the *user-facing* version of.
+**Document authority:** accepted numbered ADRs in `decisions/` supersede both specifications where they conflict. Subject to those ADRs, architecture is authoritative for *what/why* and this file for *how* (schema, algorithms, defaults, tests). Between the specifications, the more specific mechanical statement wins; it cannot override an accepted ADR.
 
 **The governing split:** *epistemic* formulas (decide what's true) stay deferred, genuinely, until there's data to calibrate against. *Operational* formulas (decide speed/order/alerting) are safe to set now, because being wrong costs performance, not integrity. Everything below is sorted into one of three bins: **deterministic** (no guessing possible — just an implementation), **operational v0** (a placeholder with a stated retune trigger), or **explicitly deferred** (with the reason it must stay that way).
 
@@ -18,37 +18,23 @@
 ```
 event_hash = SHA256(canonical_json(event_minus_hash_fields) || prev_event_hash)
 ```
-Canonical JSON = sorted keys, fixed float format, no whitespace variance — standard content-addressing practice, not invented here.
+Canonical serialization uses the shared `src/nyx/hashing.py` implementation; for the accepted serialization contract, see [ADR 0014 §6](../decisions/0014-cross-belief-reducer-and-hash-lineage.md#6-canonical-serialization). The implementation uses Python's JSON float representation; a stricter fixed float format is not implemented.
 
 **Content-addressed dependency hash** (unifies the Liver's re-derivation check and the process trace's `hypothesis_id` matching, per §13's unification TBD — this closes that TBD):
 ```
 dep_hash = SHA256(sorted([event_hash for event_id in dependency_set]))
 ```
-Hashing the **event_hashes**, not just the event_ids, matters: it means the dependency hash also changes if an upstream event gets *superseded* (new event_hash chained on), not only if a dependency literally disappears. This is the single canonical hashing utility both the Liver (§3) and process trace (§7) should call.
+`hashing.dep_hash` hashes the supplied collection of event hashes. Appending a correction does not change an earlier event's hash or automatically update that collection. Dependency-tracking consumers for the Liver (§3) and process trace (§7) remain unbuilt.
 
-**Delta-reducer fold.** Fold *order* is rowid (insertion) for hash determinism, but a value-setting event must not clobber a newer value just because it was *folded* later — the offline-reconnection seam (architecture §4/§5) appends old-`occurred_at` events at high rowid.
-```
-function fold(prior_view, new_event, as_of):
-    # value-recency guard: a value-setting event older than the current value
-    # updates provenance/support-set but does NOT supersede the newer value
-    if new_event.sets_value and new_event.occurred_at < prior_view.value_occurred_at:
-        updated_view = add_to_support_set(prior_view, new_event)   # provenance only
-    else:
-        updated_view = apply_event_to_belief(prior_view, new_event)  # per event_type
-        if new_event.sets_value:
-            updated_view.value_occurred_at = new_event.occurred_at
-    updated_view.view_version_hash = SHA256(prior_view.view_version_hash || new_event.event_hash)
-    updated_view.projected_as_of = as_of
-    updated_view.updated_at = new_event.recorded_at
-    return updated_view
-```
-`apply_event_to_belief` is event-type-specific (`observation_recorded` sets a value; `correction_appended` supersedes; `entity_merge_accepted` re-points affected mentions per the `as_of` rule in §4). Handlers are deterministic — no scoring. The `value_occurred_at` field is added to `resolved_beliefs` (§4) so the guard has state to compare against; without it, out-of-order reconnection events silently corrupt current values.
+**Delta-reducer fold.** The former universal one-belief pseudocode is superseded for projector "1" by [ADR 0014](../decisions/0014-cross-belief-reducer-and-hash-lineage.md); its ordinary-observation value-recency rule is superseded for that version by [ADR 0024](../decisions/0024-no-authoritative-head.md). Projector "0" retains the legacy fold in `src/nyx/projection.py`, governed by [ADR 0003](../decisions/0003-genesis-sentinels-and-hash-material-delimiters.md), [ADR 0004](../decisions/0004-correction-appended-supersedes-via-superseding-events.md), [ADR 0005](../decisions/0005-backdated-corrections-fail-loud-pending-semantics.md), and [ADR 0006](../decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md).
 
-[ADR 0010](../decisions/0010-projection-parameters.md) supplies the explicit evaluation-time contract: the live write path passes the current time at the call site; replay passes its `as_of` cutoff. The reducer does not sample the clock. The whole-view equality discrepancy remains unresolved in [GAPS.md](../GAPS.md#whole-view-equality-across-live-materialized-beliefs-and-replay); this pseudocode update does not resolve it.
+The former description of `entity_merge_accepted` as merely re-pointing mentions is superseded by [ADRs 0013](../decisions/0013-cross-belief-identity-semantics.md), [0014](../decisions/0014-cross-belief-reducer-and-hash-lineage.md), and [0015](../decisions/0015-candidate-scoped-verification.md). Merge handlers remain unimplemented; current stage limits are governed by [ADR 0023](../decisions/0023-stage-two-contract.md).
 
-**Stale-projection check.** Reader compares the materialized `view_version_hash` lineage against `entity_event_index.latest_event_hash` for that belief's entity (the index is updated synchronously with the append, §4, so this check does not race). Mismatch → serve **stale-labeled**, do not block on a re-fold (architecture §8: a labeled stale read beats a stalled one for local single-user); match → serve as current.
+[ADR 0010](../decisions/0010-projection-parameters.md) supplies the explicit evaluation-time contract: the live write path passes the current time at the call site; replay passes its `as_of` cutoff. The reducer does not sample the clock. Whole-view equality is governed by [ADR 0012](../decisions/0012-whole-view-equality.md) and implemented in `storage.evaluate_whole_view`, with coverage in `tests/test_whole_view_equality.py`.
 
-**State-transition validator.** The table in §2 is not prose to interpret — implement it as a literal guard:
+**Stale-projection check.** The former lineage-comparison description is superseded by [ADR 0014 §8](../decisions/0014-cross-belief-reducer-and-hash-lineage.md#8-append-freshness-and-derived-progress). Version "1" implements the check in `storage.read_belief_status`; legacy `projection.is_stale` remains a stub and version "0" reads remain unlabeled.
+
+**State-transition validator (unimplemented).** The planned literal guard is shown below; `state_machine.STATE_TABLE` remains empty and `transition` raises `NotImplementedError`:
 ```
 function transition(from_state, to_state, trigger_type, has_world_oracle):
     row = STATE_TABLE.lookup(from_state, to_state)
@@ -56,11 +42,11 @@ function transition(from_state, to_state, trigger_type, has_world_oracle):
     if row.requires_world_oracle and not has_world_oracle: reject("promotion requires world oracle — Inv. 3/4")
     return allow
 ```
-This is the entire enforcement mechanism for No Silent Promotion (Invariant 3) — a lookup, not a model call.
+This planned lookup is not the shipped enforcement mechanism. Current observation standing is assigned by `projection._state_for_origin`; its accepted basis is [ADR 0001](../decisions/0001-observation-recorded-resolves-to-verified.md).
 
-**The internal ordering scalar (what the ceiling and Liver actually consume).** The architecture (§2) defers the *user-facing* confidence score but flags that an *internal ordering scalar* is load-bearing now. This file decides it, so the arithmetic below has a real source rather than a deferred value:
+**The legacy internal ordering scalar (unimplemented).** The arithmetic below is the legacy specification; `ordering.claim_scalar` and `ordering.effective_confidence` remain stubs. Bootstrap applicability is governed by [ADR 0021](../decisions/0021-bootstrap-link-treatment.md), which supersedes applying this scored-link treatment universally:
 
-- `entity_link_confidence` — a real `REAL` in `[0,1]`, produced by the resolver, stored on `entity_links` (§4 schema). Exists at v0.
+- `entity_link_confidence` — a `REAL` in `[0,1]` in the legacy `entity_links` schema (§4). Resolver-produced scored links do not yet ship. For bootstrap treatment, see [ADR 0021](../decisions/0021-bootstrap-link-treatment.md).
 - `claim_confidence` for the ceiling is **not** a synthesized float at v0 — it is the **state ordinal**: `quarantined=0 < questioned=1 < unverified=2 < verified=3`, normalized to `[0,1]` as `ordinal/3`. This is countable, non-invented, and already fully specified by the state machine.
 - The Liver queue's `low_conf_source` term (§2) is a **boolean** from source reliability, not this scalar — no synthesized number needed there either.
 
@@ -69,7 +55,7 @@ This is the entire enforcement mechanism for No Silent Promotion (Invariant 3) �
 claim_scalar = STATE_ORDINAL[verification_state] / 3.0
 effective = min(claim_scalar, min(link.entity_link_confidence for link in chain))
 ```
-Weakest-link `min` is the epistemically safe permanent choice. The only thing deferred is a *richer* synthesized `claim_confidence` later — the ordering scalar itself is decided and available, closing the "deferred in §3 but used in §1" contradiction the last review pass caught.
+This legacy arithmetic is specified but unimplemented. Its former universal applicability is superseded by [ADR 0021 §3](../decisions/0021-bootstrap-link-treatment.md#3-confidence-ceiling-computation). A richer synthesized `claim_confidence` remains deferred.
 
 ---
 
@@ -96,7 +82,7 @@ This is a discrete gate, not a continuous weight — lower-risk to set now than 
 
 ## 3. Explicitly deferred — and why a v0 number is *not* given here
 
-**Confidence as a synthesized numeric score.** No placeholder formula is provided, deliberately — and it isn't needed to start coding. **v0 does not need a confidence score at all.** Everything actionable already exists without one: `verification_state` (the state machine, fully specified, §2) plus the **support set** (raw corroboration count, sources, opposing events, §2) gives every downstream component what it needs to act — the Liver prioritizes off structural factors (§1 above), the UI shows state-not-score by design (§8 already forbids rendering a decimal), and routing doesn't need a number either. A synthesized confidence score is a **ranking convenience for later**, not a blocker now. Ship v0 surfacing state + support set directly; add a real numeric score only once there's observed accuracy data to calibrate it against. Inventing one now would be the exact false-precision Invariant 2 forbids, for zero present benefit.
+**Confidence as a synthesized numeric score.** No placeholder formula is provided, deliberately. The shipped belief/candidate records expose verification and support without a synthesized score. The general state-transition guard, Liver, UI, and routing consumers are unbuilt; their specification does not establish implementation. A synthesized confidence score remains deferred until there is observed accuracy data to calibrate it against.
 
 **Confidence decay curves.** Same reasoning — decay *category* (time-sensitive vs. timeless vs. unverifiable, already specified in §2) is enough to start; the decay *rate* stays deferred until there's data on how fast categories actually go stale in practice.
 
@@ -146,10 +132,10 @@ CREATE UNIQUE INDEX idx_events_idempotency ON events(idempotency_key);
 -- so replay yields a typed REDACTED sentinel, never a broken chain.
 -- KEYED BY event_id, NOT payload_hash (corrected in decisions/0007). The earlier
 -- `payload_hash TEXT PRIMARY KEY` here was wrong for two independent reasons:
---   1. It BLOCKS CORROBORATION. Two independent sources reporting the SAME value
---      produce byte-identical payloads -> one payload_hash -> a PK collision on the
---      second. But that IS corroboration, the sole §2 promotion path; a table that
---      cannot store the second source makes the unverified->verified gate unreachable.
+--   1. Legacy projector "0" content-identical observations would collide on the
+--      former payload-hash primary key. See decisions/0007 for the original finding.
+--      Stage-two observation contents and candidate identity follow decisions/0023
+--      and decisions/0015; the legacy same-value/payload-hash equivalence does not apply.
 --   2. It POOLS PAYLOADS ACROSS EVENTS, violating Invariant 14. Payloads are separately
 --      destroyable per event; a content-keyed row makes redacting one event silently
 --      erase another event's payload as collateral.
@@ -162,9 +148,9 @@ CREATE TABLE payloads (
     redacted        INTEGER NOT NULL DEFAULT 0
 );
 
--- Content-addressing survives as a NON-unique INDEX: it is the corroboration lookup
--- key (§2 counts DISTINCT source_class over events sharing a payload_hash). n events
--- per content is the point; the gate itself is unbuilt (§8). See decisions/0007.
+-- NON-unique content lookup; the legacy corroboration rationale is in decisions/0007.
+-- Stage-two claim identity and evidence rules are governed by decisions/0015 and
+-- decisions/0023. The corroboration gate itself remains unbuilt.
 CREATE INDEX idx_payloads_corroboration ON payloads(payload_hash);
 
 -- Append-only is a MECHANISM, not a convention (Invariant 1):
@@ -197,7 +183,7 @@ CREATE TABLE resolved_beliefs (
 CREATE TABLE entity_event_index (
     entity_id            TEXT PRIMARY KEY,
     latest_event_id       TEXT NOT NULL,
-    latest_event_hash      TEXT NOT NULL,   -- reads compare view_version_hash lineage against this
+    latest_event_hash      TEXT NOT NULL,   -- legacy append metadata; freshness contract: decisions/0014 §8
     updated_at              TEXT NOT NULL
 );
 
@@ -229,7 +215,8 @@ CREATE TABLE gaps (
     event_id                          TEXT NOT NULL  -- FK -> gap_recorded event
 );
 
--- Identity v1 minimum (§11) — soft links only, no canonical graph yet
+-- Legacy scored-link table (§11), not the active stage-two bootstrap representation.
+-- Bootstrap treatment is governed by decisions/0021; see schema.sql for shipped DDL.
 CREATE TABLE entity_links (
     mention_id               TEXT PRIMARY KEY,
     candidate_entity_id       TEXT NOT NULL,
@@ -311,12 +298,12 @@ This extends the existing prompt-library norms (#6, #8, #9 — read the current 
 
 ## 8. Still open (unlike §3, these just haven't been written yet — not deferred on principle)
 
-- Delta-reducer per-event-type handlers (only `observation_recorded` is worked above; `correction_appended`, `entity_merge_accepted`, etc. need the same treatment). The value-recency guard (§1) applies to all value-setting handlers.
+- Handler status: projector "0" observation and correction handlers are implemented under [ADRs 0004](../decisions/0004-correction-appended-supersedes-via-superseding-events.md)–[0006](../decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md). Stage-two mention and observation handlers ship under projector "1"; remaining stage limits are governed by [ADR 0023](../decisions/0023-stage-two-contract.md). The former universal value-recency rule is superseded for projector "1" by [ADR 0024](../decisions/0024-no-authoritative-head.md).
 - Immune Stages 2–4 wiring (classifier invocation, STLM invocation path — subprocess vs. local server vs. embedded, per last session's "boundary decisions" gap). Stage 3 ships **static** (architecture §3) — no retraining loop until a threat corpus exists.
-- Decision log (`decisions/0001-projection-model.md` style) — cheap to start, saves relitigating settled calls. Offer stands to stub this next.
+- Decision log is established in `decisions/` with numbered records through ADR 0024.
 - `meta_commentary` tagging (architecture Inv. 11): payload carries `meta_commentary: bool` + `meta_subtype` (`callback` | `self_reference`), assigned **at generation** before emit (so the ceiling can gate). Classification must be cheap and deterministic; ambiguous → default `self_reference` (under-counting inferred commentary is the failure to avoid, not over-counting). Tag is descriptive payload on the envelope, out of the confidence/ranking axis entirely. **Open:** the drift-metric sweep (rate of `self_reference` per window — align the window to whatever the emergence monitor already sweeps on, don't maintain two clocks) and the suppress-on-ceiling behavior. `callback` has no ceiling. The emergence monitor that owns this is itself unspecified (architecture §13) — until it exists, the tag can be *written and stored* but the ceiling has nothing to enforce it, so this ships as **tag-now, enforce-later**.
 - Parameter-change event type (architecture §4 failure modes): a logged, outside-the-ledger event recording emotion/expression parameter changes (Spleen weighting, `self_reference` ceiling, pivot triggers), session-scoped by default, non-promoting like `meta_commentary`. Sandbox tuning is a **forked event log**, not a runtime flag — no `dev_mode` branch in live code.
 
-*Resolved this pass (were contradictions, now decided): internal ordering scalar = state ordinal + link confidence (§1); reducer value-resolution keys on `occurred_at` (§1); `entity_event_index` synchronous with append (§4); process-trace mutable-not-immutable (§4); Stage 3 static-first (§3). All five were cross-file or seam bugs that survived eleven review passes.*
+*Historical resolution summary: the legacy scalar and value-recency rules above are subject to [ADR 0021](../decisions/0021-bootstrap-link-treatment.md) and [ADR 0024](../decisions/0024-no-authoritative-head.md), respectively. Append freshness is governed by [ADR 0014 §8](../decisions/0014-cross-belief-reducer-and-hash-lineage.md#8-append-freshness-and-derived-progress). Process-trace remains mutable-not-immutable (§4); immune Stage 3 remains specified as static-first (§3) and unbuilt.*
 
 *Resolved in the erasure/merge pass: erasure mechanism decided (envelope/payload split, crypto-shredding, Invariant 14, §4 schema); the never-promote-on-reinterpretation rule generalized to Invariant 15 (redaction and merge both); correlated-corroboration overcalibration fixed via `source_class` (§2, §4); sweep/replay equivalence and the crash-between-key-destruction-and-completion gap added as failure modes (§4); crash-recovery is a startup scan for `*_requested` without `*_completed`, idempotent roll-forward. All found by forward-simulating the write path rather than reviewing it statically — the same review-vs-execution gap named in the council doc, now with a concrete instance of the fix (property-based testing, §12) rather than just the diagnosis.

@@ -8,7 +8,7 @@ Supersedes: [ADR 0019 section 5](0019-identity-bootstrap.md#5-initial-link-state
 
 Related: [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md); [ADR 0015](0015-candidate-scoped-verification.md); [ADR 0020](0020-multi-user-authority-undecided.md); architecture section 11; implementation companion section 1
 
-Implementation: Pending; implementation is a separate task.
+Implementation: Constitutive bootstrap links and their no-confidence treatment ship under projector "1" in `src/nyx/reducer.py` and `schema.sql`. Non-constitutive link treatment remains outside the implemented stage. Status updated 2026-09-11; implementation-status statements below describe the decision-time state.
 
 ## Context
 

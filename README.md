@@ -97,8 +97,8 @@ unchanged; there is no migration, and recreation is an operator action.
 
 Use Python 3.14, the accepted target in
 [ADR 0009](decisions/0009-python-314-re-adopted-as-target.md). The recorded development
-runtime is 3.14.2. Package metadata still declares `>=3.11`; that declaration does
-not establish a tested compatibility range.
+runtime is 3.14.2. Package metadata declares `>=3.14`; the suite has been run on
+3.14.2, not a matrix of later Python versions.
 
 From a repository checkout, in PowerShell:
 

@@ -1,6 +1,6 @@
 # ADR 0016: Database Schema Version 2
 
-Status: Accepted
+Status: Accepted; superseded in part by [ADR 0017](0017-schema-version-3.md), only the selection of supported database schema version 2.
 
 Date: 2026-09-09
 
@@ -8,7 +8,7 @@ Supersedes: [ADR 0011](0011-database-schema-versioning.md), only its selection o
 
 Related: [ADR 0014 section 8](0014-cross-belief-reducer-and-hash-lineage.md#8-append-freshness-and-derived-progress)
 
-Implementation: Pending; implementation is a separate task.
+Implementation: The derived-progress record is implemented in `schema.sql` and `src/nyx/storage.py`. The current supported database version is governed by [ADR 0017](0017-schema-version-3.md); version 2 is refused. Status updated 2026-09-11.
 
 ## Context
 

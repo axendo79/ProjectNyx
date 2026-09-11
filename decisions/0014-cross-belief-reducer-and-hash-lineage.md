@@ -1,6 +1,6 @@
 # ADR 0014: Cross-Belief Reducer Shape and Hash Lineage
 
-Status: Accepted
+Status: Accepted; superseded in part by [ADR 0015](0015-candidate-scoped-verification.md), section 4's differing-state refusal, its corresponding acceptance case, and references to that verification boundary as unresolved.
 
 Date: 2026-09-08
 
@@ -8,7 +8,7 @@ Supersedes: [ADR 0008](0008-fold-signature-cannot-express-cross-belief-events.md
 
 Related: [ADR 0003](0003-genesis-sentinels-and-hash-material-delimiters.md); [ADR 0010](0010-projection-parameters.md); [ADR 0012](0012-whole-view-equality.md); [ADR 0013](0013-cross-belief-identity-semantics.md); Invariants 8, 9, and 15
 
-Implementation: Pending; implementation is a separate task.
+Implementation: The snapshot/delta seam, structured lineage, append freshness, derived progress, atomic publication, and full-replay recovery ship for stage-two events under projector "1". Merge/split handlers remain unimplemented under [ADR 0023](0023-stage-two-contract.md). Status updated 2026-09-11; implementation-status statements below describe the decision-time state.
 
 ## Context
 
@@ -109,7 +109,7 @@ acceptance case and references below to that verification boundary as unresolved
 Other acceptance requirements remain in force. Implementation is a separate task;
 any still-unspecified verification transition remains subject to the gap protocol.
 
-**Original decision retained for context:**
+> **SUPERSEDED — HISTORICAL TEXT, NOT CURRENT POLICY.** The original section 4 below and its differing-state refusal acceptance case are retained only as history. They must not authorize implementation or refusal. The governing replacement is [ADR 0015](0015-candidate-scoped-verification.md).
 
 ### 4. Verification boundary remains unresolved
 

@@ -8,7 +8,7 @@ Supersedes: [ADR 0016](0016-schema-version-2.md), only its selection of version 
 
 Related: [ADR 0013](0013-cross-belief-identity-semantics.md); [ADR 0015](0015-candidate-scoped-verification.md)
 
-Implementation: Pending; implementation is a separate task.
+Implementation: Implemented in `schema.sql` and `src/nyx/storage.py`, including older-version refusal and schema-validation tests. Status updated 2026-09-11.
 
 ## Context
 

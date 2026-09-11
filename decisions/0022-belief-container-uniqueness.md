@@ -6,7 +6,7 @@ Date: 2026-09-09
 
 Related: [ADR 0013 section 1](0013-cross-belief-identity-semantics.md#1-entity-and-belief-identity); [ADR 0014 section 3](0014-cross-belief-reducer-and-hash-lineage.md#3-recorded-output-ids-and-acceptance); [ADR 0015](0015-candidate-scoped-verification.md); [ADR 0018](0018-correction-supersedes-candidates.md); [ADR 0019](0019-identity-bootstrap.md)
 
-Implementation: Pending; implementation is a separate task.
+Implementation: Implemented for stage two in writer lookup, append/replay validation, and the current-only partial unique index, with coverage in `tests/test_reducer_boundary.py`. Merge/split transitions remain outside the implemented stage. Status updated 2026-09-11; implementation-status statements below describe the decision-time state.
 
 ## Context
 

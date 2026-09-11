@@ -1,44 +1,43 @@
 # Known gaps
 
-Open findings that are **logged, not fixed**. Each is real and verified against the code —
-not a suspicion. None has a silent workaround in place; where the code would otherwise
-produce a plausible-looking wrong answer, it fails loudly instead.
+Findings and their **open, deferred, or resolved** status, checked against the code.
+Refusal behavior is stated per finding; a logged gap does not imply that every
+affected path already fails before append.
 
 This file is the register. Where a gap carries enough reasoning that it must not be
 relitigated, it has an ADR in `decisions/` and this file points at it.
 
-> **Read [ADR 0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md)
-> before starting any entity-merge work.** It supersedes the recorded blocker in
-> [ADR 0008](decisions/0008-fold-signature-cannot-express-cross-belief-events.md)
-> by deciding reducer shape and hash lineage together. Implementation is pending;
-> differing predecessor verification states remain subject to explicit refusal.
+> **Before entity-merge work, read [ADR 0013](decisions/0013-cross-belief-identity-semantics.md),
+> then [ADR 0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md) as amended by
+> [ADR 0015](decisions/0015-candidate-scoped-verification.md), with current stage limits in
+> [ADR 0023](decisions/0023-stage-two-contract.md).**
+> ADR 0014 supersedes the recorded blocker in [ADR 0008](decisions/0008-fold-signature-cannot-express-cross-belief-events.md).
+> The reducer seam is implemented for stage two; merge/split handlers remain unimplemented.
 
 ---
 
-## Cross-belief reducer — decision resolved; implementation pending
+## Cross-belief reducer — seam implemented; merge/split handlers pending
 
-### The `fold` signature cannot express a cross-belief event
+### The legacy `fold` signature cannot express a cross-belief event — resolved for projector "1"
 **→ [ADR 0008](decisions/0008-fold-signature-cannot-express-cross-belief-events.md)** ·
 Recorded blocker resolved by [ADR 0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md)
-(accepted 2026-09-08); implementation pending · `src/nyx/projection.py`
+(accepted 2026-09-08); stage-two seam implemented · `src/nyx/reducer.py`, `src/nyx/projection.py`
 
-`fold(prior_view, envelope, payload, as_of) -> dict` takes **one** belief and returns **one**
-belief; `project` keys every event to exactly one `belief_id`. `entity_merge_accepted`
-(and `entity_split_asserted`, and a redaction sweep) affect **many beliefs at once** —
-there is nowhere in this signature to put the answer.
+Projector "0" retains `fold(prior_view, envelope, payload, as_of) -> dict` and its
+single-belief lineage. For projector "1", `project` dispatches to the snapshot
+reducer in `src/nyx/reducer.py`, which returns one complete event delta. Mention
+events need no belief, and one observation can affect multiple beliefs. The
+public `project` return shape remains a belief mapping.
 
-This is **a redesign, not an additive branch.** The return type must widen, every caller
-changes, and `view_version_hash` — which chains **per belief** (§1) — is entangled with the
-change: a single merge event contributes to N belief chains at once, and each possible
-answer is a different hash lineage that must still satisfy `fold == replay-from-genesis`
-(§12). **The hash design and the fold signature are one decision, not two.** On top of that
-sits §5 trace 4 (merge-pooling), whose Invariant 15 rule — pooled evidence crossing a
-threshold must land at *hold-plus-gated-proposal*, never automatic promotion — requires a
-fold that can see both beliefs at once to evaluate at all.
+The superseding reducer and lineage contract is [ADR 0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md).
+Its stage-two seam, structured lineage, derived progress, atomic publication,
+and recovery ship in `src/nyx/reducer.py` and `src/nyx/storage.py`, with coverage in
+`tests/test_reducer_boundary.py`. Version "0" remains isolated.
 
-Implement the seam according to ADR 0014; ADR 0008 retains the historical finding
-and the warning against ad hoc workarounds. ADR 0014 refuses entire merges with
-differing predecessor verification states pending a separate decision.
+ADR 0008 retains the historical finding and warning against ad hoc workarounds.
+The former differing-state merge refusal is superseded by
+[ADR 0015](decisions/0015-candidate-scoped-verification.md).
+For the current unimplemented merge/split stage, see [ADR 0023](decisions/0023-stage-two-contract.md).
 
 ---
 
@@ -60,17 +59,13 @@ is that replay must yield a **typed REDACTED sentinel** rather than a broken cha
 (`schema.sql`, V0 §4); that sentinel does not exist yet. Redaction is unbuilt, so this is
 unreachable today.
 
-### `project()` assumes every event is belief-scoped
-`src/nyx/projection.py` · **will fail loudly if reached**
+### `project()` event dispatch — resolved for supported stages
+`src/nyx/projection.py` · **RESOLVED**
 
-```python
-belief_id = payload["belief_id"]   # every event, no exceptions
-```
-
-Any event whose payload has no `belief_id` — `entity_merge_accepted`, `redaction_applied`,
-`gap_recorded` — raises `KeyError`. Today only value-setting events exist, so it holds.
-It stops holding at the first non-belief-scoped event type. Related to ADR 0008 but
-distinct: this one is a missing *dispatch*, that one is a missing *shape*.
+Version "0" rejects unsupported event types before requiring `payload["belief_id"]`.
+Version "1" dispatches to the complete snapshot reducer and supports mention
+events and explicitly scoped observations. Unsupported event types still refuse;
+their implementation limits are governed by [ADR 0023](decisions/0023-stage-two-contract.md).
 
 ### `as_of` / `projector_version` — resolved
 **RESOLVED ([ADR 0010](decisions/0010-projection-parameters.md), commit `101007b`):** `project()` now
@@ -92,8 +87,10 @@ All seven ADR acceptance cases are covered in `tests/test_whole_view_equality.py
 including complete-field comparisons, historical cutoffs, and a controlled
 time-dependent projector. Different timestamps on raw live materialized rows
 remain expected; those rows are not automatically a shared-time snapshot.
-ADR 0008's cross-belief event-shape blocker is resolved by ADR 0014; implementation
-remains pending, and differing-predecessor verification semantics remain undecided.
+ADR 0008's event-shape blocker is resolved by ADR 0014 and the stage-two seam is
+implemented. The superseding verification boundary is in
+[ADR 0015](decisions/0015-candidate-scoped-verification.md); remaining stage limits
+are in [ADR 0023](decisions/0023-stage-two-contract.md).
 
 ---
 
@@ -112,12 +109,16 @@ Automatic migrations remain outside scope; incompatible databases are rejected.
 `src/nyx/immune.py` · follow-on from
 [ADR 0006](decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md)
 
-`occurred_at` ordering is now instant-based at both comparison sites, but nothing
-canonicalizes timestamps on the way *in*. A naive (offset-less) timestamp passes immune
-Stage 1 (`datetime.fromisoformat` accepts it) and is only rejected later, deep in the fold —
-a boundary failure surfacing as a projection failure. Every future comparison site is also a
-chance to forget `_instant()`. A canonicalizing boundary removes the class instead of
-defending each site one at a time.
+Stored timestamp strings are not canonicalized on ingestion. In projector "0",
+immune Stage 1 accepts a naive (offset-less) `occurred_at`. `_instant()` refuses
+it only when a comparison is reached; a first value can bypass that comparison
+and materialize successfully. Later comparison can fail after an observation has
+already appended. See `immune.stage1_schema_validate`, `projection.fold`, and
+`projection.assert_not_backdated`.
+
+Projector "1" validates timezone-bearing timestamps through `reducer.reduce`
+before append and again during replay, without rewriting the recorded strings.
+The remaining legacy boundary gap must not be mistaken for guaranteed refusal.
 
 ---
 
@@ -140,6 +141,53 @@ raise is greppable so the decision, when made, finds every site that assumed it 
 Only `observed` is mapped (ADR 0001). `user_stated` cannot reuse it: architecture §2's
 user-stated split ("User asserted X" vs "X is true" — the user is a *source*, not ground
 truth, outside preference claims) means it must earn its state differently.
+
+### Candidate corrections and target eligibility
+**Deferred:** [ADR 0018](decisions/0018-correction-supersedes-candidates.md) governs
+candidate supersession; [ADR 0023 §5](decisions/0023-stage-two-contract.md#5-corrections-are-deferred-under-version-1)
+governs the current stage boundary. Candidate-target eligibility is incomplete.
+Version "1" refuses corrections before append and on replay, including explicit-target
+submissions. Version "0" retains its implemented correction path and existing refusals.
+
+### Existing-subject association and multi-user authority
+**Blocked:** admissible association bases remain unratified under
+[ADR 0019 §4](decisions/0019-identity-bootstrap.md#4-association-with-an-existing-subject-requires-an-admissible-basis).
+Authority assumptions remain undecided under [ADR 0020](decisions/0020-multi-user-authority-undecided.md),
+including a single operator handling different speakers' assertions. Stage two
+refuses existing-subject associations at append and replay. Attribution and
+constitutive bootstrap do not supply the missing authority decision.
+
+### Mention correction
+**Undecided:** [ADR 0019 §1](decisions/0019-identity-bootstrap.md#1-mention-recording-is-a-separate-event)
+and [ADR 0021](decisions/0021-bootstrap-link-treatment.md) leave mention-correction
+mechanics open. No handler ships; candidate-correction semantics do not fill this gap.
+
+### Support attachment to an existing ClaimCandidate
+**Out of scope pending decisions:** [ADR 0023 §2](decisions/0023-stage-two-contract.md#2-ordinary-observations-create-fresh-claimcandidates).
+Claim continuity, targeting/applicability, verification effects, dependency history,
+correction scope, and retry treatment are not supplied for support attachment.
+Distinct observations reusing a candidate ID refuse at append and replay.
+
+### Retention, coalescing, and temporal resolution
+**Undecided:** retention/coalescing remains open under [ADR 0023](decisions/0023-stage-two-contract.md).
+The lineage-scaling probe is reported in `README.md`; it authorizes no reduction
+in lineage coverage. Temporal applicability and disagreement resolution remain
+open under [ADR 0024](decisions/0024-no-authoritative-head.md). No aging-out,
+latest-value selection, or value-based candidate compaction ships for version "1".
+
+### Additional scalar belief reads
+**Deferred:** [ADR 0024 §2](decisions/0024-no-authoritative-head.md#2-scalar-belief-requests-and-named-candidate-reads).
+Common-value reads for multiple agreeing candidates are undecided. The code also
+supplies no single-candidate scalar belief contract; `scalar_belief_value` refuses
+multiple candidates and otherwise raises `NotImplementedError`. Named-candidate
+value reads are implemented.
+
+### Later link treatment and support-dependent verification transitions
+**Blocked where unspecified:** non-constitutive link treatment is governed by
+[ADR 0021 §3](decisions/0021-bootstrap-link-treatment.md#3-confidence-ceiling-computation);
+the current reducer refuses it. Unspecified support-dependent demotion/restoration
+transitions remain subject to [ADR 0015 §5](decisions/0015-candidate-scoped-verification.md#5-restrictions-follow-actual-dependencies).
+The implemented candidate records and constitutive links do not supply those decisions.
 
 ---
 

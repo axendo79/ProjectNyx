@@ -6,7 +6,7 @@ Date: 2026-09-08
 
 Related: [ADR 0008](0008-fold-signature-cannot-express-cross-belief-events.md); [ADR 0010](0010-projection-parameters.md); [ADR 0012](0012-whole-view-equality.md); Invariants 9 and 15
 
-Implementation: Pending; implementation is a separate task.
+Implementation: Partial under projector "1": distinct recorded identity scopes, candidate evidence/provenance, and scalar-conflict refusal ship in stage two. Merge/split transitions and historical-successor resolution remain unimplemented under [ADR 0023's stage limits](0023-stage-two-contract.md). Status updated 2026-09-11; implementation-status statements below describe the decision-time state.
 
 ## Context
 

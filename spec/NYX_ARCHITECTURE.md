@@ -1,8 +1,8 @@
 # Nyx Architecture
 
-**Status:** Epistemic kernel + governance defined; hardened against five adversarial review passes (GLM, Qwen ×2, plus two complexity/scope reviews). Resolved View projection model **decided**: materialized-delta (§1). Hot-path cost tiers and phased build order are now explicit (§6, §12) — this round tightened hardware footprint and code surface as *implementation choices under existing invariants*, not new invariants; the Constitution did not need to grow to absorb it. Ready for Phase 1 implementation (§12).
+**Status:** The Python/SQLite walking skeleton and stage two under projector "1" are implemented. Broader governance subsystems remain unbuilt; the phase plan in §12 is not a completion checklist. Current stage scope is governed by [ADR 0023](../decisions/0023-stage-two-contract.md). Accepted ADRs supersede this document where they conflict.
 
-**Last update (Jul 11 2026):** Extended Invariant 11 with the `meta_commentary` self-referential-output boundary (`callback` vs `self_reference` subtypes, drift-monitored ceiling on the latter only); added sandbox-as-forked-event-log as the parameter-tuning mechanism (§4 failure modes, no runtime mode flag); flagged the personality-emergence layer as an explicit unspecified open item (§13) — the drift monitor Inv. 11 references is named but **not yet designed or council-reviewed**. These are extensions under the existing Constitution, not new invariants. Not yet run past the council; a reviewer should confirm they don't smuggle a promotion path.
+**Last update (Sep 11 2026):** Corrected superseded claims and implementation status against accepted ADRs and shipped code. No new decisions. The personality-emergence layer and drift monitor remain unspecified (§13).
 
 **What Nyx is:** an **epistemic kernel** — the protected core that governs what a system believes and how it earns those beliefs. Not a wrapper in the trivial sense, not a full OS. A kernel: it enforces the invariants nothing else may violate, arbitrates finite resources, mediates what becomes knowledge. It governs **belief**, not hardware and not action. An LLM runs *inside* it; agentic/cognitive layers run *on top* as applications, consuming governed beliefs but never reaching past the kernel to corrupt them.
 
@@ -10,7 +10,7 @@
 
 **Governing invariant:** *Nyx never confuses stored text with stored truth, nor stored observation with derived reasoning. Layer A is the closest thing to a local **epistemic ground record** — it preserves what was **asserted**, not what is **true**. All truth claims are provisional, source-bound, and reversible through append-only correction. Derived reasoning is transient unless independently confirmed and recorded as a new event.*
 
-**Document authority (two-file provenance rule):** this file is authoritative for *what and why* (invariants, component responsibilities, rationale). NYX_V0_IMPLEMENTATION.md is authoritative for *how* (schema, deterministic algorithms, defaults, tests). On conflict, the **more specific mechanical statement wins**, and the other file is the bug to fix — not a second opinion to reconcile in prose. A spec about provenance cannot have two files silently disagreeing about the same fact.
+**Document authority:** accepted numbered ADRs in `decisions/` supersede both specifications where they conflict. Subject to those ADRs, this file is authoritative for *what and why* (invariants, component responsibilities, rationale), and NYX_V0_IMPLEMENTATION.md for *how* (schema, deterministic algorithms, defaults, tests). Between the specifications, the more specific mechanical statement wins; it cannot override an accepted ADR.
 
 ---
 
@@ -47,11 +47,13 @@ The log records *assertions about* reality; it is not reality. Current belief is
 
 **Layer B — Synthesis / Derived Knowledge.** Dream, reflection, scoring, entity resolution, generated statements. Reads Layer A, never mutates it. Output is derived and, by default, not stored (§2).
 
-**Resolved View — materialized deterministic projection.** **Decided:** the view is **materialized by a deterministic delta-reducer**, not recomputed by full replay on every read (full replay is O(N) and stalls at scale). Each new Layer A event is folded incrementally into the materialized state, which carries a **version hash**; reads check freshness and serve **stale-with-warning** (§8) if behind. **Full replay is strictly the crash-recovery path.** The projection obeys Invariant 9 — deterministic, versioned, computed `as_of` an explicit time. Per Commit-Point Sovereignty, the materialized view is always rebuildable from Layer A and never the sole copy of anything.
+**Resolved View — materialized deterministic projection.** **Decided:** the view is **materialized by a deterministic delta-reducer**, not recomputed by full replay on every read (full replay is O(N) and stalls at scale). Each new Layer A event is folded incrementally into the materialized state, which carries a **version hash**; the stale-with-warning read requirement is described in §8. **The recovery-only replay rule is subject to [ADR 0012's explicit whole-view evaluation exception](../decisions/0012-whole-view-equality.md#explicit-whole-view-evaluation-exception).** The projection obeys Invariant 9 — deterministic, versioned, computed `as_of` an explicit time. Per Commit-Point Sovereignty, the materialized view is always rebuildable from Layer A and never the sole copy of anything. Version "1" belief reads implement stale labels; legacy version "0" reads do not yet implement that disclosure.
 
-**Value resolution keys on `occurred_at`, not fold order.** Fold *order* is insertion order (rowid) for hash-chain determinism — but the *value* a belief resolves to must key on `occurred_at`, because the two diverge at the offline-reconnection seam (§5): a backlog event appends at reconnect time (high rowid) carrying an old `occurred_at`, and naive last-fold-wins would let a three-week-old observation override a newer value already materialized. Rule: **a late-arriving event whose `occurred_at` predates the currently-materialized value updates provenance and the support set but does NOT supersede the newer value.** `as_of` handles historical *queries*; this rule handles *current-value correctness* — they are different problems and both are required. (This is the twin of the entity-time-travel failure, §4, and surfaces only at the reconnection seam.)
+**Projector "0" ordinary-observation value resolution keys on `occurred_at`, not fold order.** Fold *order* is insertion order (rowid) for hash-chain determinism — but the *value* a belief resolves to must key on `occurred_at`, because the two diverge at the offline-reconnection seam (§5): a backlog event appends at reconnect time (high rowid) carrying an old `occurred_at`, and naive last-fold-wins would let a three-week-old observation override a newer value already materialized. Rule: **a late-arriving observation whose `occurred_at` predates the currently-materialized value updates provenance and the support set but does NOT supersede the newer value.** `as_of` handles historical *queries*; this rule handles *current-value correctness*. This behavior is superseded under projector "1" by [ADR 0024](../decisions/0024-no-authoritative-head.md). Correction behavior is governed by [ADRs 0004](../decisions/0004-correction-appended-supersedes-via-superseding-events.md) and [0005](../decisions/0005-backdated-corrections-fail-loud-pending-semantics.md).
 
 ### Write path
+This is the target pipeline. The shipped wrappers publish synchronously after the separate append commit; no background worker is started. Rejection recording is unbuilt: the current validation paths raise without appending a rejection event.
+
 ```
 input
   → immune check (tiered cascade, §3 — gate / classify / reject-and-RECORD malformed; rejections are logged events)
@@ -101,13 +103,15 @@ verifiability:      externally_checkable | locally_checkable | subjective | stru
 | questioned | verified | new independent corroboration | **Yes** | No |
 | questioned | quarantined | failed audit / malicious source / invalid provenance | No | Yes |
 | quarantined | questioned | privileged human restoration with reason | Yes / privileged | Maybe |
-| any | superseded | correction event resolves prior event | depends on source | Yes (structural) |
+| — | — | Correction supersession: see [ADR 0004](../decisions/0004-correction-appended-supersedes-via-superseding-events.md); projector "1": [ADR 0018](../decisions/0018-correction-supersedes-candidates.md), subject to [ADR 0023 §5](../decisions/0023-stage-two-contract.md#5-corrections-are-deferred-under-version-1) | — | — |
 | any | redacted | privacy/security/legal policy | privileged policy | Yes |
 
 ### Memory vs. derived (Invariant 7)
 A derived statement is generated at answer-time and **discarded** — durable only via an oracle event that appends a **new** event. Confirmation *creates*; it never *promotes*. Observations do double duty: overriding a guess corrects the belief **and** grades the reasoning (§7).
 
 ### Support sets (Invariant 6)
+The scalar example below is projector "0" only. For projector "1", see [ADR 0015](../decisions/0015-candidate-scoped-verification.md) and [ADR 0024](../decisions/0024-no-authoritative-head.md).
+
 ```json
 { "belief_id": "entity:legion/property:ram", "current_value": "64GB",
   "verification_state": "verified", "verifiability": "externally_checkable",
@@ -120,9 +124,9 @@ A derived statement is generated at answer-time and **discarded** — durable on
 **Corroboration counts source classes, not events.** State thresholds treat each supporting event as a unit of evidence, but real ingestion is correlated by construction — multiple models sharing training data and the same prompt context, a Dream synthesis re-entering as a "new" event, one fact pasted from two documents. That's independent-looking corroboration that isn't independent, and it systematically overcalls VERIFIED in exactly a multi-model-council workflow. Fix: every event carries a `source_class` field; corroboration is counted in **distinct source classes**, not raw event count. Outputs from a shared context (e.g. a full council pass in one session) collapse to one class regardless of how many models produced them.
 
 ### Confidence governance (rules, not formulas)
-**Two different things are both called "confidence" — separate them.** (1) **User-facing epistemic confidence** — a synthesized score shown to a person as "how sure is this claim." Genuinely deferred (V0 §3): v0 surfaces `verification_state` + support set instead, no synthesized number. (2) **Internal ordering scalar** — a value the system needs *now* to rank and gate: it is already load-bearing in the entity-link ceiling (§11), the Liver queue's low-confidence term (§3), and corroboration gating. This one is **not deferrable** — the arithmetic that consumes it (e.g. the `min()` ceiling) needs a real value at v0. V0 §1 defines what that scalar actually is (corroboration count / state ordinal), not a synthesized float. Do not conflate: deferring (1) does not defer (2), and the spec previously read as if it did.
+**Two different things are both called "confidence" — separate them.** (1) **User-facing epistemic confidence** — a synthesized score shown to a person as "how sure is this claim." Deferred (V0 §3). (2) **Internal ordering scalar** — the legacy specification is in V0 §1; `ordering.claim_scalar` and `ordering.effective_confidence` remain stubs, and their broader consumers are unbuilt. For the implemented bootstrap-link treatment, see [ADR 0021](../decisions/0021-bootstrap-link-treatment.md).
 
-Coefficients for any eventual synthesized (1) are TBD (§13), from runtime data. The system must satisfy, using (2): monotonic offline; corroboration gates state; entity-link confidence is a ceiling (§11); minimum sample floor; decay is category-dependent and `as_of`-evaluated.
+Coefficients for any eventual synthesized (1) are TBD (§13), from runtime data. The system must satisfy: monotonic offline; corroboration gates state; minimum sample floor; decay is category-dependent and `as_of`-evaluated. For entity-link ceiling applicability, see [ADR 0021](../decisions/0021-bootstrap-link-treatment.md#3-confidence-ceiling-computation).
 
 ---
 
@@ -135,11 +139,11 @@ Each catches a distinct failure mode nothing else covers.
 - **Stage 2 (small, CPU-viable):** an existing purpose-built classifier (a Prompt-Guard-class model, ~20–90M params) for known attack patterns. Externally maintained — avoids owning a training/vetting pipeline for this stage alone.
 - **Stage 3 (STLM, non-resident):** loads only for input still ambiguous after Stages 1–2. Intermittent cost, not continuous GPU residency. **Cold-start caveat:** the "adaptive, Dream-retrained" property is a *later* capability, not a v0 one. Dream ships in Phase 3 and the threat-signature corpus accumulates over time from zero — so until the corpus crosses a usable threshold, Stage 3 is a **static pretrained classifier**, functionally a second Stage 2, and should be described as such. Adaptivity requires Dream + a corpus + a retraining loop all existing; claiming "gets smarter over time" before those exist is the same overreach as claiming a confidence score that's deferred.
 - **Stage 4 (LLM):** only payloads surviving all three reach Nyx Jr.
-**Rejections at any stage are logged events** — a silently-dropping gate is unauditable (its version of record-of-absence). The Stage-4 survivor gets the **affect split** (Inv. 11). The STLM's **retraining pipeline is untrusted input**: signed/vetted signature sources, per-update audit trail, rollback-able, spleen halts retraining on false-positive spike, human sign-off until proven safe. *Immediate.*
+**Rejections at any stage must be logged events** — a silently-dropping gate is unauditable (its version of record-of-absence). Rejection recording is unbuilt; current validation raises without recording a rejection event. The Stage-4 survivor gets the **affect split** (Inv. 11). The STLM's **retraining pipeline is untrusted input**: signed/vetted signature sources, per-update audit trail, rollback-able, spleen halts retraining on false-positive spike, human sign-off until proven safe. *Immediate.*
 
 **Liver — *re-evaluate existing memory*.** Periodic audit. Checks: evidence drift, source drift, staleness, dependency drift (§4). **Priority queue**, not full rescan — high priority: single-source, low-confidence-model-derived, old, heavily-referenced, suddenly-conflicting.
 
-**Re-derivation cost is bounded by content-addressed dependency hashing (incremental view maintenance) — the same pattern incremental build systems use for cache invalidation, not a bespoke structure.** Each Layer B derivation stores a hash of the specific Layer A event IDs it depended on. On audit: hash unchanged → skip, zero-cost lookup; hash changed → only then trigger the expensive re-derivation LLM call. Converts Liver cost from scaling with *total-claims-×-time* to scaling with *actual-change-in-the-log*. Runs under the Budget Manager's `idle_compute_budget` (§6). *Periodic.* (Dependency-hash **mechanism** decided; exact queue-scoring formula + cascade budget still TBD, §13 — thinnest section.)
+**Re-derivation cost is bounded by content-addressed dependency hashing (incremental view maintenance) — the same pattern incremental build systems use for cache invalidation, not a bespoke structure.** Each Layer B derivation stores a hash of the specific Layer A event IDs it depended on. On audit: hash unchanged → skip, zero-cost lookup; hash changed → only then trigger the expensive re-derivation LLM call. Converts Liver cost from scaling with *total-claims-×-time* to scaling with *actual-change-in-the-log*. Runs under the Budget Manager's `idle_compute_budget` (§6). *Periodic.* (Dependency hashing is implemented; queue-scoring defaults are specified in V0 §2. The Liver consumer and cascade budget remain unbuilt/open, §13.)
 
 **Spleen — *observe system health*.** Observation only. Metrics: memory growth, confidence distribution, contradiction rate, quarantine rate, Dream yield, source-reliability trend, immune false-positive rate. Must have **thresholds + consumers**. Triggers: contradiction spike → re-prioritize liver; immune false-positive spike → halt retraining; anomaly → escalate to user. *Continuous.*
 
@@ -159,13 +163,13 @@ Each catches a distinct failure mode nothing else covers.
 
 **Recursive belief inflation.** → Inv. 5–7: derived statements never stored; only oracle-confirmed *events* enter Layer A.
 
-**Resolved View drift / staleness & full-replay performance cliff.** → **decided**: materialized version-hashed delta-projection; stale-with-warning; full replay is recovery-only (§1).
+**Resolved View drift / staleness & full-replay performance cliff.** → **decided**: materialized version-hashed delta-projection; stale-with-warning (implementation status in §1); replay scope follows [ADR 0012](../decisions/0012-whole-view-equality.md#explicit-whole-view-evaluation-exception).
 
 **Layer A immutability vs. audit demotion.** → append-a-correction; ACC-lite (a **derivation validator**, Inv. 4) reads the Resolved View.
 
 **Entity resolution time-travel.** A merge of A+B→C at T2 must not make a T1 event referencing A read as C. → **time-aware `as_of` projection**: events keep immutable pointers to the mention active at their time; merges alter the projection only forward from the merge event.
 
-**Out-of-order fold at the reconnection seam (silent, twin of time-travel).** Fold order is rowid (insertion); an offline-backlog event (§5) appends at reconnect time with an old `occurred_at`, and naive last-fold-wins lets a stale-time observation override a newer materialized value. → value resolution keys on `occurred_at`, not fold order: a late-arriving older event updates provenance/support-set but never supersedes a newer value (§1). Survived every prior review because it only appears when the reconnection path is traced, and reviewers read components, not seams.
+**Out-of-order fold at the reconnection seam (projector "0").** See §1's legacy observation value-recency rule. For projector "1", that behavior is superseded by [ADR 0024](../decisions/0024-no-authoritative-head.md).
 
 **Non-deterministic replay via probabilistic entity links.** → entity-resolution **decisions** are explicit Layer A events; the resolver *proposes* (soft, out-of-log), Layer A *disposes*; the projection folds only over **accepted** decisions.
 
@@ -201,7 +205,7 @@ Each catches a distinct failure mode nothing else covers.
 
 **Three oracle classes** (Invariant 4): world oracle (promotes), derivation validator (validates synthesis, demotes/grades, cannot promote), structural auditor (demotes, cannot grade).
 
-**Online (Dream's external re-check).** Expensive, rate-limited, the only path injecting an *independent* signal. (Caveat: the open web is often unfetchable — bot detection, 429s — so local corpus and oracle-confirmed events matter accordingly.)
+**Online (Dream's external re-check).** Expensive and rate-limited; this subsystem is unbuilt. For the independent-signal status of shipped direct observations, see [ADR 0001](../decisions/0001-observation-recorded-resolves-to-verified.md). (Caveat: the open web is often unfetchable — bot detection, 429s — so local corpus and oracle-confirmed events matter accordingly.)
 
 **Offline.** Cannot confirm truth; triages. Three checks: internal contradiction (subject to queryable-origin rule below); re-derivation from Layer A (a *derivation validator*, highest yield, does not promote); provenance/plausibility (structural auditor). **Demote-only offline.**
 
@@ -222,7 +226,7 @@ Each catches a distinct failure mode nothing else covers.
 ### Cost tiers: governance is exception machinery, not default machinery
 Reading the invariants as "every write touches the full apparatus" makes the system look heavier than it runs. It doesn't, once stated explicitly:
 - **Routine read:** hits the materialized Resolved View (§1), returns. No oracle, no liver, no support-set expansion — those exist for when the Belief Inspector (§8) is opened, not for every answer.
-- **Routine write:** immune Stages 1–2 (cheap, deterministic/CPU) → append → async delta-reduce. Liver, verification enqueue, and process-trace run **off-path**, under the Budget Manager's idle schedule (below) — never blocking the write.
+- **Routine write (target):** immune Stages 1–2 (cheap, deterministic/CPU) → append → async delta-reduce. Liver, verification enqueue, and process-trace run **off-path**, under the Budget Manager's idle schedule (below) — never blocking the write. These broader consumers and the asynchronous worker are unbuilt; shipped wrapper publication is synchronous after the separate append commit (§1).
 - **Escalation triggers:** a contradiction is detected; stakes are flagged (governance depth); a cheap check fails and Stage 3/4 of the immune cascade is needed; the user opens the Inspector; an oracle event needs hypothesis matching.
 
 This is the concrete answer to "keep every feature without the system feeling heavy": nothing is cut — most of it just doesn't fire on the common path.
@@ -268,7 +272,7 @@ Optimizes for **trust, not chat**. UI-constitutional rules:
 - **Origin first, not score.** Never render decimal confidence (Inv. 2).
 - **Unverifiable-by-design is a first-class visual state**, not a QUESTIONED look.
 - **Separate truth-state / operational-state / memory-state** visually.
-- **Stale-projection warning** when a read is served against a not-yet-caught-up view (§1). Reads **serve stale-labeled rather than blocking** on a background fold — for a local single-user system a labeled stale read beats a stalled one; the synchronous `entity_event_index` (§1) is what makes "is this stale" answerable without racing.
+- **Stale-projection warning** when a read is served against a not-yet-caught-up view (§1). This disclosure ships for projector "1" belief reads; version "0" reads remain unlabeled. The current freshness contract is in [ADR 0014 §8](../decisions/0014-cross-belief-reducer-and-hash-lineage.md#8-append-freshness-and-derived-progress).
 - **Degraded states surface their own explanations; healthy states stay silent.**
 - **Personality narrates state but never blurs magnitude** (Inv. 11).
 - **Progressive-disclosure tiers, no upward leak.** One always-visible signal; per-claim state at reading tier; Belief Inspector / metrics at inspect tier.
@@ -317,11 +321,11 @@ Storage is the exception; every pass grades its own reasoning; the loop knows wh
 
 ## 11. Identity Layer — v1 minimum now, full graph v2
 
-**v1 already depends on identity** — soft-linking ships now; only the full canonical graph is v2.
+**Identity implementation status:** scoped bootstrap ships under projector "1". Scored matching links and the full identity graph remain unimplemented. Current stage scope is governed by [ADR 0023](../decisions/0023-stage-two-contract.md).
 
 **Danger addressed is false *sameness*.** Identity is **soft and reversible**.
 
-**v1 minimum:** `mention_id · candidate_entity_id · canonical_entity_id (nullable) · entity_link_confidence · link_basis · link_state: proposed|accepted|rejected|split`. **Invariant:** no claim enters active resolved belief without an explicit entity-link state; weak links capped by link confidence (Inv. 6 ceiling), never contaminate canonical entities without corroboration.
+**Identity-link state and confidence:** the former uniform scored-link minimum is superseded for bootstrap by [ADR 0021](../decisions/0021-bootstrap-link-treatment.md). **Invariant:** no claim enters active resolved belief without an explicit entity-link state. See that ADR for the applicable state and ceiling treatment.
 
 **Determinism preserved** (Inv. 9): resolver **proposes** (soft, out-of-log); Layer A **disposes** (accepted decisions are explicit events); the projection folds only over accepted decisions. Time-aware: merges alter the projection only forward from the merge event.
 
@@ -341,7 +345,7 @@ The spec above is deliberately more complete than month-one code — that is wha
 
 - **Phase 1:** Layer A (SQLite events table, trigger-enforced append-only), Immune Stages 1–2, basic materialized Resolved View (delta-reducer, version hash), Constitution invariants 1–9. Enough to durably store and read governed beliefs.
 - **Phase 2:** Liver with a real priority queue and the dependency-hash mechanism (§3); Budget Manager's idle-gating and policy/enforcement split (§6).
-- **Phase 3:** process-trace + oracle matching (§7), Identity Layer v1 soft-linking (§11), verification debt + offline reconciliation (§5), immune Stage 3 (STLM tier — ships **static**; adaptivity waits on a threshold-sized threat corpus, §3). Note: offline reconciliation lands here, so the `occurred_at` value-resolution rule (§1, §4) must be in the reducer *before* this phase, not bolted on after.
+- **Phase 3:** process-trace + oracle matching (§7), Identity Layer v1 soft-linking (§11), verification debt + offline reconciliation (§5), immune Stage 3 (STLM tier — ships **static**; adaptivity waits on a threshold-sized threat corpus, §3). The `occurred_at` value-resolution prerequisite applies to projector "0"; for projector "1", see [ADR 0024](../decisions/0024-no-authoritative-head.md).
 
 The full spec stays the reference; this is the order reality gets checked against it.
 
@@ -355,18 +359,18 @@ Determinism makes these traces near-free to run as permanent property tests (e.g
 
 ## 13. Open implementation TBDs
 
-- Liver priority-queue **scoring/ordering**, cascade **budget + transitive depth**. *(Dependency-hash mechanism decided, §3; scoring formula is not.)*
-- Canonical event **serialization, ordering, idempotency** rules; hash-chain + checkpoint + replay-verifier.
-- Delta-reducer contract: schema migration, `as_of` decay evaluation. (Value-recency tie-break **decided**: key on `occurred_at`, §1/§4 — remaining tie-breaks are same-`occurred_at` collisions, resolve by rowid.)
-- **Unified content-addressing scheme** — one canonical hashing utility shared by the Liver's dependency hash and the process trace's `hypothesis_id`/semantic hash (§3, §7), rather than two ad hoc ID systems.
-- `idle_compute_budget` exact thresholds (% VRAM, tokens/min) — from runtime data, not invented.
-- Spleen threshold values; confidence math coefficients — from runtime data.
+- Liver scoring defaults are specified in V0 §2 and stored in `src/nyx/config.py`; the queue, cascade **budget + transitive depth**, and empirical retuning remain open.
+- Event serialization, ordering, idempotency, and hash chaining ship in `src/nyx/hashing.py`, `events.py`, `projection.py`, and `storage.py`. Checkpoints and a standalone replay-verifier subsystem remain unbuilt.
+- Reducer/evaluation contracts are governed by [ADRs 0010](../decisions/0010-projection-parameters.md), [0012](../decisions/0012-whole-view-equality.md), and [0014](../decisions/0014-cross-belief-reducer-and-hash-lineage.md); stage-two implementation ships. Database compatibility policy is governed by [ADR 0011](../decisions/0011-database-schema-versioning.md), with current version selection in [ADR 0017](../decisions/0017-schema-version-3.md). Decay evaluation remains deferred. The legacy `occurred_at`/rowid value tie-break is projector "0" only; see [ADR 0024](../decisions/0024-no-authoritative-head.md) for projector "1".
+- **Unified hashing utility** is implemented in `src/nyx/hashing.py`; Liver and process-trace consumers remain unbuilt.
+- `idle_compute_budget` defaults are specified in V0 §2 and stored in `src/nyx/config.py`; enforcement and empirical retuning remain unbuilt.
+- Spleen threshold defaults are specified in V0 §2 and stored in `src/nyx/config.py`; monitoring is unbuilt. Confidence math coefficients remain deferred pending runtime data.
 - Immune signature-update vetting: automated source-trust vs. human sign-off.
 - Hierarchical-prior back-off cutoffs.
 - Reconnection reconciliation ordering.
 - Entity resolver similarity thresholds; entity-link ceiling composition on multi-hop; merge-suspicion signals.
-- Process-trace schema + retention.
-- Record-of-absence schema; `search_scope_signature` computation.
+- Process-trace schema exists in `schema.sql`; handlers and retention remain unbuilt.
+- Record-of-absence schema exists in `schema.sql`; handlers and `search_scope_signature` computation remain unbuilt.
 - Erasure mechanism choice per data class (crypto-erasure vs. redaction-event).
 - Preemption Protocol quarantine-bin handling.
 - **Speculative decoding** (draft-model + large-model verification, DSpark-style) as a local reasoning-tier speed optimization — orthogonal to governance, evaluate independently.
@@ -379,14 +383,14 @@ Determinism makes these traces near-free to run as permanent property tests (e.g
 
 - **Epistemic kernel** — protected core governing what is believed and how beliefs are earned.
 - **Reality Layer (Layer A)** — append-only `events` table, engine-enforced. The epistemic ground record.
-- **Resolved View** — materialized, version-hashed, deterministic projection via a delta-reducer, `as_of` an explicit time. Full replay is recovery-only.
+- **Resolved View** — materialized, version-hashed, deterministic projection via a delta-reducer, `as_of` an explicit time. Replay scope follows [ADR 0012](../decisions/0012-whole-view-equality.md#explicit-whole-view-evaluation-exception).
 - **Cost tier / hot path** — the explicit split between the cheap default path (routine read/write) and the escalation path (full governance). Governance is exception machinery, not default machinery (§6).
 - **Origin type** — primary metadata determining what a claim's confidence means. Immutable per event.
 - **Support set** — the set of supporting/opposing/superseding/gap events a resolved belief folds.
 - **Oracle (three classes)** — world oracle (promotes), derivation validator (validates/demotes/grades, cannot promote), structural auditor (demotes only).
 - **Content-addressed dependency hash** — the mechanism bounding Liver re-derivation and process-trace oracle matching: hash what a derivation depended on, compare, redo work only if changed. Same pattern as incremental build systems (Nix/Bazel).
 - **Derived statement** — a Layer B generation. Transient; enters Layer A only via a new oracle-confirmed event.
-- **Entity / entity-link confidence** — a stable thing a claim is about; link confidence ceilings claim confidence.
+- **Entity / entity-link confidence** — a thing a claim is about; bootstrap-link state and ceiling applicability are governed by [ADR 0021](../decisions/0021-bootstrap-link-treatment.md).
 - **Process trace** — record of how a reasoning attempt went. Separate store, same durability as Layer A.
 - **Record of absence / gap** — an event documenting a search that found nothing, carrying a `search_scope_signature`.
 - **Verification debt** — backlog of QUESTIONED items an offline node couldn't resolve.
@@ -399,4 +403,4 @@ Determinism makes these traces near-free to run as permanent property tests (e.g
 
 ## Carryover from prior records (context; reconciled with current invariants)
 
-Three-tier cognitive stack (small → Dream → large). ACC-lite is a **derivation validator** (Inv. 4), not a world oracle; coverage bounded by what's stored. Rules 14/15 (model confidence = annotation, not gate). SQLite schema: WAL mode, `events` table with UPDATE/DELETE-blocking trigger, `peak_score`, `last_known_score`, `dream_source_map` junction, schema versioning. **Correction:** "soft deletes" contradicts Invariant 1 — replace `deleted_at` flags with an appended `superseded_by`/`retracted` event. Repo: axendo79/nyx-memory. P0 fixes (re-sequenced): projection model **decided** (materialized-delta) → `safe_append_event` (formerly safe_write_jsonl) → monotonic-growth test extended to process-trace + record-of-absence substrates → second-order injection in THREAT_MODEL.md (now addressed structurally by the tiered immune cascade, §3) → fsync/orphan-.tmp handling → ~~Python 3.14→3.11/3.12~~ (SUPERSEDED by decisions/0009: 3.14 re-adopted as the target; the downgrade was never enforced and the suite is green on 3.14).
+Three-tier cognitive stack (small → Dream → large). ACC-lite is a **derivation validator** (Inv. 4), not a world oracle; coverage bounded by what's stored. Rules 14/15 (model confidence = annotation, not gate). SQLite schema: WAL mode, `events` table with UPDATE/DELETE-blocking trigger, schema versioning. The earlier `peak_score`, `last_known_score`, and `dream_source_map` references are historical and absent from shipped `schema.sql`. **Correction:** "soft deletes" contradicts Invariant 1 — replace `deleted_at` flags with an appended `superseded_by`/`retracted` event. Repo: axendo79/nyx-memory. P0 fixes (re-sequenced): projection model **decided** (materialized-delta) → `safe_append_event` (formerly safe_write_jsonl) → monotonic-growth test extended to process-trace + record-of-absence substrates → second-order injection in THREAT_MODEL.md (now addressed structurally by the tiered immune cascade, §3) → fsync/orphan-.tmp handling → ~~Python 3.14→3.11/3.12~~ (SUPERSEDED by decisions/0009: 3.14 re-adopted as the target; the downgrade was never enforced and the suite is green on 3.14).

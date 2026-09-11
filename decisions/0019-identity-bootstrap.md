@@ -1,13 +1,12 @@
 # ADR 0019: Identity Bootstrap
 
-Status: Accepted
+Status: Accepted; superseded in part by [ADR 0021](0021-bootstrap-link-treatment.md) for section 5's bootstrap link treatment, and by [ADR 0023 section 3](0023-stage-two-contract.md#3-existing-mentions-and-the-bootstrap-cost) for the unconditional two-appends-per-fact consequence.
 
 Date: 2026-09-09
 
 Related: [ADR 0013](0013-cross-belief-identity-semantics.md); [ADR 0014 section 3](0014-cross-belief-reducer-and-hash-lineage.md#3-recorded-output-ids-and-acceptance); [ADR 0015 section 3](0015-candidate-scoped-verification.md#3-candidate-identity-and-deduplication); [ADR 0018](0018-correction-supersedes-candidates.md); architecture section 11; Invariants 1, 8, and 9
 
-Implementation: Pending; implementation is a separate task. Initial link state
-and confidence treatment remain undecided and block dependent implementation.
+Implementation: Scoped mention/subject bootstrap, separate observations, recorded identities, and retries ship under projector "1", with link treatment governed by [ADR 0021](0021-bootstrap-link-treatment.md). Existing-subject association and mention-correction mechanics remain unimplemented and require further decisions. Status updated 2026-09-11; implementation-status statements below describe the decision-time state, subject to the supersessions in Status.
 
 ## Context
 

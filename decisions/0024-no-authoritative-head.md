@@ -8,7 +8,7 @@ Supersedes: The ordinary-observation value-recency behavior in implementation co
 
 Related: [ADR 0013 section 4](0013-cross-belief-identity-semantics.md#4-conflicting-values); [ADR 0015](0015-candidate-scoped-verification.md); [ADR 0022](0022-belief-container-uniqueness.md); [ADR 0023](0023-stage-two-contract.md)
 
-Implementation: Pending; implementation is a separate task.
+Implementation: Implemented under projector "1" in `src/nyx/reducer.py` and the candidate/scalar read APIs in `src/nyx/storage.py`, with coverage in `tests/test_reducer_boundary.py`. Additional scalar-read contracts remain deferred. Status updated 2026-09-11; implementation-status statements below describe the decision-time state.
 
 ## Context
 

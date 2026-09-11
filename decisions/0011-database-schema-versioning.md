@@ -1,6 +1,6 @@
 # ADR 0011: Database Schema Versioning
 
-Status: Accepted
+Status: Accepted; superseded in part by [ADR 0016](0016-schema-version-2.md) and then [ADR 0017](0017-schema-version-3.md), only the supported database schema version. Initialization and validation rules remain in force.
 
 Date: 2026-09-08
 

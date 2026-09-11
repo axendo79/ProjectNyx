@@ -8,7 +8,7 @@ Supersedes: [ADR 0004](0004-correction-appended-supersedes-via-superseding-event
 
 Related: [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md); [ADR 0015](0015-candidate-scoped-verification.md)
 
-Implementation: Pending; implementation is a separate task.
+Implementation: Deferred under [ADR 0023 section 5](0023-stage-two-contract.md#5-corrections-are-deferred-under-version-1). Projector "1" refuses corrections at append and replay, including submissions with explicit targets; candidate-target eligibility remains incomplete. Status updated 2026-09-11.
 
 ## Context
 

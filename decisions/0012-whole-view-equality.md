@@ -6,7 +6,7 @@ Date: 2026-09-08
 
 Related: [ADR 0010](0010-projection-parameters.md); Invariant 9
 
-Implementation: Pending; implementation is a separate task.
+Implementation: Implemented in `storage.evaluate_whole_view`, with acceptance coverage in `tests/test_whole_view_equality.py`. Status updated 2026-09-11; implementation-status statements below describe the decision-time state.
 
 ## Context
 

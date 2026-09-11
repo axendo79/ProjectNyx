@@ -1,6 +1,6 @@
 # 0004 — `correction_appended` supersedes via a `superseding_events` column; the belief head is never marked `superseded`
 
-- **Status:** Accepted — ratified by Josh, 2026-07-13
+- **Status:** Accepted — ratified by Josh, 2026-07-13; superseded in part by [ADR 0018](0018-correction-supersedes-candidates.md) for projector "1" correction payloads and supersession representation. The backdated-correction open gap is subject to [ADR 0005](0005-backdated-corrections-fail-loud-pending-semantics.md).
 - **Date:** 2026-07-13
 - **Scope:** `correction_appended` fold handler — `src/nyx/projection.py` `fold()`,
   `schema.sql` (`resolved_beliefs`), `src/nyx/storage.py`, `src/nyx/skeleton.py`
