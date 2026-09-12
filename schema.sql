@@ -185,6 +185,21 @@ CREATE TABLE projected_events (
     PRIMARY KEY (projector_version, event_id)
 );
 
+-- ADR 0025: version-2 compact headers stay in projected_beliefs; accumulated
+-- content and indexes use immutable nodes plus independently published roots.
+CREATE TABLE committed_nodes (
+    projector_version TEXT NOT NULL CHECK (projector_version = '2'),
+    node_hash TEXT NOT NULL,
+    content TEXT NOT NULL,
+    PRIMARY KEY (projector_version, node_hash)
+);
+CREATE TABLE committed_roots (
+    projector_version TEXT NOT NULL CHECK (projector_version = '2'),
+    kind TEXT NOT NULL,
+    root_hash TEXT NOT NULL,
+    PRIMARY KEY (projector_version, kind)
+);
+
 -- Append-side freshness, separate from derived publication and legacy ID scope.
 CREATE TABLE identity_event_index (
     projector_version TEXT NOT NULL,

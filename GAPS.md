@@ -175,6 +175,23 @@ in lineage coverage. Temporal applicability and disagreement resolution remain
 open under [ADR 0024](decisions/0024-no-authoritative-head.md). No aging-out,
 latest-value selection, or value-based candidate compaction ships for version "1".
 
+The repeated serialization and rebuilding of accumulated collections is
+**resolved for projector "2"** by
+[ADR 0025](decisions/0025-incremental-result-commitment.md). Canonical incremental
+trees preserve all candidates, dependencies, and provenance paths; this settles
+representation, not retention or coalescing. Version "1" remains frozen. Full
+content reads still enumerate collections, and immutable historical tree nodes
+are retained. Migration, collection reclamation, and checkpoints do not ship.
+
+### Usage recording
+**Boundary resolved; recording mechanics undecided:**
+[ADR 0026](decisions/0026-usage-is-not-evidence.md) excludes Dream references,
+retrieval exposures, and activation records from evidence and belief lineage.
+It binds the non-authoritative activation direction in `design/`. Recording
+location, durable authority, ordering, retention, recovery, configuration, and
+usage replay remain unspecified. No usage recorder ships; submitting a usage
+event to the world-evidence reducer refuses at append and replay.
+
 ### Additional scalar belief reads
 **Deferred:** [ADR 0024 §2](decisions/0024-no-authoritative-head.md#2-scalar-belief-requests-and-named-candidate-reads).
 Common-value reads for multiple agreeing candidates are undecided. The code also

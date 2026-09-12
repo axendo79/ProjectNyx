@@ -20,7 +20,7 @@ def prepare_mention(conn, *, mention_id, subject_id, text, source, source_class,
 
 
 def prepare_observation(conn, *, claims, source, source_class, occurred_at,
-                        event_id=None, recorded_at=None):
+                        event_id=None, recorded_at=None, projector_version="1"):
     """Name the current belief; the caller supplies fresh IDs for new containers.
 
 Every claim supplies a fresh claim_candidate_id, mention_id, subject_id,
@@ -30,7 +30,7 @@ the writer never redirects a submitted association.
     recorded = []
     for claim in claims:
         claim = dict(claim)
-        current = storage.lookup_current_belief_id(conn, claim["subject_id"], claim["property_id"])
+        current = storage.lookup_current_belief_id(conn, claim["subject_id"], claim["property_id"], projector_version)
         if current is not None:
             if "belief_id" in claim and claim["belief_id"] != current:
                 raise ValueError("submitted belief_id differs from current belief")
@@ -46,9 +46,9 @@ the writer never redirects a submitted association.
         event_id=event_id, recorded_at=recorded_at)
 
 
-def submit(conn, recorded_event, as_of):
+def submit(conn, recorded_event, as_of, projector_version="1"):
     """Append the exact retained pair, then separately publish pending records."""
-    storage.materialize_pending(conn, as_of, "1")
-    appended = storage.safe_append_event(conn, *recorded_event, "1")
-    storage.materialize_pending(conn, as_of, "1")
+    storage.materialize_pending(conn, as_of, projector_version)
+    appended = storage.safe_append_event(conn, *recorded_event, projector_version)
+    storage.materialize_pending(conn, as_of, projector_version)
     return appended

@@ -59,6 +59,27 @@ snapshot, including mention-only prefixes; `project` and `evaluate_whole_view`
 retain their belief-mapping return shape. `storage.read_snapshot` reads the complete
 materialization without replay.
 
+[ADR 0025](decisions/0025-incremental-result-commitment.md) implements the same
+stage-two semantics under explicitly selected projector `"2"`. Canonical Merkle
+maps commit to complete accumulated collections while publication writes changed
+members and tree paths. Version `"1"` bytes and semantics remain frozen, and API
+defaults remain unchanged. Use `project_snapshot(log, as_of, "2")` and pass
+`projector_version="2"` to storage operations and to `prepare_observation`,
+`submit`, and skeleton writers. Mention preparation produces the same event pair.
+
+Full belief reads reconstruct the original logical shape; only the lineage hash
+differs between versions. A version-2 snapshot's `header(belief_id)` exposes
+`collection_roots` and `result_root`. Its `inclusion_proof(belief_id, collection,
+key)` supplies a path for `nyx.merkle.verify(root, key, value, proof)` against a
+trusted collection root. A proof establishes membership, not completeness or
+reducer correctness. Those require content inspection or semantic verification
+such as replay. Named-record reads are indexed; full snapshot reads detach all
+content from the database transaction and still cost proportional to that content.
+
+[ADR 0026](decisions/0026-usage-is-not-evidence.md) binds the activation direction:
+Dream references, retrieval exposures, and activation records never enter world
+evidence or belief lineage. Usage recording mechanics remain undecided.
+
 The version `"1"` writer uses `ingestion.prepare_mention` and
 `ingestion.prepare_observation`, then submits the returned `(Envelope, Payload)`
 pair through `ingestion.submit(conn, pair, as_of)` or the skeleton wrappers
@@ -94,7 +115,8 @@ values and internal punctuation; their field names, enclosing punctuation, and
 all other lineage fields belong to `other`. The four counts sum to the complete
 lineage bytes without double-counting.
 
-Recorded on Python 3.14.2 / Windows 11 on 2026-09-12, in sequential baseline and
+Earlier version-1 `Snapshot.apply` comparison, recorded on Python 3.14.2 / Windows
+11 on 2026-09-12, in sequential baseline and
 optimized runs, using `--sizes 32 64 128 256 512 --repeat 3`:
 
 | Observations | Cumulative lineage bytes, unchanged | Median seconds before | Median seconds after |
@@ -142,6 +164,68 @@ production throughput and do not measure storage snapshot loading/publication.
 For the governing scope
 and unresolved work, see [ADR 0023](decisions/0023-stage-two-contract.md).
 
+The ADR 0025 comparison below uses the current version `"1"` as baseline and
+version `"2"` with the same fixed workload. Both were measured sequentially on
+Python 3.14.2 / Windows 11 on 2026-09-12, three runs per size:
+
+```powershell
+.\.venv\Scripts\python.exe -B scripts/probe_lineage_scaling.py --sizes 32 64 128 256 512 --repeat 3 --projector-version 1 --database --json lineage-before.json
+.\.venv\Scripts\python.exe -B scripts/probe_lineage_scaling.py --sizes 32 64 128 256 512 --repeat 3 --projector-version 2 --database --json lineage-after.json
+```
+
+| Observations | V1 cumulative lineage bytes | V2 cumulative lineage bytes | V1 publication bytes | V2 publication bytes |
+|---:|---:|---:|---:|---:|
+| 32 | 914,109 | 27,693 | 961,540 | 184,529 |
+| 64 | 3,500,237 | 55,501 | 3,593,972 | 396,270 |
+| 128 | 13,692,578 | 111,146 | 13,879,124 | 858,528 |
+| 256 | 54,232,418 | 222,506 | 54,605,076 | 1,848,005 |
+| 512 | 215,970,530 | 445,226 | 216,715,412 | 3,971,210 |
+
+| Observations | V1 reducer seconds | V2 reducer seconds | V1 SQLite seconds | V2 SQLite seconds |
+|---:|---:|---:|---:|---:|
+| 32 | 0.040526 | 0.014482 | 0.196863 | 0.124991 |
+| 64 | 0.144533 | 0.029998 | 0.592123 | 0.257137 |
+| 128 | 0.552268 | 0.064664 | 2.211006 | 0.525239 |
+| 256 | 2.111444 | 0.137076 | 11.294039 | 1.161736 |
+| 512 | 17.821730 | 0.294341 | 30.827170 | 2.413890 |
+
+Reducer timing uses the same timer scope described above. SQLite timing is a
+separate sample on a fresh temporary database using the production WAL settings,
+event construction, safe append and publication, with separate append and
+publication commits. Initialization and final read validation are outside that
+timer. These are workload measurements, not universal latency guarantees; the
+version-1 512-observation timing in particular differs from the earlier run.
+
+Publication bytes count serialized changed delta records in version `"1"`, and
+emitted tree nodes, compact belief headers, and changed root descriptors in
+version `"2"`. They include mention publication, but exclude Layer A, progress
+rows, SQL/index overhead, and filesystem write amplification. They are neither
+database file size nor a count of physical disk writes. At 512 observations,
+version `"2"` emits 9,634 nodes containing 3,474,315 bytes over the whole run.
+The final event emits 23 nodes; its total publication material is 8,889 bytes,
+versus 842,471 bytes in version `"1"`.
+
+The final lineage record falls from 841,017 to 870 bytes: three 66-byte root
+strings and 672 other bytes. Over the whole version-2 run those components total
+33,792 bytes each and 343,850 other bytes. Root strings replace serialization,
+not coverage: full dependency envelopes/payloads, candidate support, provenance
+paths and identity members remain stored and committed.
+
+All 997 prefix fingerprints of complete logical content match between versions
+after excluding only version-specific belief lineage hashes. All five version-1
+final lineage hashes match the previous baseline. Tests additionally compare
+incremental, SQLite and replay results at each prefix, independently reconstruct
+roots from full content, exercise proofs and corrupted storage, and prevent
+collection enumeration on the write path. Version `"0"` goldens remain unchanged.
+The full pytest suite passes: 265 tests on the recorded runtime.
+
+Doubling observations at the upper end now multiplies publication material by
+about 2.15 rather than 4. Bounded updates copy tree paths, typically O(log n),
+with actual work dependent on tree height, changed member count and value size.
+This is not O(1); merges, splits and support restrictions may affect many records.
+Full reads and exhaustive integrity checks still visit content. Created nodes
+are retained; garbage collection and checkpoints remain outside this decision.
+
 `storage.materialize_pending(conn, as_of, projector_version="1")` publishes each
 pending event and its progress atomically after append. `read_belief(...,
 projector_version="1")` includes a `stale` label; `read_belief_status` exposes the
@@ -152,9 +236,13 @@ replay from Layer A; it replaces the selected new-version materialization in one
 transaction. The walking-skeleton calls drive publication synchronously after
 the separate append commit; they do not start a background worker.
 
-Database schema version `3` is required under
-[ADR 0017](decisions/0017-schema-version-3.md). Version-1 and version-2 databases are refused
-unchanged; there is no migration, and recreation is an operator action.
+Database schema version `4` is required under
+[ADR 0025](decisions/0025-incremental-result-commitment.md), superseding ADR 0017's
+schema selection. Older databases, including version `3`, are refused unchanged;
+there is no migration, and recreation is an operator action. Versions `"1"` and
+`"2"` have isolated materializations and progress. Appending a compatible stage-two
+event through either updates freshness for both, so an unadvanced materialization
+is labeled stale. Rebuild and publication select one projector explicitly.
 
 ## Install and run the suite
 
@@ -236,7 +324,7 @@ merge, split, approval, or authority handlers.
 | [0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md) | [reducer.py] `Snapshot`, `EventDelta`, `reduce`; [hashing.py] `belief_lineage`, `canonical_set`; [storage.py] `_append_stage_two`, `_publish_delta`, `materialize_pending`, `read_belief_status`, `rebuild_projection` | `test_snapshot_detached_pure_and_no_clock_or_allocation`, `test_snapshot_apply_detached_branches_and_constructor_equivalence`, `test_snapshot_apply_only_serializes_delta_records`, `test_lineage_complete_result_and_pre_event_dependencies`, `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`, `test_recovery_ignores_corrupt_snapshot_and_rolls_back_failure`, `test_two_connections_cannot_authorize_against_old_append_position` |
 | [0015](decisions/0015-candidate-scoped-verification.md) | [reducer.py] `canonical_claim_candidates`, `evidence_event_ids`, `reduce`. Later standing/approval handlers are absent. | `test_same_value_different_standing_and_identity_paths_survive` (supplied-state fixture), `test_no_head_named_candidate_and_event_evidence_scope`, `test_lineage_covers_candidate_contents_with_predecessors_fixed` |
 | [0016](decisions/0016-schema-version-2.md) | [schema.sql](schema.sql) `derived_progress`; [storage.py] `_publish_delta`, `_read_snapshot`; current schema selection is in row 0017 | `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
-| [0017](decisions/0017-schema-version-3.md) | [storage.py] `DATABASE_SCHEMA_VERSION`, `_validate_schema`; [schema.sql](schema.sql) `projected_*` tables | `test_version_two_existing_database_refuses_byte_unchanged`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
+| [0017](decisions/0017-schema-version-3.md) | [storage.py] `_validate_schema`; [schema.sql](schema.sql) `projected_*` tables. Current schema selection is in row 0025. | `test_version_two_existing_database_refuses_byte_unchanged`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
 | [0018](decisions/0018-correction-supersedes-candidates.md) | No version-"1" correction handler; refusal boundaries in [storage.py] `_append_stage_two` and [reducer.py] `reduce` | `test_deferred_events_refuse_both_boundaries`; successful candidate-correction coverage is absent |
 | [0019](decisions/0019-identity-bootstrap.md) | [ingestion.py] `prepare_mention`, `prepare_observation`, `submit`; [reducer.py] `reduce`; [skeleton.py] `record_mention`, `_record_stage_two` | `test_bootstrap_mention_only_and_confidence`, `test_new_mentions_with_identical_text_and_different_actors_are_isolated`, `test_retained_retry_mention_survives_and_no_remint`, `test_writer_lookup_and_skeleton_two_then_one_events` |
 | [0020](decisions/0020-multi-user-authority-undecided.md) | No authority-policy handler; [reducer.py] `_fields`, `reduce` and [storage.py] `_append_stage_two` provide current rejection boundaries | `test_no_implicit_support_authority_or_other_candidate_roles`, `test_deferred_events_refuse_both_boundaries`; no authority-model acceptance suite |
@@ -244,6 +332,8 @@ merge, split, approval, or authority handlers.
 | [0022](decisions/0022-belief-container-uniqueness.md) | [ingestion.py] `prepare_observation`; [storage.py] `lookup_current_belief_id`; [reducer.py] `Snapshot.current_belief`, `reduce`; [schema.sql](schema.sql) `idx_current_subject_property` | `test_exact_properties_and_current_only_uniqueness`, `test_stale_lookup_duplicate_pair_and_reused_event_id`, `test_writer_lookup_and_skeleton_two_then_one_events` |
 | [0023](decisions/0023-stage-two-contract.md) | [ingestion.py] preparation/submission functions; [reducer.py] `reduce`; [storage.py] `_append_stage_two`; [lineage probe](scripts/probe_lineage_scaling.py) | `test_exact_properties_and_current_only_uniqueness`, `test_missing_explicit_claim_contents_refuse`, `test_one_event_same_belief_multiple_claims`, `test_retained_retry_mention_survives_and_no_remint`, `test_deferred_events_refuse_both_boundaries`. The probe is outside the suite. |
 | [0024](decisions/0024-no-authoritative-head.md) | [reducer.py] `scalar_belief_value`, `reduce`; [storage.py] `read_belief_scalar`, `read_claim_candidate_value` | `test_no_head_named_candidate_and_event_evidence_scope`, `test_one_event_same_belief_multiple_claims`, `test_cutoffs_time_only_lineage_and_unrelated_beliefs` |
+| [0025](decisions/0025-incremental-result-commitment.md) | [merkle.py](src/nyx/merkle.py) canonical trees/proofs; [committed.py](src/nyx/committed.py) version-2 reducer/snapshot; [committed_storage.py](src/nyx/committed_storage.py) indexed loading/publication; [storage.py] dispatch/recovery and schema version 4; [lineage probe](scripts/probe_lineage_scaling.py) | [test_incremental_commitment.py](tests/test_incremental_commitment.py): `test_all_prefixes_replay_storage_independent_roots_and_version_isolation`, `test_write_path_does_not_enumerate_or_rewrite_accumulated_collections`, tree/proof, crash, corruption, concurrency and frozen-byte tests; [schema tests](tests/test_database_schema_versioning.py) |
+| [0026](decisions/0026-usage-is-not-evidence.md) | Binding usage/evidence boundary; usage recording remains unimplemented. [committed.py](src/nyx/committed.py) rejects unsupported world-event types. | [test_incremental_commitment.py](tests/test_incremental_commitment.py), `test_deferred_and_usage_events_refuse_both_boundaries`; no usage subsystem acceptance suite |
 
 [projection.py]: src/nyx/projection.py
 [reducer.py]: src/nyx/reducer.py

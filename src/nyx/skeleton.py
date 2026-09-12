@@ -53,8 +53,8 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any],
     a later event, never by editing one (Invariant 1).
     """
     storage._registered_projector(projector_version)
-    if projector_version == "1":
-        return _record_stage_two(db_path, event_type, submission)
+    if projector_version in ("1", "2"):
+        return _record_stage_two(db_path, event_type, submission, projector_version)
     result = immune.stage1_schema_validate(submission)
     if not result.accepted:
         # Rejections should ultimately be logged events (§3); the reject-and-RECORD
@@ -104,33 +104,33 @@ def record_observation(db_path: str | Path, observation: Mapping[str, Any],
     return _record(db_path, OBSERVATION_RECORDED, observation, projector_version)
 
 
-def _record_stage_two(db_path, event_type, recorded_event):
+def _record_stage_two(db_path, event_type, recorded_event, projector_version="1"):
     from . import ingestion
     from .events import ENTITY_MENTION_RECORDED, Envelope, Payload
     if event_type not in (OBSERVATION_RECORDED, ENTITY_MENTION_RECORDED):
         raise NotImplementedError(f"stage two refuses {event_type!r}")
     if (not isinstance(recorded_event, tuple) or len(recorded_event) != 2
             or not isinstance(recorded_event[0], Envelope) or not isinstance(recorded_event[1], Payload)):
-        raise ValueError("version 1 requires a retained Envelope/Payload pair from nyx.ingestion")
+        raise ValueError(f"version {projector_version} requires a retained Envelope/Payload pair from nyx.ingestion")
     if recorded_event[0].event_type != event_type:
         raise ValueError("recorded event type does not match writer operation")
     conn = storage.init_db(db_path)
     try:
-        ingestion.submit(conn, recorded_event, datetime.now(timezone.utc).isoformat())
+        ingestion.submit(conn, recorded_event, datetime.now(timezone.utc).isoformat(), projector_version)
         import json
         payload = json.loads(recorded_event[1].ciphertext)
         if event_type == ENTITY_MENTION_RECORDED:
-            return storage.read_mention(conn, payload["mention_id"])
-        return {claim["belief_id"]: storage.read_belief(conn, claim["belief_id"], "1")
+            return storage.read_mention(conn, payload["mention_id"], projector_version)
+        return {claim["belief_id"]: storage.read_belief(conn, claim["belief_id"], projector_version)
                 for claim in payload["claims"]}
     finally:
         conn.close()
 
 
-def record_mention(db_path, recorded_event):
-    """Submit one retained entity_mention_recorded event under version 1."""
+def record_mention(db_path, recorded_event, projector_version="1"):
+    """Submit one retained entity_mention_recorded event under the selected version."""
     from .events import ENTITY_MENTION_RECORDED
-    return _record_stage_two(db_path, ENTITY_MENTION_RECORDED, recorded_event)
+    return _record_stage_two(db_path, ENTITY_MENTION_RECORDED, recorded_event, projector_version)
 
 
 def record_correction(db_path: str | Path, correction: Mapping[str, Any],
