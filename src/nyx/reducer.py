@@ -69,11 +69,23 @@ class Snapshot:
         return matches[0] if matches else None
 
     def apply(self, delta: EventDelta, position: int) -> Snapshot:
-        records = self.complete()
+        # Stored JSON strings and their mapping proxies are immutable. Reuse
+        # unchanged records; detach only incoming delta values by serializing
+        # them once. Copy changed maps so earlier prefixes and branches survive.
+        records = dict(self._records)
         for kind in RECORD_KINDS:
-            records[kind].update(getattr(delta, kind))
-        return Snapshot(**records, log_position=position, event_id=delta.event_id,
-                        projector_version=self.projector_version)
+            changes = getattr(delta, kind)
+            if changes:
+                rows = dict(self._records[kind])
+                rows.update({key: hashing.canonical_json(value)
+                             for key, value in changes.items()})
+                records[kind] = MappingProxyType(rows)
+        snapshot = object.__new__(Snapshot)
+        object.__setattr__(snapshot, "projector_version", self.projector_version)
+        object.__setattr__(snapshot, "log_position", position)
+        object.__setattr__(snapshot, "event_id", delta.event_id)
+        object.__setattr__(snapshot, "_records", MappingProxyType(records))
+        return snapshot
 
 
 @dataclass(frozen=True)

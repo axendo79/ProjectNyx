@@ -86,21 +86,60 @@ against the reducer's hash. Three independent runs per size must agree on byte
 counts and final lineage; elapsed time is reported as their median. Use `--sizes`
 and `--repeat` to vary the workload, for example `--sizes 16 32 --repeat 5`.
 
-Recorded on Python 3.14.2 / Windows 11 on 2026-09-11 with the default arguments:
+One additional sample per size profiles components and fingerprints the complete
+snapshot and belief lineage at every prefix. Its elapsed time is not included in
+the reported median. `--json <path>` saves all measurements and prefix fingerprints
+for comparison across changes. Collection byte counts include their JSON array
+values and internal punctuation; their field names, enclosing punctuation, and
+all other lineage fields belong to `other`. The four counts sum to the complete
+lineage bytes without double-counting.
 
-| Observations | Cumulative lineage bytes | MB (1,000,000 bytes) | Median seconds |
+Recorded on Python 3.14.2 / Windows 11 on 2026-09-12, in sequential baseline and
+optimized runs, using `--sizes 32 64 128 256 512 --repeat 3`:
+
+| Observations | Cumulative lineage bytes, unchanged | Median seconds before | Median seconds after |
 |---:|---:|---:|---:|
-| 32 | 914,109 | 0.914109 | 0.055314 |
-| 64 | 3,500,237 | 3.500237 | 0.199777 |
-| 128 | 13,692,578 | 13.692578 | 0.754273 |
+| 32 | 914,109 | 0.053945 | 0.038552 |
+| 64 | 3,500,237 | 0.194593 | 0.138406 |
+| 128 | 13,692,578 | 0.736572 | 0.523406 |
+| 256 | 54,232,418 | 2.885680 | 2.040403 |
+| 512 | 215,970,530 | 11.628160 | 8.634262 |
 
-These replace the earlier undocumented probe measurements. Byte counts are
+`Snapshot.apply` now retains immutable canonical strings for unchanged records
+and serializes only incoming delta records, copying changed maps to preserve old
+prefixes. Elapsed time fell by 26–29% in this workload. Baseline and optimized runs
+matched all 997 complete snapshot fingerprints and every prefix's belief lineage,
+as well as cumulative and final-record component counts. Projector "0" goldens
+remain unchanged; the full suite passed (222 tests).
+
+| Observations | Candidate collection bytes | Event dependency bytes | Identity record bytes | Other bytes |
+|---:|---:|---:|---:|---:|
+| 32 | 372,596 | 512,604 | 10,816 | 18,093 |
+| 64 | 1,470,004 | 1,972,300 | 21,632 | 36,301 |
+| 128 | 5,841,971 | 7,734,597 | 43,264 | 72,746 |
+| 256 | 23,341,299 | 30,658,885 | 86,528 | 145,706 |
+| 512 | 93,385,331 | 122,120,517 | 173,056 | 291,626 |
+
+These are cumulative bytes. At 512 observations, event dependencies dominate
+(56.54%), followed by candidates (43.24%), identity records (0.08%), and other
+fields (0.14%). Dependencies embed each contributing event's full envelope and
+payload, including the bootstrap event. Candidates contain their own support,
+verification, source, times, and provenance. The final lineage record is 841,017
+bytes: 364,517 candidates + 475,592 dependencies + 338 identity + 570 other.
+Identity coverage stays constant per update for this single-mention workload;
+both candidates and event dependencies grow with the observation count.
+
+These replace the previous timing measurements. Byte counts are
 reproducible for this fixed workload and implementation; timings vary with the
 machine and run. Timing includes event construction, reduction, diagnostic lineage
 serialization/hash verification, and snapshot application. It excludes database
 I/O. The byte metric is cumulative lineage material, not peak memory or database
-size. Doubling observations approaches four times the lineage bytes in this
-workload; these timings are not production throughput. For the governing scope
+size. Doubling observations still approaches four times the lineage bytes in this
+workload; the optimization removes repeated snapshot decoding/canonicalization,
+not the accumulated lineage material. Changed maps still require shallow copies,
+and changed beliefs still serialize their full contents. These timings are not
+production throughput and do not measure storage snapshot loading/publication.
+For the governing scope
 and unresolved work, see [ADR 0023](decisions/0023-stage-two-contract.md).
 
 `storage.materialize_pending(conn, as_of, projector_version="1")` publishes each
@@ -194,7 +233,7 @@ merge, split, approval, or authority handlers.
 | ADR | Handler or related implementation | Tests to start with |
 |---|---|---|
 | [0013](decisions/0013-cross-belief-identity-semantics.md) | [reducer.py] `reduce`, `evidence_event_ids`; [storage.py] typed read functions. Merge/split and successor-resolution handlers are absent. | `test_same_spelling_in_distinct_id_scopes_never_aliases`, `test_typed_reads_never_search_other_id_scopes`, `test_no_head_named_candidate_and_event_evidence_scope`, `test_deferred_events_refuse_both_boundaries` |
-| [0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md) | [reducer.py] `Snapshot`, `EventDelta`, `reduce`; [hashing.py] `belief_lineage`, `canonical_set`; [storage.py] `_append_stage_two`, `_publish_delta`, `materialize_pending`, `read_belief_status`, `rebuild_projection` | `test_snapshot_detached_pure_and_no_clock_or_allocation`, `test_lineage_complete_result_and_pre_event_dependencies`, `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`, `test_recovery_ignores_corrupt_snapshot_and_rolls_back_failure`, `test_two_connections_cannot_authorize_against_old_append_position` |
+| [0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md) | [reducer.py] `Snapshot`, `EventDelta`, `reduce`; [hashing.py] `belief_lineage`, `canonical_set`; [storage.py] `_append_stage_two`, `_publish_delta`, `materialize_pending`, `read_belief_status`, `rebuild_projection` | `test_snapshot_detached_pure_and_no_clock_or_allocation`, `test_snapshot_apply_detached_branches_and_constructor_equivalence`, `test_snapshot_apply_only_serializes_delta_records`, `test_lineage_complete_result_and_pre_event_dependencies`, `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`, `test_recovery_ignores_corrupt_snapshot_and_rolls_back_failure`, `test_two_connections_cannot_authorize_against_old_append_position` |
 | [0015](decisions/0015-candidate-scoped-verification.md) | [reducer.py] `canonical_claim_candidates`, `evidence_event_ids`, `reduce`. Later standing/approval handlers are absent. | `test_same_value_different_standing_and_identity_paths_survive` (supplied-state fixture), `test_no_head_named_candidate_and_event_evidence_scope`, `test_lineage_covers_candidate_contents_with_predecessors_fixed` |
 | [0016](decisions/0016-schema-version-2.md) | [schema.sql](schema.sql) `derived_progress`; [storage.py] `_publish_delta`, `_read_snapshot`; current schema selection is in row 0017 | `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
 | [0017](decisions/0017-schema-version-3.md) | [storage.py] `DATABASE_SCHEMA_VERSION`, `_validate_schema`; [schema.sql](schema.sql) `projected_*` tables | `test_version_two_existing_database_refuses_byte_unchanged`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |

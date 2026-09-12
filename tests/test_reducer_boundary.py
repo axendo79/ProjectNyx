@@ -293,6 +293,70 @@ def test_snapshot_detached_pure_and_no_clock_or_allocation(db, log, monkeypatch)
         reducer.reduce(reducer.Snapshot({}, projector_version="0"), *decoded(log)[0], T2)
 
 
+@pytest.mark.parametrize("kind", reducer.RECORD_KINDS)
+def test_snapshot_apply_detached_branches_and_constructor_equivalence(kind):
+    # Snapshot is a record store; arbitrary nested JSON exercises every kind's
+    # ownership boundary without supplying new reducer semantics.
+    rows = {name: {"same-id": {"nested": ["é", {"value": 1.25}]},
+                         "unchanged": {"nested": [False, None]}}
+            for name in reducer.RECORD_KINDS}
+    snapshot = reducer.Snapshot(**rows, log_position=7, event_id="before",
+                                projector_version="fixture-version")
+    before = canonical(snapshot.complete())
+    changes = {"same-id": {"nested": ["replacement"]},
+               "new-id": {"nested": [{"value": "雪"}]}}
+    delta = reducer.EventDelta("after", **{kind: changes})
+    expected_rows = deepcopy(rows)
+    expected_rows[kind].update(deepcopy(changes))
+    expected = reducer.Snapshot(**expected_rows, log_position=8, event_id="after",
+                                projector_version="fixture-version")
+    updated = snapshot.apply(delta, 8)
+    assert canonical(updated.complete()) == canonical(expected.complete())
+    assert (updated.log_position, updated.event_id, updated.projector_version) == (
+        8, "after", "fixture-version")
+    for records in rows.values():
+        records["same-id"]["nested"].clear()
+    changes["same-id"]["nested"].clear()
+    changes["new-id"]["nested"][0]["value"] = "changed outside snapshot"
+    updated.record(kind, "same-id")["nested"].clear()
+    updated.records(kind)["new-id"]["nested"].clear()
+    updated.complete()[kind]["unchanged"]["nested"].clear()
+    assert canonical(updated.complete()) == canonical(expected.complete())
+    branch = snapshot.apply(reducer.EventDelta("branch"), 9)
+    assert canonical(branch.complete()) == canonical(snapshot.complete()) == before
+    assert (branch.log_position, branch.event_id) == (9, "branch")
+    with pytest.raises(TypeError):
+        updated._records[kind]["new-id"] = "{}"
+    with pytest.raises(TypeError):
+        updated._records[kind] = {}
+
+
+def test_snapshot_apply_only_serializes_delta_records(log, monkeypatch):
+    snapshot = projection.project_snapshot(decoded(log[:3]), T2)
+    delta = reducer.reduce(snapshot, *decoded(log)[3], T2)
+    original = hashing.canonical_json
+    serialized = []
+
+    def track(value):
+        serialized.append(original(value))
+        return serialized[-1]
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Snapshot.apply must not decode unchanged records")
+
+    expected = sorted(original(value) for kind in reducer.RECORD_KINDS
+                      for value in getattr(delta, kind).values())
+    with monkeypatch.context() as patch:
+        patch.setattr(hashing, "canonical_json", track)
+        patch.setattr(json, "loads", forbidden)
+        updated = snapshot.apply(delta, 4)
+        assert sorted(serialized) == expected
+        serialized.clear()
+        updated.apply(reducer.EventDelta("empty"), 5)
+        assert serialized == []
+    assert updated.belief("b-a") == delta.beliefs["b-a"]
+
+
 def test_cutoffs_time_only_lineage_and_unrelated_beliefs(db, log):
     _, conn = db
     ingest(conn, log[:4])
