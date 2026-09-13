@@ -45,6 +45,7 @@ htmlcov/
 *.db-shm
 *.sqlite-wal
 *.sqlite-shm
+/scratch/
 
 # Local intake / corpus (founding purpose is document ingestion; the corpus is
 # machine-local data, not source). Keep the directory structure, ignore contents.
