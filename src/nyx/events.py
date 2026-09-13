@@ -18,6 +18,7 @@ from typing import Any, Mapping
 from . import SCHEMA_VERSION
 from . import hashing
 from .ids import new_event_id
+from .timestamps import validate_timestamp
 
 # Event taxonomy — spec/NYX_ARCHITECTURE.md §1. Process-trace records live in a
 # SEPARATE store (§7): model-performance facts are not claims about the world.
@@ -105,6 +106,9 @@ def build_event(
     payload. This helper does not implement extraction or affect routing.
     Append validates the resulting pair against the schema and hash contract.
     """
+    validate_timestamp(occurred_at)
+    if recorded_at is not None:
+        validate_timestamp(recorded_at, "recorded_at")
     source_str = hashing.canonical_json(source)
     entity_refs_str = hashing.canonical_json(entity_refs) if entity_refs is not None else None
     payload_hash = hashing.canonical_json(payload)

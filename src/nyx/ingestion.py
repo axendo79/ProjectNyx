@@ -6,10 +6,14 @@ Payload pair before submitting. No implicit mention creation or resolver lookup.
 
 from . import storage
 from .events import ENTITY_MENTION_RECORDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED, build_event
+from .timestamps import validate_timestamp
 
 
 def prepare_mention(conn, *, mention_id, subject_id, text, source, source_class,
                     occurred_at, origin_type, event_id=None, recorded_at=None):
+    validate_timestamp(occurred_at)
+    if recorded_at is not None:
+        validate_timestamp(recorded_at, "recorded_at")
     return build_event(
         event_type=ENTITY_MENTION_RECORDED, origin_type=origin_type, source=source,
         source_class=source_class, occurred_at=occurred_at,
@@ -27,6 +31,9 @@ Every claim supplies a fresh claim_candidate_id, mention_id, subject_id,
 property_id, value and verifiability. A supplied conflicting belief_id refuses;
 the writer never redirects a submitted association.
     """
+    validate_timestamp(occurred_at)
+    if recorded_at is not None:
+        validate_timestamp(recorded_at, "recorded_at")
     recorded = []
     for claim in claims:
         claim = dict(claim)
@@ -48,6 +55,10 @@ the writer never redirects a submitted association.
 
 def submit(conn, recorded_event, as_of, projector_version="1"):
     """Append the exact retained pair, then separately publish pending records."""
+    # Retained/imported pairs can bypass preparation. Refuse ambiguous timestamps
+    # before publication or append, while leaving their signed/hashed bytes intact.
+    validate_timestamp(recorded_event[0].occurred_at)
+    validate_timestamp(recorded_event[0].recorded_at, "recorded_at")
     storage.materialize_pending(conn, as_of, projector_version)
     appended = storage.safe_append_event(conn, *recorded_event, projector_version)
     storage.materialize_pending(conn, as_of, projector_version)

@@ -37,6 +37,8 @@ is implemented by `nyx.storage.evaluate_whole_view(conn, as_of, projector_versio
 This explicit operation reconstructs from the log; ordinary materialized reads
 are unchanged.
 
+Proposed redaction draft: [ADR 0028](decisions/0028-redaction-and-crypto-shredding.md).
+
 [Stage two](decisions/0023-stage-two-contract.md) is available as projector version
 `"1"`. A separate `entity_mention_recorded` event creates a mention, its scoped
 subject, and a `constitutive` link with no numeric confidence. Observations name
@@ -53,6 +55,8 @@ named candidate. Single-candidate scalar belief requests also remain outside the
 implemented read contract; naming the candidate is available. Corrections, merges,
 splits, verification approvals, and associations with existing subjects refuse at
 both append and replay in this stage.
+
+Proposed stage-three draft: [ADR 0027](decisions/0027-stage-three-authority-and-acceptance.md).
 
 The new reducer reads a consistent pre-event snapshot and returns one complete
 event delta. Its structured lineage covers predecessor hashes, resulting belief
@@ -299,6 +303,7 @@ CLI, `/audit`, or `/selftest` interface in the current repository.
 | Path | Contents |
 |---|---|
 | `src/nyx/` | Event types, storage, projection, hashing, validation, and the walking-skeleton APIs. Some broader interfaces remain stubs. |
+| [src/nyx/timestamps.py](src/nyx/timestamps.py) | Pure ingestion-time timestamp validation; preserves accepted spellings and is independent of the writer clock. |
 | `tests/` | Storage, event, projection, correction, and invariant regression tests. |
 | `scripts/` | Standalone diagnostic probes, outside pytest discovery. |
 | `schema.sql` | SQLite schema and append-only triggers. |
@@ -324,7 +329,7 @@ Pointers use file and symbol names rather than line numbers that shift on edits.
 | [0003](decisions/0003-genesis-sentinels-and-hash-material-delimiters.md) | [hashing.py] `_SEP`, `idempotency_key`, `event_hash`; [projection.py] `_GENESIS_VIEW_HASH`, `fold` | [test_walking_skeleton.py](tests/test_walking_skeleton.py); stage-two `test_version_zero_golden_bytes_and_no_retrofit` and [version0_ordinary.json](tests/fixtures/version0_ordinary.json) |
 | [0004](decisions/0004-correction-appended-supersedes-via-superseding-events.md) | [projection.py] `fold`; [skeleton.py] `record_correction`; [storage.py] `_upsert_legacy_belief` | [test_correction_appended.py](tests/test_correction_appended.py) |
 | [0005](decisions/0005-backdated-corrections-fail-loud-pending-semantics.md) | [projection.py] `assert_not_backdated`; [skeleton.py] `_record` | [test_correction_appended.py](tests/test_correction_appended.py), `test_backdated_correction_raises`, `test_backdated_correction_does_not_poison_layer_a` |
-| [0006](decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md) | [projection.py] `_instant`, `fold`, `assert_not_backdated` | [test_occurred_at_ordering.py](tests/test_occurred_at_ordering.py) |
+| [0006](decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md) | [timestamps.py](src/nyx/timestamps.py) `validate_timestamp`; ingestion-boundary refusal in [events.py](src/nyx/events.py) `build_event`, [immune.py](src/nyx/immune.py) `stage1_schema_validate`, [ingestion.py] preparers and `submit`, and [skeleton.py] `_record_stage_two`; projection-time comparison in [projection.py] `_instant`, `fold`, `assert_not_backdated` | [test_occurred_at_ordering.py](tests/test_occurred_at_ordering.py); [test_timestamp_ingestion.py](tests/test_timestamp_ingestion.py) boundary refusal and accepted/golden-byte preservation |
 | [0007](decisions/0007-payloads-keyed-by-event-id-not-payload-hash.md) | [schema.sql](schema.sql) `payloads`, `idx_payloads_corroboration`; [storage.py] `safe_append_event` | [test_corroboration_payload_identity.py](tests/test_corroboration_payload_identity.py) |
 | [0008](decisions/0008-fold-signature-cannot-express-cross-belief-events.md) | Historical blocker; implementation navigation is in row 0014 | No separate handler or test suite for this superseded blocker |
 | [0009](decisions/0009-python-314-re-adopted-as-target.md) | [pyproject.toml](pyproject.toml) `requires-python` | Full suite on the documented runtime; no interpreter-version matrix |

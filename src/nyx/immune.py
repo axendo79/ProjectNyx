@@ -12,8 +12,9 @@ invent a classifier invocation.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any, Mapping
+
+from .timestamps import validate_timestamp
 
 # Required keys for a skeleton observation (spec/NYX_V0_IMPLEMENTATION.md §6).
 _REQUIRED = ("belief_id", "value", "verifiability", "occurred_at", "source", "source_class")
@@ -34,10 +35,10 @@ def stage1_schema_validate(raw: Mapping[str, Any]) -> ImmuneResult:
     structural impossibilities. spec/NYX_ARCHITECTURE.md §3. This is the ONLY stage
     the walking skeleton needs.
 
-    Deterministic gate: required fields present, occurred_at a parseable ISO8601
-    instant (a structural impossibility check). Rejections must ultimately be
-    logged events (§3); the skeleton surfaces the rejection to the caller, and the
-    reject-and-RECORD event path is a later slice (§8), not part of §6's happy path.
+    Deterministic gate: required fields present, occurred_at an offset-bearing
+    ISO8601 instant (ADR 0006). Valid timestamp strings are preserved. Rejections
+    must ultimately be logged events (§3); the skeleton surfaces the rejection to
+    the caller. The reject-and-RECORD path is a later slice (§8), not part of §6.
     """
     for key in _REQUIRED:
         if key not in raw or raw[key] in (None, ""):
@@ -46,9 +47,9 @@ def stage1_schema_validate(raw: Mapping[str, Any]) -> ImmuneResult:
     if not isinstance(source, Mapping) or not source.get("actor_id"):
         return ImmuneResult(accepted=False, stage_reached=1, reason="source.actor_id required")
     try:
-        datetime.fromisoformat(str(raw["occurred_at"]))
-    except ValueError:
-        return ImmuneResult(accepted=False, stage_reached=1, reason="occurred_at not ISO8601")
+        validate_timestamp(raw["occurred_at"])
+    except ValueError as exc:
+        return ImmuneResult(accepted=False, stage_reached=1, reason=str(exc))
     return ImmuneResult(accepted=True, stage_reached=1)
 
 

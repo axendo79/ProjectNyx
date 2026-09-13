@@ -33,6 +33,7 @@ from typing import Any, Mapping
 
 from . import immune, projection, storage, hashing
 from .events import CORRECTION_APPENDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED, build_event
+from .timestamps import validate_timestamp
 
 
 def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any],
@@ -121,6 +122,8 @@ def _record_stage_two(db_path, event_type, recorded_event, projector_version="1"
         raise ValueError(f"version {projector_version} requires a retained Envelope/Payload pair from nyx.ingestion")
     if recorded_event[0].event_type != event_type:
         raise ValueError("recorded event type does not match writer operation")
+    validate_timestamp(recorded_event[0].occurred_at)
+    validate_timestamp(recorded_event[0].recorded_at, "recorded_at")
     conn = storage.init_db(db_path)
     try:
         ingestion.submit(conn, recorded_event, datetime.now(timezone.utc).isoformat(), projector_version)

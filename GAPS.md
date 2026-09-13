@@ -39,6 +39,8 @@ The former differing-state merge refusal is superseded by
 [ADR 0015](decisions/0015-candidate-scoped-verification.md).
 For the current unimplemented merge/split stage, see [ADR 0023](decisions/0023-stage-two-contract.md).
 
+Proposed stage-three draft: [ADR 0027](decisions/0027-stage-three-authority-and-acceptance.md).
+
 ---
 
 ## Correctness gaps
@@ -51,6 +53,8 @@ raise `NotImplementedError` through `integrity.decode_payload`; missing rows or
 unmarked NULL content raise `IntegrityError`. Replay still cannot reconstruct a
 redacted history. The specified typed REDACTED sentinel does not exist yet.
 Integrity validation closes silent payload loss, not the redaction semantics gap.
+
+Proposed redaction draft: [ADR 0028](decisions/0028-redaction-and-crypto-shredding.md).
 
 ### Read/replay integrity and append parity — resolved
 **RESOLVED:** `src/nyx/integrity.py`, `storage.py`, `projection.py`, `reducer.py`,
@@ -130,16 +134,20 @@ Automatic migrations remain outside scope; incompatible databases are rejected.
 `src/nyx/immune.py` · follow-on from
 [ADR 0006](decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md)
 
-Stored timestamp strings are not canonicalized on ingestion. Shared integrity
-validation now rejects offset-less `occurred_at` and `recorded_at` before append
-and during replay in every version, closing the legacy post-append comparison
-failure. Valid strings are not rewritten. Boundary canonicalization remains a
-separate follow-on under ADR 0006.
+**Boundary refusal resolved:** Immune Stage 1 rejects offset-less `occurred_at`
+before the legacy writer opens storage. `events.build_event` validates supplied
+event timestamps before hashing or ID allocation, covering stage-two preparation.
+The ingestion preparers validate before writer lookups; `ingestion.submit` checks
+retained pairs before publication or append. The stage-two skeleton wrapper
+validates retained pairs before opening storage. Append and
+replay retain their integrity backstops in all versions. Regression coverage is in
+`tests/test_timestamp_ingestion.py`.
 
-The standalone Immune Stage 1 helper still checks parseability without requiring
-an offset. Only the legacy writer calls that pipeline; versions "1"/"2" validate
-through shared integrity checks and their reducer inside the append transaction.
-This fix does not wire the full Immune pipeline into stage two.
+Valid timestamp strings, including `Z`, `+00:00`, non-UTC offsets and fractional
+precision, remain byte-identical. This closes ingestion-time refusal, not stored
+string normalization to one UTC spelling. That representation change remains
+outside the frozen-projector fix; compare-time normalization under ADR 0006 is
+still required. The full Immune pipeline is not added to stage two.
 
 ---
 
