@@ -1,0 +1,29 @@
+#!/bin/bash
+# ADR commits still require --no-verify: protected staged paths remain blocked.
+# Checks the working tree documentation; never stages, installs, or fixes files.
+set -o pipefail
+
+cd -- "$(git rev-parse --show-toplevel)" || exit 1
+result=0
+git diff --cached --name-only --no-renames -z | (
+    blocked=0
+    while IFS= read -r -d '' path; do
+        case "$path" in
+            spec/*|decisions/*)
+                printf 'Commit blocked: protected staged file: %s\n' "$path" >&2
+                blocked=1
+                ;;
+        esac
+    done
+    exit "$blocked"
+) || result=1
+
+if [ -x .venv/Scripts/python.exe ]; then
+    interpreter=.venv/Scripts/python.exe
+elif [ -x .venv/bin/python ]; then
+    interpreter=.venv/bin/python
+else
+    interpreter=python
+fi
+"$interpreter" -B scripts/check_docs.py --fix-none || result=1
+exit "$result"
