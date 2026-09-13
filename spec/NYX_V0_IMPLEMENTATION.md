@@ -12,17 +12,18 @@
 
 **Event ID.** UUIDv7 (time-ordered UUID). No decision to make — any time-sortable unique ID satisfies §1; UUIDv7 is the standard choice.
 
-**Idempotency key.** `SHA256(source_id || occurred_at || canonicalize(payload))`. Source-scoped duplicate guard per §1 — deterministic, no weighting.
+**Idempotency key.** `SHA256(UTF8(source_id + "\x1f" + occurred_at + "\x1f" + canonical_json(payload)))`. The separators are single ASCII Unit Separator bytes, not the literal four-character text `\x1f`. [ADR 0003](../decisions/0003-genesis-sentinels-and-hash-material-delimiters.md) is authoritative for these delimiters and the genesis inputs below; shared canonical JSON and lowercase hexadecimal SHA-256 output follow `src/nyx/hashing.py`.
 
 **Event hash (tamper-evidence chain).**
 ```
-event_hash = SHA256(canonical_json(event_minus_hash_fields) || prev_event_hash)
+event_hash = SHA256(UTF8(canonical_json(event_minus_hash_fields) + (prev_event_hash or "")))
 ```
+`event_minus_hash_fields` excludes `event_hash` and `prev_event_hash`. At chain genesis, the stored predecessor is NULL but contributes the empty string to hashing. For projector "0", the first belief fold likewise uses an empty prior-view hash: `SHA256(UTF8("" + event_hash))`; later folds prepend the prior view hash. These are ADR 0003's fixed inputs, not new defaults. Projectors "1"/"2" use their separately versioned lineage contracts below.
 Canonical serialization uses the shared `src/nyx/hashing.py` implementation; for the accepted serialization contract, see [ADR 0014 §6](../decisions/0014-cross-belief-reducer-and-hash-lineage.md#6-canonical-serialization). The implementation uses Python's JSON float representation; a stricter fixed float format is not implemented.
 
 **Content-addressed dependency hash** (unifies the Liver's re-derivation check and the process trace's `hypothesis_id` matching, per §13's unification TBD — this closes that TBD):
 ```
-dep_hash = SHA256(sorted([event_hash for event_id in dependency_set]))
+dep_hash = SHA256(UTF8(canonical_json(sorted(dependency_event_hashes))))
 ```
 `hashing.dep_hash` hashes the supplied collection of event hashes. Appending a correction does not change an earlier event's hash or automatically update that collection. Dependency-tracking consumers for the Liver (§3) and process trace (§7) remain unbuilt.
 
@@ -106,8 +107,10 @@ CREATE TABLE schema_meta (
 
 -- Layer A: Reality Layer. Append-only, ENGINE-enforced (Invariant 1).
 -- ENVELOPE / PAYLOAD SPLIT (architecture Invariant 14): the hash chain covers
--- envelopes only, so a destroyed payload never breaks verification.
--- Envelope is PII-free by construction -- no free text, actor is an opaque id.
+-- envelopes only. This preserves envelope commitments, not erased-content checks.
+-- Shipped read/replay integrity requires payload content and refuses redaction.
+-- TARGET (unbuilt): PII-free envelope. Arbitrary source.config is not screened
+-- for PII; an opaque actor ID alone does not establish that guarantee.
 CREATE TABLE events (
     event_id        TEXT PRIMARY KEY,   -- UUIDv7
     idempotency_key TEXT NOT NULL,
@@ -129,11 +132,14 @@ CREATE TABLE events (
 );
 CREATE UNIQUE INDEX idx_events_idempotency ON events(idempotency_key);
 
--- Payload: separately destroyable via key destruction (crypto-shredding).
--- Encrypted at write with a per-canonical-entity key from the keystore
--- (NOT per-mention -- a mention's key has no owner once entities merge/split).
--- A redacted payload is deleted here; the envelope row above is untouched,
--- so replay yields a typed REDACTED sentinel, never a broken chain.
+-- Payload TARGET (unbuilt): separately destroyable through crypto-shredding,
+-- with encryption at write and canonical-subject key binding (architecture §11).
+-- SHIPPED: plaintext canonical JSON in ciphertext, redacted=0 (ADR 0002).
+-- There is no encryption/keystore or typed REDACTED sentinel. Redacted rows
+-- refuse replay; missing rows or unmarked NULL content fail integrity checks.
+-- Envelope-only hash checks do not imply successful erased-payload verification.
+-- ADR 0028 is Proposed / Implementation: None; privacy classification, protected
+-- representation, erasure and reader plumbing remain unratified/unbuilt.
 -- KEYED BY event_id, NOT payload_hash (corrected in decisions/0007). The earlier
 -- `payload_hash TEXT PRIMARY KEY` here was wrong for two independent reasons:
 --   1. Legacy projector "0" content-identical observations would collide on the
@@ -148,7 +154,7 @@ CREATE TABLE payloads (
     event_id        TEXT PRIMARY KEY REFERENCES events(event_id),
     payload_hash    TEXT NOT NULL,      -- content address; NOT the row identity (see above)
     canonical_entity_id TEXT,           -- key-binding target; nullable pre-resolution
-    ciphertext      TEXT,               -- NULL after redaction (key destroyed)
+    ciphertext      TEXT,               -- shipped plaintext JSON; unmarked NULL fails integrity
     redacted        INTEGER NOT NULL DEFAULT 0
 );
 
@@ -174,6 +180,8 @@ CREATE TABLE resolved_beliefs (
     display_origin            TEXT,
     supporting_events          TEXT NOT NULL, -- JSON array of event_id
     opposing_events             TEXT NOT NULL, -- JSON array of event_id
+    superseding_events          TEXT NOT NULL, -- JSON array of correction event_id (ADR 0004);
+                                               -- earlier support stays in supporting_events
     resolution_basis              TEXT,
     view_version_hash              TEXT NOT NULL,  -- SHA256(prior_hash || latest folded event_hash)
     projected_as_of                 TEXT NOT NULL,  -- Invariant 9, explicit evaluation time
@@ -305,9 +313,9 @@ This extends the existing prompt-library norms (#6, #8, #9 — read the current 
 - Handler status: projector "0" observation and correction handlers are implemented under [ADRs 0004](../decisions/0004-correction-appended-supersedes-via-superseding-events.md)–[0006](../decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md). Stage-two mention and observation handlers ship under projector "1"; remaining stage limits are governed by [ADR 0023](../decisions/0023-stage-two-contract.md). The former universal value-recency rule is superseded for projector "1" by [ADR 0024](../decisions/0024-no-authoritative-head.md).
 - Immune Stages 2–4 wiring (classifier invocation, STLM invocation path — subprocess vs. local server vs. embedded, per last session's "boundary decisions" gap). Stage 3 ships **static** (architecture §3) — no retraining loop until a threat corpus exists.
 - Decision log is established in [decisions/](../decisions/), with accepted records through [ADR 0026](../decisions/0026-usage-is-not-evidence.md). [ADR 0027](../decisions/0027-stage-three-authority-and-acceptance.md) and [ADR 0028](../decisions/0028-redaction-and-crypto-shredding.md) remain Proposed / Implementation: None; committed drafts are not implementation authority.
-- `meta_commentary` tagging (architecture Inv. 11): payload carries `meta_commentary: bool` + `meta_subtype` (`callback` | `self_reference`), assigned **at generation** before emit (so the ceiling can gate). Classification must be cheap and deterministic; ambiguous → default `self_reference` (under-counting inferred commentary is the failure to avoid, not over-counting). Tag is descriptive payload on the envelope, out of the confidence/ranking axis entirely. **Open:** the drift-metric sweep (rate of `self_reference` per window — align the window to whatever the emergence monitor already sweeps on, don't maintain two clocks) and the suppress-on-ceiling behavior. `callback` has no ceiling. The emergence monitor that owns this is itself unspecified (architecture §13) — until it exists, the tag can be *written and stored* but the ceiling has nothing to enforce it, so this ships as **tag-now, enforce-later**.
+- **`meta_commentary` tagging (target; unbuilt)** (architecture Inv. 11): the intended payload carries `meta_commentary: bool` and `meta_subtype` (`callback` | `self_reference`), assigned at generation before emission. The target classification is cheap and deterministic, with ambiguous input defaulting to `self_reference`; the tag stays outside the confidence/ranking axis. **Shipped status:** no generation or tagging pipeline, drift-metric sweep, or suppress-on-ceiling mechanism ships. **Open:** the emergence monitor, its measurement window and ceiling enforcement remain unspecified (architecture §13). `callback` has no target ceiling. “Tag now, enforce later” describes a possible implementation sequence for this unbuilt target, not present capability.
 - Parameter-change event type (architecture §4 failure modes): a logged, outside-the-ledger event recording emotion/expression parameter changes (Spleen weighting, `self_reference` ceiling, pivot triggers), session-scoped by default, non-promoting like `meta_commentary`. Sandbox tuning is a **forked event log**, not a runtime flag — no `dev_mode` branch in live code.
 
 *Historical resolution summary: the legacy scalar and value-recency rules above are subject to [ADR 0021](../decisions/0021-bootstrap-link-treatment.md) and [ADR 0024](../decisions/0024-no-authoritative-head.md), respectively. Append freshness is governed by [ADR 0014 §8](../decisions/0014-cross-belief-reducer-and-hash-lineage.md#8-append-freshness-and-derived-progress). Process-trace remains mutable-not-immutable (§4); immune Stage 3 remains specified as static-first (§3) and unbuilt.*
 
-*Resolved in the erasure/merge pass: erasure mechanism decided (envelope/payload split, crypto-shredding, Invariant 14, §4 schema); the never-promote-on-reinterpretation rule generalized to Invariant 15 (redaction and merge both); correlated-corroboration overcalibration fixed via `source_class` (§2, §4); sweep/replay equivalence and the crash-between-key-destruction-and-completion gap added as failure modes (§4); crash-recovery is a startup scan for `*_requested` without `*_completed`, idempotent roll-forward. All found by forward-simulating the write path rather than reviewing it statically — the same review-vs-execution gap named in the council doc, now with a concrete instance of the fix (property-based testing, §12) rather than just the diagnosis.
+*Historical target-design summary (erasure/merge machinery remains unbuilt): erasure mechanism decided (envelope/payload split, crypto-shredding, Invariant 14, §4 schema); the never-promote-on-reinterpretation rule generalized to Invariant 15 (redaction and merge both); correlated-corroboration overcalibration fixed via `source_class` (§2, §4); sweep/replay equivalence and the crash-between-key-destruction-and-completion gap added as failure modes (§4); the target crash-recovery sequence is a startup scan for `*_requested` without `*_completed`, idempotent roll-forward. All found by forward-simulating the write path rather than reviewing it statically — the same review-vs-execution gap named in the council doc, now with a concrete instance of the fix (property-based testing, §12) rather than just the diagnosis. This historical summary does not claim a shipped erasure handler, keystore, sentinel or recovery worker; [ADR 0028](../decisions/0028-redaction-and-crypto-shredding.md) remains Proposed / Implementation: None.*
