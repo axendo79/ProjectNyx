@@ -2,8 +2,8 @@
 
 Nyx is an epistemic kernel: a core for recording assertions, preserving their
 provenance, and deriving what a system currently believes. This repository
-contains a Python/SQLite Phase 1 walking skeleton, exercised through Python APIs
-and tests.
+contains a Python/SQLite Phase 1 walking skeleton, exercised through Python APIs,
+a read-only inspection CLI, and tests.
 
 ## Model and current implementation
 
@@ -295,8 +295,53 @@ All tests must pass; the suite size is not a fixed acceptance threshold.
 For a fresh database, call `nyx.storage.init_db(path, create=True)` and close the
 returned connection. Ordinary `init_db(path)` calls validate an existing database;
 they never create or auto-stamp one. `nyx.skeleton.record_observation` and
-`record_correction` operate on an initialized database. There is no application
-CLI, `/audit`, or `/selftest` interface in the current repository.
+`record_correction` operate on an initialized database.
+
+## Inspect an existing store
+
+The `nyx` console entry point is installed by the editable install above. Every
+command requires `--db`; there is no default database location. Examples:
+
+```text
+nyx belief b-a --db store.db --projector 2 --json
+nyx subject s-a --property RAM --db store.db --projector 2
+nyx mention m-a --db store.db --projector 2
+nyx replay --as-of 2026-09-13T00:00:00Z --db store.db --projector 2 --json
+nyx verify --db store.db
+nyx status --db store.db
+nyx events --since 2026-09-12T00:00:00Z --limit 20 --db store.db --json
+```
+
+`python -m nyx.cli` exposes the same commands. Projector selection defaults to
+`"0"`; typed subject/mention reads require `"1"` or `"2"`. Beliefs expose their
+complete record, including stage-two candidates, without selecting a scalar head.
+`belief` and `subject` accept `--as-of` for explicit historical replay; `replay`
+reports a newly projected view and samples the current time once if omitted.
+Cutoffs and `events --since` compare offset-bearing recording instants inclusively.
+Events retain insertion order; `--limit` takes the first N matching envelopes.
+Their output includes envelope metadata only, never payload bodies.
+
+All commands support `--json`. Materialized reads disclose `stale`, applied
+progress and append freshness. Replay reports materialization freshness separately
+from its reconstructed result. Projector 0 has usable progress when published
+through `materialize_pending`; legacy raw-upsert rows lacking that checkpoint
+report `stale: null`, `freshness_state: unknown`. No timestamp or lineage comparison
+is used to invent missing progress. `status` lists versions with persisted rows,
+including append indexes for versions with unpublished state, and their freshness.
+
+`verify` checks the full log's envelope, payload and chain integrity independent
+of the selected projector; it does not certify reducer correctness. Integrity
+failures propagate their specific `IntegrityError` and a failing exit status.
+Unimplemented reads return an explicit explanation with exit status 2. Connections
+use SQLite `mode=ro`, `query_only` and a restrictive authorizer; commands never
+publish, rebuild stored projections, initialize or repair the database.
+
+The public storage APIs are `open_readonly` (the same schema validator as
+`init_db`), `read_store_metadata`, `read_projection_status`, and the extended
+`read_belief_status(..., "0")`. Existing record-returning readers retain their
+shapes. Coverage: [test_read_surface.py](tests/test_read_surface.py) and
+[test_cli.py](tests/test_cli.py). No write, audit, selftest, retrieval or activation
+command is provided.
 
 ## Repository layout
 
@@ -304,6 +349,7 @@ CLI, `/audit`, or `/selftest` interface in the current repository.
 |---|---|
 | `src/nyx/` | Event types, storage, projection, hashing, validation, and the walking-skeleton APIs. Some broader interfaces remain stubs. |
 | [src/nyx/timestamps.py](src/nyx/timestamps.py) | Pure ingestion-time timestamp validation; preserves accepted spellings and is independent of the writer clock. |
+| [src/nyx/cli.py](src/nyx/cli.py) | Read-only belief, identity, log, replay, integrity and store-status inspection. |
 | `tests/` | Storage, event, projection, correction, and invariant regression tests. |
 | `scripts/` | Standalone diagnostic probes, outside pytest discovery. |
 | `schema.sql` | SQLite schema and append-only triggers. |
@@ -334,7 +380,7 @@ Pointers use file and symbol names rather than line numbers that shift on edits.
 | [0008](decisions/0008-fold-signature-cannot-express-cross-belief-events.md) | Historical blocker; implementation navigation is in row 0014 | No separate handler or test suite for this superseded blocker |
 | [0009](decisions/0009-python-314-re-adopted-as-target.md) | [pyproject.toml](pyproject.toml) `requires-python` | Full suite on the documented runtime; no interpreter-version matrix |
 | [0010](decisions/0010-projection-parameters.md) | [projection.py] `PROJECTORS`, `project`, `project_snapshot`; [storage.py] `safe_append_event` | [test_projection_parameters.py](tests/test_projection_parameters.py), [test_recorded_at_monotonicity.py](tests/test_recorded_at_monotonicity.py) |
-| [0011](decisions/0011-database-schema-versioning.md) | [storage.py] `init_db`, `_validate_schema`; [schema.sql](schema.sql) `schema_meta` | [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
+| [0011](decisions/0011-database-schema-versioning.md) | [storage.py] `init_db`, `open_readonly`, `_validate_schema`, `read_store_metadata`; [schema.sql](schema.sql) `schema_meta` | [test_database_schema_versioning.py](tests/test_database_schema_versioning.py); [test_read_surface.py](tests/test_read_surface.py) read-only validation and metadata |
 | [0012](decisions/0012-whole-view-equality.md) | [storage.py] `evaluate_whole_view`; [projection.py] `project` | [test_whole_view_equality.py](tests/test_whole_view_equality.py); stage-two `test_complete_incremental_replay_every_prefix_and_recovery` |
 
 In the remaining rows, all named tests are in
@@ -350,7 +396,7 @@ merge, split, approval, or authority handlers.
 | ADR | Handler or related implementation | Tests to start with |
 |---|---|---|
 | [0013](decisions/0013-cross-belief-identity-semantics.md) | [reducer.py] `reduce`, `evidence_event_ids`; [storage.py] typed read functions. Merge/split and successor-resolution handlers are absent. | `test_same_spelling_in_distinct_id_scopes_never_aliases`, `test_typed_reads_never_search_other_id_scopes`, `test_no_head_named_candidate_and_event_evidence_scope`, `test_deferred_events_refuse_both_boundaries` |
-| [0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md) | [reducer.py] `Snapshot`, `EventDelta`, `reduce`; [hashing.py] `belief_lineage`, `canonical_set`; [storage.py] `_append_stage_two`, `_publish_delta`, `materialize_pending`, `read_belief_status`, `rebuild_projection` | `test_snapshot_detached_pure_and_no_clock_or_allocation`, `test_snapshot_apply_detached_branches_and_constructor_equivalence`, `test_snapshot_apply_only_serializes_delta_records`, `test_lineage_complete_result_and_pre_event_dependencies`, `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`, `test_recovery_ignores_corrupt_snapshot_and_rolls_back_failure`, `test_two_connections_cannot_authorize_against_old_append_position` |
+| [0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md) | [reducer.py] `Snapshot`, `EventDelta`, `reduce`; [hashing.py] `belief_lineage`, `canonical_set`; [storage.py] `_append_stage_two`, `_publish_delta`, `materialize_pending`, `read_belief_status`, `read_projection_status`, `rebuild_projection` | `test_snapshot_detached_pure_and_no_clock_or_allocation`, `test_snapshot_apply_detached_branches_and_constructor_equivalence`, `test_snapshot_apply_only_serializes_delta_records`, `test_lineage_complete_result_and_pre_event_dependencies`, `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`, `test_recovery_ignores_corrupt_snapshot_and_rolls_back_failure`, `test_two_connections_cannot_authorize_against_old_append_position`; [test_read_surface.py](tests/test_read_surface.py) legacy freshness/unknown checkpoints; [test_cli.py](tests/test_cli.py) stale and unpublished read disclosure |
 | [0015](decisions/0015-candidate-scoped-verification.md) | [reducer.py] `canonical_claim_candidates`, `evidence_event_ids`, `reduce`. Later standing/approval handlers are absent. | `test_same_value_different_standing_and_identity_paths_survive` (supplied-state fixture), `test_no_head_named_candidate_and_event_evidence_scope`, `test_lineage_covers_candidate_contents_with_predecessors_fixed` |
 | [0016](decisions/0016-schema-version-2.md) | [schema.sql](schema.sql) `derived_progress`; [storage.py] `_publish_delta`, `_read_snapshot`; current schema selection is in row 0025 | `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
 | [0017](decisions/0017-schema-version-3.md) | [storage.py] `_validate_schema`; [schema.sql](schema.sql) `projected_*` tables. Current schema selection is in row 0025. | `test_version_two_existing_database_refuses_byte_unchanged`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |

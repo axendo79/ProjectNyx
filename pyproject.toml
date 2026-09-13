@@ -12,6 +12,9 @@ requires-python = ">=3.14"
 # a spec'd component actually needs one — not speculatively.
 dependencies = []
 
+[project.scripts]
+nyx = "nyx.cli:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8",

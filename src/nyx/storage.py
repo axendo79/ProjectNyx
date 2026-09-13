@@ -187,6 +187,98 @@ def init_db(db_path: str | Path, create: bool = False) -> sqlite3.Connection:
         raise
 
 
+def open_readonly(db_path: str | Path) -> sqlite3.Connection:
+    """Open an existing store read-only and run the unchanged schema validator.
+
+    mode=ro protects the database; query_only and the authorizer also refuse
+    temporary writes, attachments and attempts to change connection pragmas.
+    The caller owns the connection lifetime and any subsequent read transaction.
+    """
+    uri = Path(db_path).resolve().as_uri() + "?mode=ro"
+    conn = sqlite3.connect(uri, uri=True)
+    try:
+        conn.execute("PRAGMA query_only=ON")
+        conn.set_authorizer(_readonly_authorizer)
+        conn.execute("BEGIN")
+        _validate_schema(conn)
+        conn.commit()
+        return conn
+    except BaseException:
+        conn.close()
+        raise
+
+
+def _readonly_authorizer(action, arg1, arg2, database, trigger):
+    if action in (sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ, sqlite3.SQLITE_FUNCTION,
+                  sqlite3.SQLITE_TRANSACTION, sqlite3.SQLITE_SAVEPOINT, sqlite3.SQLITE_RECURSIVE):
+        return sqlite3.SQLITE_OK
+    if action == sqlite3.SQLITE_PRAGMA and (
+        (arg2 is None and arg1.lower() in ("query_only", "schema_version", "user_version", "database_list"))
+        or arg1.lower() in ("table_info", "table_xinfo", "index_info", "index_xinfo", "index_list")
+    ):
+        return sqlite3.SQLITE_OK
+    return sqlite3.SQLITE_DENY
+
+
+def read_store_metadata(conn: sqlite3.Connection) -> dict:
+    """Stored schema, event count and versions with persisted rows (not registry entries).
+
+    Presence includes append-side indexes and retained materializations, even
+    when a version has no published progress yet. No replay or content audit.
+    """
+    if not conn.in_transaction:
+        with conn:
+            conn.execute("BEGIN")
+            return read_store_metadata(conn)
+    tables = [table for table, _ in _RECORD_TABLES.values()]
+    tables += ["derived_progress", "identity_event_index", "belief_event_index",
+               "committed_roots", "committed_nodes"]
+    versions = {row[0] for row in conn.execute(" UNION ".join(
+        f"SELECT projector_version FROM {table}" for table in tables))}
+    if conn.execute("SELECT EXISTS(SELECT 1 FROM resolved_beliefs) OR "
+                    "EXISTS(SELECT 1 FROM entity_event_index)").fetchone()[0]:
+        versions.add("0")
+    return {"schema_version": conn.execute("SELECT version FROM schema_meta").fetchone()[0],
+            "event_count": conn.execute("SELECT count(*) FROM events").fetchone()[0],
+            "projector_versions": sorted(versions)}
+
+
+def read_projection_status(conn: sqlite3.Connection, projector_version: str = "0") -> dict:
+    """Disclose stored applied progress against the full log tip, without replay.
+
+    Legacy rows without a checkpoint have unknown freshness. Their timestamps
+    and lineage are not substitutes for an applied position (ADR 0014).
+    """
+    _registered_projector(projector_version)
+    if not conn.in_transaction:
+        with conn:
+            conn.execute("BEGIN")
+            return read_projection_status(conn, projector_version)
+    row = conn.execute(
+        "SELECT d.log_position,d.event_id,e.event_id FROM derived_progress d "
+        "LEFT JOIN events e ON e.rowid=d.log_position WHERE d.projector_version=?",
+        (projector_version,)).fetchone()
+    latest = conn.execute("SELECT rowid,event_id,event_hash FROM events ORDER BY rowid DESC LIMIT 1").fetchone()
+    progress = None if row is None else {"projector_version": projector_version,
+        "log_position": row[0], "event_id": row[1]}
+    freshness = None if latest is None else dict(zip(("log_position", "event_id", "event_hash"), latest))
+    if projector_version == "0":
+        present = bool(conn.execute("SELECT EXISTS(SELECT 1 FROM resolved_beliefs)").fetchone()[0])
+    else:
+        tables = [table for table, _ in _RECORD_TABLES.values()] + ["committed_roots"]
+        present = any(conn.execute(f"SELECT EXISTS(SELECT 1 FROM {table} WHERE projector_version=?)",
+                                  (projector_version,)).fetchone()[0] for table in tables)
+    if projector_version == "0" and row is None and present:
+        return {"stale": None, "freshness_state": "unknown", "derived_progress": None,
+                "append_freshness": freshness, "freshness_scope": "log",
+                "reason": "legacy materialization has no recorded applied progress"}
+    stale = projection.is_stale(None if row is None else row[0],
+        None if latest is None else latest[0], record_present=present or row is not None,
+        progress_valid=row is None or row[1] == row[2])
+    return {"stale": stale, "freshness_state": "stale" if stale else "fresh",
+            "derived_progress": progress, "append_freshness": freshness, "freshness_scope": "log"}
+
+
 def last_event_hash(conn: sqlite3.Connection) -> str | None:
     """Return the most recently appended event_hash (chain tip), or None if empty.
     Fold/insertion order is rowid (§1)."""
@@ -776,7 +868,11 @@ def read_belief_status(conn: sqlite3.Connection, belief_id: str,
 
     No reconstruction or digest comparison. The append-side belief association
     also locates a subject before the first belief has been materialized.
+    Version 0 uses its legacy append index and recorded publication checkpoint;
+    a legacy record without that checkpoint returns stale=None (unknown).
     """
+    if projector_version == "0":
+        return _read_legacy_belief_status(conn, belief_id)
     _snapshot_projector(projector_version)
     if projector_version == "2" and not conn.in_transaction:
         with conn:
@@ -814,3 +910,31 @@ def read_belief_status(conn: sqlite3.Connection, belief_id: str,
         belief = snapshot.belief(belief_id)
     return {"belief": belief, "stale": stale,
             "derived_progress": progress, "append_freshness": freshness}
+
+
+def _read_legacy_belief_status(conn, belief_id):
+    if not conn.in_transaction:
+        with conn:
+            conn.execute("BEGIN")
+            return _read_legacy_belief_status(conn, belief_id)
+    belief = read_belief(conn, belief_id, "0")
+    status = read_projection_status(conn, "0")
+    latest = conn.execute(
+        "SELECT e.rowid,e.event_id,e.event_hash FROM entity_event_index i "
+        "JOIN events e ON e.event_id=i.latest_event_id WHERE i.entity_id=?", (belief_id,)).fetchone()
+    freshness = None if latest is None else dict(zip(("log_position", "event_id", "event_hash"), latest))
+    progress = status["derived_progress"]
+    if belief is not None and progress is None:
+        stale = None
+    else:
+        stale = projection.is_stale(None if progress is None else progress["log_position"],
+            None if latest is None else latest[0], record_present=belief is not None,
+            progress_valid=progress is None or conn.execute(
+                "SELECT event_id FROM events WHERE rowid=?", (progress["log_position"],)
+            ).fetchone() == (progress["event_id"],))
+    result = {"belief": belief, "stale": stale, "derived_progress": progress,
+              "append_freshness": freshness,
+              "freshness_state": "unknown" if stale is None else ("stale" if stale else "fresh")}
+    if stale is None:
+        result["reason"] = "legacy materialization has no recorded applied progress"
+    return result
