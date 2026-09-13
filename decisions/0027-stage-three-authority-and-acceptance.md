@@ -543,6 +543,93 @@ release scheduling and any combined version allocation remain unratified.
 | [0007](0007-payloads-keyed-by-event-id-not-payload-hash.md) | Preserve event-unit identity and independent keys; new payload hashes commit to recorded sealed bodies. Equal plaintext does not pool keys or define retry identity. |
 | [0025](0025-incremental-result-commitment.md), sections 2-6 and schema selection | Introduce schema 5 and protected `nyx-map/2` members/opaque keys under projector 3; preserve canonical routing, incremental publication, complete commitments and frozen projector 2. |
 
+## Remaining unresolved questions
+
+These questions record matters requiring review before ratification or dependent
+implementation. They do not select answers or amend the proposed rules above.
+
+- **Canonical cryptographic encoding:** What exact versioned byte contract defines
+  U, E, A, S, D, SIG, the attestation object, AAD and the sealed body, including
+  object versus JSON-string fields, absent versus null fields, Unicode, numeric
+  encodings, duplicate-key rejection, canonical set ordering and binary encodings;
+  does this extend the existing `canonical_json`/`canonical_set` contract in
+  [hashing.py](../src/nyx/hashing.py), or require a separate version-isolated
+  cryptographic codec, and why would that choice prevent two implementations from
+  agreeing semantically but disagreeing on signatures and hashes without changing
+  frozen projector bytes?
+- **Commitment coverage and domain separation:** For each signature, ciphertext
+  digest, body hash, envelope hash, lineage root and AAD input, exactly which bytes
+  cover nonce, raw ciphertext versus its hex text, AEAD tag, key identifier/version
+  and context; where are algorithm/version identifiers and domain separators
+  committed, and does section 3's exclusion of signatures from AAD exclude only
+  top-level SIG, authenticating the complete S including embedded attestation
+  signatures, or also those nested signatures; if the latter, what exact canonical
+  projection of S is authenticated instead of the full S committed by U?
+- **Key hierarchy and recovery:** Given the proposed fresh random per-event DEK,
+  what derivation, wrapping, KEK/DEK rotation, escrow and recovery hierarchy is
+  permitted under encryption before the first durable write; how would immutable
+  signed key identifiers/versions relate to mutable service wrappers, and what
+  recovery material could survive without making destroyed unit keys recoverable?
+- **Completion evidence across backups and snapshots:** What independently
+  checkable provider acknowledgements, replica inventories, wrapper/escrow audits
+  and backup/snapshot evidence would establish that all recoverable copies of a
+  unit key were destroyed, and what must the independent Stage Three release
+  demonstrate about that future capability before its storage format is frozen?
+- **Crash and partial-erasure semantics:** What exact durable states, retry rules
+  and read barriers cover a crash between key provisioning, sealed-body append,
+  identity publication, future key destruction and completion; who may clean up
+  uncommitted/orphan keys from a failed or re-signed submission when committed-key
+  destruction is reserved to a later authorized erasure protocol?
+- **Pre-erasure snapshot restoration:** Which trusted monotonic checkpoint outside
+  a restored ledger/key-service snapshot establishes the current redaction and
+  authority history, and how would a projector-3 reader discover later erasure
+  and refuse access before an old snapshot can serve a previously valid unit?
+- **Read/replay integrity integration:** Given that shipped
+  [integrity.verified_log](../src/nyx/integrity.py) calls `validate_event`, whose
+  payload/idempotency recomputation needs the full committed dictionary, and that
+  today's `decode_payload` obtains that dictionary from plaintext JSON and refuses
+  redacted rows, what versioned dispatch would distinguish legacy recoverable
+  plaintext from the retained sealed-body dictionary; which envelope/body checks
+  remain possible without decryption, and what explicitly authorized verification
+  result would replace legacy content recomputation after erasure while preserving
+  full ordered-log predecessor verification before cutoff filtering?
+- **Merkle erasure and historical roots:** Given
+  [merkle.py](../src/nyx/merkle.py)'s complete-leaf hashing, node decoding and value
+  proofs under [ADR 0025](0025-incremental-result-commitment.md), should a future
+  erasure use an explicitly versioned tombstone and new effective root, the opaque
+  authorized-pruning proof proposed by ADR 0028, or refusal when an old root's
+  retained-hash obligations cannot be satisfied; how would each preserve the
+  original root without treating a tombstone's bytes as its erased leaf preimage?
+- **Signed-object and enrollment completeness:** What exact per-event S schemas,
+  attestation signature container, codec identifier and signer-key binding are
+  required, and how would genesis enrollment and a transition's new private unit
+  be decrypted for validation when its subject IDs/grants do not yet exist at the
+  preceding prefix, without granting implicit administrator or curator read access?
+- **Custody and pending publication:** What concrete permit-invalidation protocol
+  closes the interval between an accepted identity append and derived publication,
+  including in-flight readers, compound shared/ambiguous bindings and concurrent
+  redaction; does selection of an explicit successor subset identify the complete
+  affected private-unit scope without silently converting uncertainty into support?
+- **Public/private classification:** Which exact data-class rule distinguishes
+  opaque public metadata, protected captured credentials, live key-service secrets
+  and public nonces, given ADR 0028 section 2's distinction between captured and
+  custody credentials but unresolved scope of "encryption randomness" relative to
+  this draft's permanently retained nonce/tag descriptors; what disclosure
+  limits and rejection checks would prevent private identifiers or source details
+  from entering a permanent public field?
+- **Read authority and audit results:** Who may receive the separate decrypt
+  capability without deciding ADR 0020's general contributor/ownership policy,
+  and how would APIs distinguish a structurally/signature-verified result from a
+  semantically verified one when current read permission or content is unavailable?
+- **Release and legacy boundary:** Will Stage Three ship independently only after
+  its protection prerequisites are verified, or with the erasure-capability release;
+  what projector/schema allocation and explicit legacy enrollment/refusal rules
+  would be ratified for that choice, including legacy signatures over private data?
+- **Deferred identity/standing mechanisms:** Which later contracts will govern
+  resolving a distinctness veto, candidate-target corrections, mention correction,
+  scored links and standing restoration, without the current draft's acceptance
+  language being taken as permission to implement those still-deferred operations?
+
 ## Acceptance cases
 
 - Erase a protected operation detail in an erasure-capable test harness: the

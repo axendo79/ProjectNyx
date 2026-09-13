@@ -70,7 +70,7 @@ Separate nonsecret replay structure from private content before encryption:
 | Structural replay data | Retain opaque event/subject/belief/candidate/link IDs, exact opaque property IDs, output inventory, partitions, predecessor/successor relationships, dependency roles/selectors, justification/rule IDs, restrictions, contract versions and nonsecret source-class IDs. No copied values, text, names or secrets. |
 | Envelope and audit controls | Retain envelope hashes, committed body/ciphertext hashes, order/times, opaque signer/key IDs, signatures, grants, reason class and request/completion references. Needed to explain what existed and why it is unavailable. |
 | Derived content, embeddings, search snippets, process traces, Dream/retrieval caches and generated outputs dependent on private data | Reconstructible and subject to the erasure closure, even outside the truth ledger. Usage remains non-evidence under ADR 0026. |
-| Keys, credentials and encryption randomness | Outside the truth ledger; never copied to a payload, trace, Merkle leaf, backup of the log, or committed source configuration. |
+| Nyx private encryption/signing keys, key-service access credentials and encryption randomness | Outside the truth ledger; never copied to a payload, trace, Merkle leaf, backup of the log, or committed source configuration. This custody-material restriction does not prohibit captured source credentials in the encrypted private-content row above. Whether "encryption randomness" includes the retained nonce remains explicitly unresolved below. |
 
 Every new event records the permanent public object and canonical structural
 manifest from ADR 0027 section 3, sufficient to replay its
@@ -227,8 +227,11 @@ Execution order is mandatory:
 1. Commit the authorized request and synchronous erasure barrier. The current
    redaction set immediately includes its target units, even before key destruction.
 2. Revoke decrypt access and invalidate reader leases for affected units and
-   derived generations. Block affected reads until masking is published; an old
-   stale label is not permission to disclose content scheduled for erasure.
+   derived generations. From the committed barrier, affected content reads may
+   return only the sentinel response specified in section 5. Block affected
+   belief/state reads that require an unpublished masked generation until that
+   generation is published. An old stale label is not permission to disclose
+   content scheduled for erasure, even while the key still exists.
 3. Destroy the original unit keys and dependent derived keys in all managed
    key-service copies. Persist idempotent destruction receipts, without key data.
 4. Sweep every managed materialization, retained tree generation, dependency
@@ -283,8 +286,28 @@ Payload reads return a discriminated union `AvailablePayload(data)` or
 No existing event yields an unqualified missing row. A missing/corrupt ciphertext
 or key without authorized erasure raises `IntegrityError`; unauthorized deletion
 is never normal absence. An unavailable key service yields an availability error.
-During a pending request the reader returns the same content sentinel plus
-separate `erasure_pending` status; it does not wait for the secret to become unreadable.
+The committed request and synchronous barrier in section 4 are the logical
+non-disclosure boundary, not physical key destruction or later mask publication.
+A content read whose target membership can be verified from that committed
+request returns the sentinel plus separate `erasure_pending` status immediately;
+it needs neither decryption nor a masked projection to construct that response.
+The sentinel reports authorized logical unavailability, not completed destruction.
+This does not permit serving a partially masked belief, collection, snapshot or
+standing result from a stale derived generation.
+
+| In-flight phase | Affected reader response |
+|---|---|
+| Before authorization is committed | Normal authorized reads and freshness rules apply. A proposed or signed-but-uncommitted request alone neither produces REDACTED nor authorizes destruction. |
+| After authorized request/barrier commit, before key destruction | Targeted content reads return `RedactedPayload` with `erasure_pending=true`; no affected plaintext is disclosed. Belief/state reads needing the unpublished masked generation remain blocked. |
+| After destruction, before masking is published | The same sentinel/pending response remains available from verified request membership. Affected belief/state reads still block; missing keys explained by that request are not mistaken for unexplained corruption. |
+| After masking is published | Affected belief/state reads may return the masked generation and typed sentinels once its redaction generation/progress is checked. `erasure_pending` stays true until the applicable requests complete; it becomes false only after completion, not merely after masking. |
+
+There is no safe belief/state answer from an affected unmasked generation in the
+middle two phases. If a reader cannot establish the current barrier generation
+or verify target membership, it must block or report unavailability, not return
+old content or invent a sentinel. The cross-process/lease protocol that enforces
+this boundary, including already in-flight responses and disconnected readers,
+remains an open question below; this API contract does not establish that protocol.
 
 For new protected events, authorized erasure destroys decrypting keys while the
 permanent public object, signatures and sealed body remain. Their unexplained
@@ -388,16 +411,36 @@ its permanent U, SIG, structural manifest, protected descriptor and recorded
 ciphertext. It is not an unsalted plaintext fingerprint. Envelope hashing keeps
 the existing formula; idempotency uses the source/time/canonical-body construction
 on that recorded sealed body. Exact retries retain it. Ciphertext randomness is
-chosen by the writer, never replay. Prefix changes require a new reviewed signed
-encryption as specified in ADR 0027; no plaintext-content deduplication is implied.
+chosen by the writer, never replay. Prefix changes require fresh encryption and,
+for signed event classes, new review and signatures as specified in ADR 0027;
+no plaintext-content deduplication is implied.
 
-Original U/SIG are always checked directly against retained public keys and
-historical grants. Erasure removes neither that signed message nor its protected
-commitment. Before erasure, a permitted verifier can additionally authenticate,
-decrypt and semantically check content. After authorized destruction, those
-content checks are unavailable; original signature verification and the separately
-signed erasure authorization/completion remain available. A valid signature proves
-attribution and integrity of a commitment, never the truth of the erased claim.
+Original-signature verification binds the signed classes in ADR 0027 section 3:
+authority enrollment/updates (including required rotation countersignatures),
+accepted identity association/merge/split operations, gate-approved corroboration,
+and the original public attestations embedded in their S. It also binds this
+decision's signed redaction requests, completions and credential-review records.
+For those classes, check each specified original signed object/signature directly
+against retained public keys and the applicable historical grant or enrollment
+trust pin. A required missing signature is a failure, not an unsigned-event fallback.
+
+Ordinary observations/mentions with null A/SIG have no original approval signature
+to verify. Verify their envelope/hash chain and sealed-body commitments under their
+recorded contract; do not infer approval authority from source attribution.
+Explicitly unsigned legacy events likewise stay unsigned and receive their
+version's envelope/hash-chain and available payload-integrity checks. After
+authorized legacy pruning, verify the retained commitments and signed erasure/
+capsule authorization under section 8; recomputation requiring erased plaintext
+is unavailable, not passed. A later capsule never supplies an original signature.
+The exact versioned integration with `integrity.verified_log` remains open below.
+
+Erasure removes neither a required original signed public message nor its protected
+commitment. For signed and unsigned protected events alike, a permitted verifier
+can authenticate, decrypt and semantically check live content. After authorized
+destruction, those content checks are unavailable; applicable original signatures
+and the separately signed erasure authorization/completion remain verifiable.
+A valid signature proves attribution and integrity of a commitment, never the
+truth of the erased claim.
 
 Projector "4" reuses ADR 0027's protected `nyx-map/2` format with ADR 0025's
 deterministic routing/branch rules and opaque record-ID keys. A member's value
@@ -480,7 +523,8 @@ redaction set, ignoring all old derived rows. Sweep must equal that result. Orig
 roots for destroyed legacy representations come from the authenticated capsules;
 they cannot be independently reconstructed from nonexistent plaintext. This is an
 explicit narrowing of ADR 0025's full-content rebuild oracle after erasure.
-No capsule substitutes for an original signature. A legacy event that was unsigned
+The signature scope in section 7 applies here as well. No capsule substitutes for
+an original signature. A legacy event that was unsigned
 stays unsigned; its capsule signs only the present structural attestation, never
 purports to be the old author's signature. A hypothetical legacy privileged
 operation signed over private plaintext cannot be enrolled for destruction while
@@ -648,6 +692,102 @@ Remaining decisions/validation gates are explicit:
   impossible. Report that limit instead of weakening replay/signature guarantees.
 - Ratify release sequencing and any combined version allocation. Broader correction,
   restoration, mention correction and scored matching remain outside these drafts.
+
+## Remaining unresolved questions
+
+These questions record matters requiring review before ratification or dependent
+implementation. They do not select answers or amend the proposed rules above,
+including section 11's discussion of remaining decisions and validation gates.
+
+- **Canonical cryptographic encoding:** What exact byte-level schemas and
+  serialization rules govern the inherited U/E/A/S/D/SIG objects, nonce, ciphertext,
+  AEAD tag, AAD/context, redaction manifests, receipts, capsules, pruning proofs
+  and effective roots, including Unicode/numbers, nullability, set order and raw
+  bytes versus encoded strings; does this extend
+  [hashing.py](../src/nyx/hashing.py)'s current canonical contract or require a
+  separate version-isolated codec, and why would the chosen domain separators,
+  algorithm/version identifiers and commitment coverage prevent semantically
+  identical implementations from disagreeing cryptographically?
+- **Key hierarchy and recovery:** What derivation/wrapping hierarchy and rotation
+  protocol can satisfy independently erasable random unit keys, immutable signed
+  descriptors and encryption before the first durable write; which DEKs, KEKs,
+  wrappers, recovery shares, escrow copies and key-backup versions may exist, and
+  how can their destruction be independent of unrelated units and irreversible
+  through any retained master or recovery key?
+- **Erasure completion across backups and snapshots:** What evidence, trust roots
+  and exact receipt schema permit Nyx to claim destruction actually completed
+  across every service replica, wrapped-key backup, filesystem/VM snapshot and
+  offline archive; how are unavailable stores, newly discovered copies, dishonest
+  acknowledgements and legacy plaintext media distinguished from proven completion?
+- **Crash and partial-erasure semantics:** What durable state machine covers
+  request committed but barrier not propagated, only some replicas/keys destroyed,
+  keys destroyed but receipts lost, masking unpublished, and completion unrecorded;
+  how is section 5's reader contract enforced through each interruption, and how
+  do retries reconcile overlapping requests when a tombstone names an earlier request?
+- **Restoration from a pre-erasure snapshot:** What authoritative monotonic
+  checkpoint or independent erasure journal survives restoration of both an old
+  Layer A snapshot and old key-service state, and what validation must run before
+  decrypting or serving anything when the restored log lacks the later request,
+  completion, revocation or destruction tombstone?
+- **`integrity.verified_log` after authorized erasure:** Given that the shipped
+  [integrity.py](../src/nyx/integrity.py) implementation introduced in `ab6d403`
+  hashes the full decoded payload dictionary and recomputes its idempotency key,
+  while current decoding requires plaintext JSON and rejects redacted rows, what
+  new versioned read/replay path verifies retained sealed bodies without a DEK,
+  and what explicitly authorized check/result replaces legacy plaintext-hash and
+  idempotency recomputation after its preimage is erased; how will missing or
+  tampered content remain corruption rather than a generic skip-verification case,
+  with full-log envelope/chain verification still preceding cutoff filtering?
+- **Merkle tombstoning, rerooting or refusal:** When a legacy leaf's private key
+  or value is erased but its prior hash remains committed, should the selected
+  contract use tombstone-and-reroot for the effective tree, the authenticated
+  opaque pruning proposed in section 7, or refusal; what exact new node/proof and
+  reader forms would work with [merkle.py](../src/nyx/merkle.py)'s requirement to
+  hash complete leaf bytes under [ADR 0025](0025-incremental-result-commitment.md),
+  and which membership, routing, original-root and semantic claims would become
+  unavailable rather than pretending a tombstone hashes to the old leaf digest?
+- **Encryption randomness and retained nonces:** Does section 2's prohibition on
+  retaining encryption randomness include the nonce that sections 3/7 and ADR 0027
+  section 3 require recording in D and retaining for retries and verification, or
+  only secret entropy/key-generation state; what precise data-class boundary would
+  reconcile those requirements without making nonce retention depend on an
+  implementation's unstated interpretation?
+- **Signatures inside AAD:** Does ADR 0027 section 3's exclusion of signatures
+  from AAD exclude only the enclosing SIG, leaving S byte-for-byte intact with
+  embedded attestation signatures, or also exclude those nested signatures; if
+  the latter, what exact canonical projection of S is authenticated, and how is
+  it distinguished from the full S committed by U so implementations cannot agree
+  on an operation yet produce incompatible authentication tags?
+- **Enforcing the pending-read boundary:** What common linearization and lease/
+  generation protocol enforces section 5's committed-barrier response contract
+  across processes, in-flight disclosures and disconnected readers; how is a
+  reader prevented from answering from an old prefix before learning of the
+  request, and what recovery/availability mechanism handles the phases where no
+  safe belief/state answer exists before the masked generation is published?
+- **Frozen manifests and derived closure:** Does the frozen authorization include
+  every affected subject and key in a shared derivative's closure as well as the
+  original root units, and what permits deletion of a discovered omitted copy
+  without widening authority, selecting independent evidence, or regenerating
+  a secret-bearing derivative after the barrier?
+- **Preserving original lineage across versions:** What recorded producer-version
+  and predecessor commitments let replay reproduce original projector-3/4 lineage
+  after erasure and after a cutover, and what exact capsule provenance and public
+  structure suffice for legacy inputs without making old derived roots or a later
+  capsule a substitute for original semantic or signature verification?
+- **Protected diagnostics and recoverable memory:** What concrete provider/host
+  evidence establishes that registered encrypted diagnostics, SQL temp files,
+  paging, hibernation, debugging and snapshots never retain an independently
+  recoverable plaintext or key copy, and how are diagnostic keys, buffered writes
+  and memory snapshots included in a unit's erasure closure and completion evidence?
+- **Credential review and interrupted authority:** Which event type, signature,
+  capability and replay rules record the later credential-fast-path human review,
+  and who can finish an irreversible committed erasure if execution grants are
+  revoked or the sole administrator/signing key is lost before completion?
+- **Enrollment, policy and release limits:** What evidence admits a particular
+  legacy dataset for conversion or requires refusal, who is entitled to request
+  decryption/redaction under the still-open contributor and consent model, and
+  which separate or combined release/version boundary will be ratified without
+  implying that either Proposed ADR or its provider obligations is implemented?
 
 ## Acceptance cases
 
