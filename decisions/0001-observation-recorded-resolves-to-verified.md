@@ -5,6 +5,8 @@
 - **Scope:** Walking skeleton (commit two), `src/nyx/projection.py` `fold()`
 - **Relates to:** Invariants 3, 4 · Architecture §2, §5 · V0 §6
 
+Implementation: Implemented in `src/nyx/projection.py`: `_state_for_origin` maps `observed` to `verified`, and `fold` uses it when setting a legacy belief value. The projector "1" and "2" reducers in `src/nyx/reducer.py` and `src/nyx/committed.py` use the same mapping for observation candidates. Verifiability is carried from the claim, not used to gate this assignment; other origin-to-state mappings remain unimplemented. Coverage includes `tests/test_walking_skeleton.py` and `tests/test_reducer_boundary.py`. Checked 2026-09-13; body text below records the decision-time scope.
+
 ## Context
 
 The walking-skeleton acceptance test (`NYX_V0_IMPLEMENTATION.md` §6, lines 243–251)

@@ -15,14 +15,14 @@
 **Idempotency key.** `SHA256(UTF8(source_id + "\x1f" + occurred_at + "\x1f" + canonical_json(payload)))`. The separators are single ASCII Unit Separator bytes, not the literal four-character text `\x1f`. [ADR 0003](../decisions/0003-genesis-sentinels-and-hash-material-delimiters.md) is authoritative for these delimiters and the genesis inputs below; shared canonical JSON and lowercase hexadecimal SHA-256 output follow `src/nyx/hashing.py`.
 
 **Event hash (tamper-evidence chain).**
-```
+```python
 event_hash = SHA256(UTF8(canonical_json(event_minus_hash_fields) + (prev_event_hash or "")))
 ```
 `event_minus_hash_fields` excludes `event_hash` and `prev_event_hash`. At chain genesis, the stored predecessor is NULL but contributes the empty string to hashing. For projector "0", the first belief fold likewise uses an empty prior-view hash: `SHA256(UTF8("" + event_hash))`; later folds prepend the prior view hash. These are ADR 0003's fixed inputs, not new defaults. Projectors "1"/"2" use their separately versioned lineage contracts below.
 Canonical serialization uses the shared `src/nyx/hashing.py` implementation; for the accepted serialization contract, see [ADR 0014 §6](../decisions/0014-cross-belief-reducer-and-hash-lineage.md#6-canonical-serialization). The implementation uses Python's JSON float representation; a stricter fixed float format is not implemented.
 
 **Content-addressed dependency hash** (unifies the Liver's re-derivation check and the process trace's `hypothesis_id` matching, per §13's unification TBD — this closes that TBD):
-```
+```python
 dep_hash = SHA256(UTF8(canonical_json(sorted(dependency_event_hashes))))
 ```
 `hashing.dep_hash` hashes the supplied collection of event hashes. Appending a correction does not change an earlier event's hash or automatically update that collection. Dependency-tracking consumers for the Liver (§3) and process trace (§7) remain unbuilt.
@@ -38,7 +38,7 @@ The former description of `entity_merge_accepted` as merely re-pointing mentions
 **Stale-projection check.** [ADR 0014 §8](../decisions/0014-cross-belief-reducer-and-hash-lineage.md#8-append-freshness-and-derived-progress) governs the implemented `projection.is_stale`: compare applied log progress with the relevant append position, with record presence and progress-identity validity checked by the caller in a consistent read. Lineage hashes and recording timestamps do not establish applied progress. `storage.read_belief_status` exposes the status for projectors "0"/"1"/"2", including absent/unpublished beliefs; `storage.read_projection_status` reports progress against the full log tip. For an existing projector-"0" materialization whose publication recorded no checkpoint, the status reader returns `stale=None`, `freshness_state="unknown"` and a reason rather than guessing. Where its progress is recorded, legacy freshness is derivable. Raw projector-"0" `read_belief` keeps its original unlabeled return shape; present materialized beliefs returned by versions "1"/"2" include stale labels.
 
 **State-transition validator (unimplemented).** The planned literal guard is shown below; `state_machine.STATE_TABLE` remains empty and `transition` raises `NotImplementedError`:
-```
+```text
 function transition(from_state, to_state, trigger_type, has_world_oracle):
     row = STATE_TABLE.lookup(from_state, to_state)
     if row is None: reject("no such transition")
@@ -53,7 +53,7 @@ This planned lookup is not the shipped enforcement mechanism. Current observatio
 - `claim_confidence` for the ceiling is **not** a synthesized float at v0 — it is the **state ordinal**: `quarantined=0 < questioned=1 < unverified=2 < verified=3`, normalized to `[0,1]` as `ordinal/3`. This is countable, non-invented, and already fully specified by the state machine.
 - The Liver queue's `low_conf_source` term (§2) is a **boolean** from source reliability, not this scalar — no synthesized number needed there either.
 
-```
+```python
 # v0: state ordinal stands in for claim_confidence; no invented float
 claim_scalar = STATE_ORDINAL[verification_state] / 3.0
 effective = min(claim_scalar, min(link.entity_link_confidence for link in chain))
@@ -65,7 +65,7 @@ This legacy arithmetic is specified but unimplemented. Its former universal appl
 ## 2. Operational v0 defaults (placeholders — retune trigger stated for each)
 
 **Liver priority-queue score.** Not a truth formula — an *ordering* formula. Wrong weights mean the Liver audits things in a suboptimal sequence, not that it believes something false.
-```
+```python
 priority = w1*days_since_last_audit + w2*reference_count + w3*is_single_source + w4*is_low_confidence_source
 ```
 v0 weights: `w1=1, w2=2, w3=3, w4=3` — arbitrary, roughly-equal starting point, sole purpose is establishing *an* order before real data exists.
@@ -265,7 +265,7 @@ Not "build the immune system." One vertical slice, end to end, before anything g
 5. Read it back; confirm a fresh full-replay fold produces an identical hash.
 
 **Concrete acceptance test:**
-```
+```text
 GIVEN a fresh database
 WHEN an observation_recorded event for "legion.ram = 64GB" is submitted
 THEN events contains exactly 1 row with a valid event_hash

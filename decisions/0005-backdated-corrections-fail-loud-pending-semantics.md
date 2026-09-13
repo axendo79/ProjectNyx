@@ -9,6 +9,8 @@
 - **Relates to:** Invariants 1, 8 · V0 §1 (value-recency guard), §6 (replay), §7 (gap
   protocol, case 3), §8 · [decisions/0004](0004-correction-appended-supersedes-via-superseding-events.md)
 
+Implementation: For projector "0", `skeleton._record` calls `projection.assert_not_backdated` before building/appending a new correction; `projection.fold` repeats the guard during replay. Both use `BackdatedCorrectionError`, and `tests/test_correction_appended.py` covers refusal and preservation of Layer A. The low-level `storage.safe_append_event` does not itself perform this belief-relative guard. Projectors "1"/"2" refuse all corrections. Backdated-correction semantics remain undecided. Checked 2026-09-13.
+
 ## Context
 
 ADR 0004 built the `correction_appended` handler for the case the spec actually

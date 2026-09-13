@@ -6,6 +6,8 @@
   `payloads.ciphertext` column
 - **Relates to:** Invariant 14 · Architecture §12 (phasing), §5 (erasure) · V0 §4, §8
 
+Implementation: `src/nyx/events.py` `build_event` emits plaintext canonical JSON in `Payload.ciphertext` with `redacted=False`; `src/nyx/storage.py` persists it for projectors "0", "1" and "2". `integrity.decode_payload` verifies content on read and refuses redacted rows. Encryption, key custody, crypto-shredding and a typed REDACTED reader remain unimplemented. Payload round trips are exercised by `tests/test_walking_skeleton.py`, with integrity refusal coverage in `tests/test_event_integrity.py`. Checked 2026-09-13; the encryption phase description below is a target, not shipped behavior.
+
 ## Context
 
 The `payloads` table (V0 §4) names its content column `ciphertext` because the

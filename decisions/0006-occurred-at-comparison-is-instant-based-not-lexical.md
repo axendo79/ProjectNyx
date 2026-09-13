@@ -9,6 +9,8 @@
   [decisions/0004](0004-correction-appended-supersedes-via-superseding-events.md) ·
   [decisions/0005](0005-backdated-corrections-fail-loud-pending-semantics.md)
 
+Implementation: `projection._instant` implements instant-based comparison for the legacy value-recency and correction guards. Ingestion refusal also now ships: the pure `timestamps.validate_timestamp` is used by `events.build_event`, Immune Stage 1, the ingestion preparers/submitter and `skeleton._record_stage_two` before their state-changing work. Accepted offset-bearing spellings and retained retries are preserved without normalization. Coverage is in `tests/test_occurred_at_ordering.py` and `tests/test_timestamp_ingestion.py`, including frozen-byte preservation. Checked 2026-09-13; the follow-on gap below describes the earlier compare-time-only boundary.
+
 ## Context
 
 Every value-setting decision in the system rests on one comparison — is this event's

@@ -8,11 +8,13 @@
 - **Relates to:** Invariant 14 (erasure boundary) · V0 §2 (minimum sample floor /
   corroboration gate), §4 (schema — **the document that is wrong**), §8
 
+Implementation: `schema.sql` keys `payloads` by `event_id` and retains a non-unique `idx_payloads_corroboration` on `payload_hash`. The legacy and stage-two append paths in `src/nyx/storage.py` insert a separate payload row per event. `tests/test_corroboration_payload_identity.py` verifies that content-identical legacy observations from different sources both persist and contribute support. Gate-approved corroboration and per-event crypto-shredding remain unimplemented. Checked 2026-09-13; the rejected schema excerpt below is historical context.
+
 ## Context
 
 `NYX_V0_IMPLEMENTATION.md` §4 specifies:
 
-```
+```sql
 CREATE TABLE payloads (
     payload_hash    TEXT PRIMARY KEY,
     event_id        TEXT NOT NULL REFERENCES events(event_id),

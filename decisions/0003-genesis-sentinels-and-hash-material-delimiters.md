@@ -7,6 +7,8 @@
 - **Relates to:** Invariant 9 (projection determinism) · V0 §1 (deterministic
   algorithms) · Architecture §12 (fold ≡ replay executable invariant)
 
+Implementation: `src/nyx/hashing.py` implements the unit separator in `idempotency_key` and the empty predecessor contribution in `event_hash` for all shipped projectors. `src/nyx/projection.py` retains the empty `_GENESIS_VIEW_HASH` and chained fold hash for projector "0"; projectors "1"/"2" use their later versioned lineage contracts. Frozen-byte coverage is in `tests/test_reducer_boundary.py` and `tests/fixtures/version0_ordinary.json`; `scripts/check_docs.py` compares the quoted spec expressions with the helper code. Checked 2026-09-13.
+
 ## Context
 
 Three hash inputs in V0 §1 are specified by their *formula* but leave a byte-level

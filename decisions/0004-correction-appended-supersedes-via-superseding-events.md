@@ -7,6 +7,8 @@
 - **Relates to:** Invariants 1, 3, 5, 6 · Architecture §2 (state-transition contract,
   line 104) · V0 §1 (value-recency guard), §4 (schema), §5 (trace 2), §8 (line 287)
 
+Implementation: Legacy projector "0" corrections ship through `skeleton.record_correction`, `projection.fold` and `storage._upsert_legacy_belief`. The `resolved_beliefs.superseding_events` column in `schema.sql` records correction IDs while earlier support remains in `supporting_events`; the live belief is not marked superseded. `tests/test_correction_appended.py` covers supersession, order convergence and replay equality. Projectors "1"/"2" still refuse corrections under ADR 0023's stage limits. Checked 2026-09-13; body text below records the decision-time state.
+
 ## Context
 
 V0 §8 line 287 lists the `correction_appended` fold handler as still open: *"only

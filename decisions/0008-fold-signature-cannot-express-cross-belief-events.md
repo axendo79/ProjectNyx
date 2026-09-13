@@ -12,6 +12,8 @@
   §5 trace 4 (merge-pooling), §8 (`entity_merge_accepted` unworked) ·
   Architecture §12 (`fold == replay` executable invariant)
 
+Implementation: This superseded blocker has no separate handler. ADR 0014's `Snapshot`/`EventDelta` reducer seam ships in `src/nyx/reducer.py`, with snapshot replay in `src/nyx/projection.py` and atomic publication/recovery in `src/nyx/storage.py`; projector "2" adds the incremental representation under ADR 0025. `tests/test_reducer_boundary.py` covers the stage-two seam. Projector "0" retains the single-belief fold; merge/split handlers remain unimplemented and refuse under ADR 0023. Checked 2026-09-13.
+
 ## The finding
 
 ```python

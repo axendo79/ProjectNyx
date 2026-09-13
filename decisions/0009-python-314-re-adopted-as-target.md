@@ -8,6 +8,8 @@
   [ADR 0004](0004-correction-appended-supersedes-via-superseding-events.md) (where the
   discrepancy was first logged)
 
+Implementation: `pyproject.toml` declares `requires-python = ">=3.14"`; the repository's `.venv` and full pytest suite run on Python 3.14.2. No Python 3.11/3.12 downgrade is implemented. The full suite supplies runtime validation; an interpreter-version compatibility matrix is not provided. Checked 2026-09-13; the document disagreement below is historical context.
+
 ## Context
 
 Two documents disagreed about the Python version, and the disagreement had gone unresolved

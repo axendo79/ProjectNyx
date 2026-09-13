@@ -12,6 +12,8 @@ Supersedes: nothing
 
 Related: Invariant 9; GAPS.md (as_of and projector_version silently ignored)
 
+Implementation: `projection.project` and `project_snapshot` apply inclusive `recorded_at` cutoffs and dispatch the registered projector; "0", "1" and "2" now ship, with "0" still the default. Reducers receive explicit evaluation time, and belief `updated_at` comes from its last included contributing event. `storage.safe_append_event` and its stage-two path refuse backward recording times. Coverage is in `tests/test_projection_parameters.py`, `tests/test_recorded_at_monotonicity.py` and the stage-two suites. Checked 2026-09-13; the ignored-parameter and ADR 0008 blocker descriptions below record the decision-time state.
+
 
 
 ## Context

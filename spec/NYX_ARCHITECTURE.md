@@ -59,7 +59,7 @@ The log records *assertions about* reality; it is not reality. Current belief is
 ### Write path
 This is the target pipeline. The shipped wrappers publish synchronously after the separate append commit; no background worker is started. Rejection recording is unbuilt: the current validation paths raise without appending a rejection event.
 
-```
+```text
 input
   → immune check (tiered cascade, §3 — gate / classify / reject-and-RECORD malformed; rejections are logged events)
   → AFFECT SPLIT: semantic payload → extraction;  affect metadata → parallel event field (never through extraction) [Inv. 11]
@@ -93,7 +93,7 @@ Process-trace records live in a **separate** store (§7) — model-performance f
 A user statement produces two claims: *"User asserted X"* and *"X is true."* Consistency may raise confidence in the **former**; not the latter, without independent support — **except** where the user is the rightful authority (preferences). "I prefer green glasses" → user is ground truth. "My laptop has 64GB" → user is a *source*.
 
 ### Two-dimensional state
-```
+```text
 verification_state: unverified | verified | questioned | quarantined | superseded
 verifiability:      externally_checkable | locally_checkable | subjective | structurally_unverifiable
 ```
@@ -298,7 +298,7 @@ Optimizes for **trust, not chat**. UI-constitutional rules:
 
 ## 9. Executive loop (agent layer — v2, on top of the kernel)
 
-```
+```text
 current epistemic state (Resolved View)
   → work
   → candidate observations

@@ -4,6 +4,8 @@ Status: Accepted; superseded in part by [ADR 0016](0016-schema-version-2.md) and
 
 Date: 2026-09-08
 
+Implementation: `storage.init_db` explicitly authorizes fresh creation and atomically creates schema/metadata; existing-store opens validate without repair. `storage.open_readonly` runs the same `_validate_schema` under enforced read-only access. Validation checks the four metadata columns, CHECK constraints, exactly one row, storage types and supported version. Current schema version is 4 under ADR 0025, following ADRs 0016/0017; the version-1 examples below are historical. Coverage is in `tests/test_database_schema_versioning.py` and `tests/test_read_surface.py`. Migration and database-identity monitoring remain unimplemented. Checked 2026-09-13.
+
 ## Context
 
 Schema compatibility is a deterministic storage invariant, not something the model, memory system, or an initialization routine should infer or repair. The epistemic system can reason about uncertainty; the database contract should not.
