@@ -141,18 +141,18 @@ reproduces, substitutes for, or retroactively validates the original signature.
 "Permanent" is a storage/format invariant, subject to the cryptographic assumptions
 of the selected algorithms; it is not a promise against future cryptanalysis.
 
-Use shared canonical UTF-8 JSON, canonical set ordering and lowercase hex for
-binary values. Every privileged operation signs exactly this public object U
+Use section 3.1's canonical public wire profile and lowercase hex for binary
+values. Every privileged operation signs the framed canonical bytes of object U
 with Ed25519 ([RFC 8032](https://www.rfc-editor.org/rfc/rfc8032)):
 
-`{"format":"nyx-public-operation/1","ledger_id":L,"projector_version":V,"contract":C,"envelope":E,"authorization":A,"structure":S,"protected":D}`.
+`{"format":"nyx-public-operation/1","encoding":"nyx-public-json/1","suite":"nyx-ed25519-chacha20poly1305-sha256/1","ledger_id":L,"projector_version":V,"contract":C,"envelope":E,"authorization":A,"structure":S,"protected":D}`.
 
 | Component | Exact retained contents |
 |---|---|
-| E | `event_id`, `schema_version`, `event_type`, exact `occurred_at` and `recorded_at`, `source` containing only opaque `actor_id`, `source_class`, `origin_type`, canonical `entity_refs`, and exact `prev_event_hash`. These must equal the outer envelope fields. |
+| E | `event_id`, `schema_version`, `event_type`, exact `occurred_at` and `recorded_at`, `source`, `source_class`, `origin_type`, `entity_refs`, and exact `prev_event_hash`. These equal the outer envelope fields, including types: `source` is canonical JSON text encoding only opaque `actor_id`; `entity_refs` is canonical JSON text encoding the subject-ID set (including `[]` for no subjects). They are strings, not nested objects in E. |
 | A | `policy_event_id`, `policy_event_hash`, `principal_id`, `key_id`, `capability`, and explicit `scope`. Genesis enrollment names its own recorded policy ID with null policy hash and is checked against the externally pinned key and adopted prefix. No signature or private reason is inside A. |
 | S | The closed structural inventory below, including immutable original unit bindings. No private text, clear claim value, identifier string or plaintext-derived fingerprint. |
-| D | Null for an operation with no private content; otherwise `{unit_id,key_id,key_version,algorithm,codec,nonce,tag,ciphertext_hash}`. `unit_id` is the event ID, algorithm is `ChaCha20-Poly1305`, codec is canonical JSON UTF-8, and the hash is SHA-256 of recorded randomized ciphertext bytes. No DEK or wrapped DEK. |
+| D | Null for an operation with no private content; otherwise exactly `{unit_id,key_id,key_version,algorithm,codec,nonce,tag,ciphertext_hash,aad_hash}` as section 3.1 defines. No DEK, wrapped DEK or plaintext fingerprint. |
 
 S records the event-kind-specific fields already required by this decision:
 opaque input/output entity, mention, belief, candidate and link IDs; exact opaque
@@ -174,20 +174,22 @@ refuses rather than silently publishing it.
 
 For each private event unit generate one fresh 256-bit DEK and a 96-bit nonce,
 encrypt once with ChaCha20-Poly1305 and its 128-bit tag
-([RFC 8439](https://www.rfc-editor.org/rfc/rfc8439)). Associated data is canonical
-`{format:"nyx-unit-aad/1",ledger_id,event_id,schema_version,projector_version,contract,envelope:E,authorization:A,structure:S}`.
-It excludes D, signatures and final hashes. Then construct D, sign U, assemble the
+([RFC 8439](https://www.rfc-editor.org/rfc/rfc8439)). Associated data is the framed
+object G in section 3.1. It includes S in full, including already-created embedded
+attestation signatures, and excludes only the enclosing SIG, D and final hashes.
+Then construct D, sign U, assemble the
 stored body `{format:"nyx-sealed-body/1",public:U,signature:SIG,sealed_content:X}`,
 and compute payload/idempotency/event hashes using that body. X is ciphertext hex
 or null when D is null. Retain U, SIG, D and X permanently; destruction removes
 decrypting keys, not the message signed. Private content never appears in E.
 SIG is a canonical set of `{key_id,signature}` objects: the required primary signer,
 plus the new administrator's countersignature on rotation, with no extra/duplicate
-signers. Each signs exactly U. Unsigned ordinary events use null, not an empty
+signers. Each signs the same framed U bytes. Unsigned ordinary events use null, not an empty
 approval set. Final payload/event/idempotency hashes and SIG are outside U and
 are independently recomputed/checked from the retained public/sealed body.
 This order has no signature/encryption/hash cycle. A changed prefix requires a
-fresh unit encryption with a fresh key (AAD changed), new review and new signature;
+fresh unit encryption with a fresh key (AAD changed), and, for signed classes,
+new review and new signature;
 an exact retry retains the entire original body, nonce, timestamps and IDs.
 No automatic plaintext-equality retry lookup is introduced for new sealed events.
 
@@ -229,6 +231,187 @@ and a key-provider recovery model capable of deleting all recoverable copies.
 Key availability is not historical truth. Operational read authorization and
 secret custody remain explicit inputs; reduction allocates no keys and uses no
 key-service clock or current permission policy to validate past grants.
+
+### 3.1. Public wire profile and commitment calculation
+
+This subsection replaces ambiguous uses of "canonical" or "sign U" above. It
+extends the existing hashing discipline with a named, version-isolated public
+profile; it does not change `hashing.py`, legacy event hashes or frozen fixtures.
+Let C(o) be the UTF-8 bytes of `nyx-public-json/1`:
+
+- Objects have unique string keys, sorted lexicographically by Unicode scalar
+  values, not locale or UTF-16 code units. No normalization, BOM, whitespace or
+  trailing newline. Reject invalid UTF-8, lone surrogates and duplicate keys.
+- Quote strings with `"`; escape quote/backslash as `\"`/`\\`, controls U+0008,
+  U+0009, U+000A, U+000C, U+000D as `\b`, `\t`, `\n`, `\f`, `\r`, and other
+  U+0000..001F as lowercase `\u00xx`. Emit other scalars literally; do not escape
+  slash or U+2028/U+2029. Punctuation is exactly `:`, `,`, `{}`, `[]`.
+- Public numbers are integers, encoded as minimal base-10 digits with an optional
+  minus sign; zero is `0`. No floating point, exponent, plus sign, leading zero or
+  negative zero in public objects. Public counts/positions/key generations are
+  nonnegative integers; application ranges belong in the closed field schema.
+  Booleans/null are exactly `true`, `false`, `null`. Private claim values are not
+  public numbers; this profile must not coerce their types or precision.
+- Arrays retain sequence order unless their field is explicitly a set. Sets sort
+  by C(member) bytes, with canonical duplicate members removed as in ADR 0014;
+  role/ID uniqueness checks still reject invalid duplicate signers or assignments.
+  Absent and null are distinct; only fields explicitly defined nullable admit null.
+  Persisted/signed objects must already be canonical; do not silently repair them.
+
+For this public type domain, C equals
+`hashing.canonical_json(o).encode("utf-8")`. A separate parser/profile boundary is
+necessary because the shipped Python decoder accepts duplicate keys and the
+general serializer admits floating-point spellings. Do not retrofit stricter
+parsing into old versions. All public cryptographic/container fields use this
+profile, including opaque IDs, integer selectors and protected descriptors.
+
+Define F(label,o) = ASCII(label) || `00` || uint64be(len(C(o))) || C(o).
+`00` denotes one zero byte, not two text digits; length counts octets and has
+exactly eight big-endian bytes. H(b) is lowercase hex of SHA-256 over bytes b.
+Domain labels below are literal ASCII. No implicit JSON-string wrapping or
+newline enters a signature/hash. Unsupported format/encoding/suite/algorithm
+identifiers refuse; no algorithm negotiation or fallback occurs during replay.
+
+| Object/purpose | Exact bytes/calculation |
+|---|---|
+| Operation signature, including administrator countersignature | Pure Ed25519 over F(`nyx-operation-signature/1`, U), not Ed25519ph/ctx or an externally prehashed message |
+| Embedded attestation | Container `{public:T,signature:{key_id,signature}}`; T is the exact public attestation object listed in section 3. Sign F(`nyx-attestation-signature/1`, T). The container is included unchanged in S before encryption |
+| Public signing key / signature | Raw Ed25519 encodings, respectively 32 / 64 bytes, encoded as 64 / 128 lowercase hex digits; no PEM or base64. Verify RFC 8032 encodings/scalar bounds and the cofactored verification equation; refuse noncanonical point encodings and small-order public/R points |
+| Trusted signing-key fingerprint | H(F(`nyx-signing-key/1`, `{algorithm:"Ed25519",public_key:hex_key}`)); opaque key IDs are separately bound to that public key in enrollment |
+| Key header K | Exactly `{unit_id,key_id,key_version,algorithm,codec}`; unit_id is the event ID, key_version is the immutable DEK generation 1, algorithm is `ChaCha20-Poly1305`, codec is `nyx-private-json/1` |
+| Associated-data object G | Exactly `{format:"nyx-unit-aad/1",encoding:U.encoding,suite:U.suite,ledger_id:L,projector_version:V,contract:C,envelope:E,authorization:A,structure:S,key:K}` |
+| AEAD input/output | Input: DEK (32 bytes), nonce N (12 bytes), private plaintext bytes P, AAD = F(`nyx-unit-aad/1`, G). Output: ciphertext X and separate 16-byte tag T per RFC 8439; ciphertext excludes the tag |
+| D | K plus `nonce=hex(N)`, `tag=hex(T)`, `ciphertext_hash=H(X)`, `aad_hash=H(F("nyx-unit-aad/1",G))`. Nonce/tag are exactly 24/32 lowercase hex digits |
+| Stored sealed body B | Exactly `{format:"nyx-sealed-body/1",public:U,signature:SIG,sealed_content:hex(X)}`. No private content means D=null and sealed_content=null; this differs from encrypted empty content |
+| Payload commitment | H(C(B)); B retains nonce, ciphertext, tag, AAD commitment, algorithms, authority and context even after erasure |
+| Idempotency commitment | H(UTF8(actor_id) || `1f` || UTF8(occurred_at) || `1f` || C(B)), retaining the existing separator/formula; `1f` is one byte |
+| Outer envelope hash | H(C(envelope excluding event_hash and prev_event_hash) || UTF8(prev_event_hash or empty string)), exactly the existing construction; E fields must equal their outer counterparts |
+
+The raw ciphertext digest intentionally remains H(X), as the earlier draft
+specified; it is not a standalone authority/context proof. D plus U commits to
+the complete `(K,N,X,T,G)` representation. Body format and typed tree/lineage
+discriminators provide their existing hash domains; routing/result/lineage use
+ADR 0025's formulas with the explicitly changed format/version fields only.
+Do not add new framing to frozen hashes. Decryption reconstructs G, verifies its
+digest and AEAD tag before decoding; possession of a hash is not decryption.
+
+P is the exact UTF-8 private JSON byte string prepared once by the writer, with
+codec `nyx-private-json/1`. In-tree preparation uses the existing canonical JSON
+serializer, preserving integer/float distinctions and accepted value spellings;
+the crypto layer never decodes/re-encodes P. Cross-language private-number/value
+decoding and its conformance vectors remain an explicit ratification blocker,
+not permission to round numbers or silently substitute RFC 8785 for Python's
+serialization. The public signature/commitment wire rules above are independent
+of decrypting P; complete semantic interoperability additionally needs that codec
+and the per-event S schemas listed under remaining questions.
+
+Construction is acyclic: prepare prior-evidence attestations -> complete E/A/S/K
+-> G/AAD -> encrypt P -> D -> U -> SIG -> B -> payload/idempotency hashes -> outer
+event hash. Current-event references use only its preallocated unit ID/selector;
+they never require its future body/hash/signature. Genesis authority configuration
+has D=null and no private unit. It can explicitly enroll a ledger-scoped validator
+decrypt grant before private bootstrap; no initial administrator decrypt default
+exists. If current grants do not cover a new unit's recorded scope (including
+fresh successors), refuse that private submission; no future grant is presumed.
+
+Nonce and tag are permanent nonsecret fields. Secret RNG state, DEKs and signing
+secrets are not; this distinction resolves the former "encryption randomness"
+ambiguity. Fresh random keys/nonces are writer/provider inputs. Equal logical
+operations independently encrypted are not promised equal ciphertext; fixed P,
+key, nonce and public inputs must produce identical wire objects across implementations.
+
+### 3.2. Key lifecycle required before the first protected append
+
+Generate each DEK independently with a cryptographically secure random generator;
+never derive it from content, a subject ID or a recoverable ledger-wide master.
+Generate a random nonce and encrypt at most once per DEK; retain the exact body
+on retry. A changed prefix uses a new DEK/key_id, never a second encryption with
+the old pair. key_version=1 identifies that immutable DEK, not a mutable wrapper.
+Do not rotate an original committed DEK/ciphertext in place: its old ciphertext,
+descriptor and signature are permanent. Suspected compromise is not repaired by
+rewrapping and requires an explicitly authorized future response, not hidden rekeying.
+
+The key-service boundary stores a wrapped DEK under an independently erasable,
+unit-specific protection handle. No shared subject KEK or retained master/recovery
+seed may recreate that handle after destruction. Wrapper generations may rotate
+within the service, preserving the DEK and signed key_id/version; rotation records
+every old wrapper/handle generation and destroys or keeps it in the erasure inventory.
+The wrapping algorithm, parameters and integrity binding to ledger/unit/key/version
+must be recorded in the provider profile and independently validated. They are not
+hidden defaults and are not public-log copies of the wrapper. A concrete provider
+profile is still a deployment gate; this contract does not certify one.
+
+Every service replica, offline backup, escrow share and recovery route is registered
+before accepting its first protected key. A backup of a wrapper is permissible
+only if destroying this unit's handle makes that copy irrecoverable too, or if
+that exact recoverable copy participates in destruction and acknowledgment.
+Rotation never removes an older recoverable generation from the inventory merely
+because it is no longer current. Private keys/handles/recovery shares never enter
+Layer A, ordinary SQLite backups, logs or the recovery witness below.
+
+Provisioned but uncommitted keys are staged allocations. Binding to the final
+event hash is durable before append acknowledgment. A staging allocator may
+discard an allocation only after the serialized writer and witness establish
+that its event did not commit; timeout or absence from a restored snapshot alone
+is insufficient. An uncertain append preserves the allocation and blocks reuse.
+This cleanup is not authority to destroy a committed unit. Committed destruction
+requires ADR 0028's distinct authorization and execution capabilities; projector
+3 supplies no such handler. Identity changes alter bindings, never key material.
+
+### 3.3. Rollback-resistant custody checkpoint and disclosure barrier
+
+Fresh protected ledgers require a custody witness outside the rollback domain of
+ordinary database, filesystem/VM and key-backup restoration. It may be local secure
+infrastructure or a separate service; an ordinary second file restored with SQLite
+does not qualify. The operator explicitly pins its ledger ID and public signing
+key separately from the administrator pin. This is an additional operational trust
+input, not world evidence or authority to invent a Layer A event. It survives
+restore independently and refuses conflicting histories at a recorded log position.
+
+The witness retains monotonic generation, accepted log-prefix position/hash,
+pending fenced submissions, immutable key inventory references, and later
+committed redaction manifests, denials and destruction receipts. Authority records
+are copies of authenticated Layer A decisions, not replacements for them. Prepared
+fences and provider receipts are operational evidence with their own origins;
+neither can stand in for a committed authorization. State never disappears when
+a request completes. The checkpoint is
+`{format:"nyx-custody-checkpoint/1",ledger_id,generation,log_position,event_hash,
+inventory_hash,denial_hash,pending_hash,challenge}` signed with Ed25519 over
+F(`nyx-custody-checkpoint-signature/1`, object). Hashes are 64 lowercase hex digits;
+genesis position is 0 with null event_hash. Each root hashes the C-canonical set
+of its full public records, framed respectively with `nyx-key-inventory/1`,
+`nyx-key-denials/1`, `nyx-pending-fences/1`. The challenge is a fresh verifier-chosen
+32-byte random value encoded as lowercase hex. A stored old signed response cannot
+prove current state. Losing contact with the witness blocks protected disclosure.
+Exact inventory/fence member schemas and provider enrollment/rotation attestations
+remain the explicit conformance blockers below, not arbitrary extension objects.
+
+All managed decryption/disclosure, including cached plaintext and exports, holds
+a shared generation permit through its final output handoff. Identity/grant/erasure
+changes take an exclusive barrier, drain or terminate old readers and private
+derivative writers, then prepare a witness fence for the exact proposed event hash
+before committing Layer A. The fence blocks affected disclosure, not authorizes
+destruction. Record the committed prefix in the witness before acknowledging the
+append or releasing new permits. No atomic SQLite/provider transaction is claimed.
+After a crash between prepare/commit/confirmation, resolve the exact transaction
+against the authoritative log and witness; absent proof of commit or abort, keep
+the fence and report recovery unavailable. Never infer abort from an older restore.
+
+There is no cached/offline grace period for a disconnected reader and no return
+of stale private data. Public structural reads retain ADR 0014's freshness labels.
+Subject bindings/permissions used for disclosure must be published through the
+confirmed security prefix; an ordinary stale label cannot bypass that barrier.
+The same contract applies to new-unit activation. Content handed to a client
+before the barrier is outside revocation; managed buffers/leases remain in closure.
+
+Before any restored store activates a key or reader, compare its prefix with a
+fresh witness response. Fetch and verify missing authoritative history and safety
+records, reject forks, and apply current denials before unwrapping any key. If
+history/proofs are unavailable, remain recovery-blocked; do not start a new empty
+witness or ledger identity over the old keys. Projector 3, even before erasure
+handlers exist, must refuse history/units the witness marks erased or unsupported.
+The witness's availability/rollback resistance is an explicit irreconstructible
+security exception alongside secret custody; logical truth still comes from Layer A.
 
 ### 4. Closed list of admissible existing-subject association bases
 
@@ -505,10 +688,12 @@ or frozen projector fixtures is permitted.
 
 Projector 3/schema 5 may ship before a redaction-capability release only if the
 permanent signature, protected first write, reconstructible historical/effective
-custody and complete recoverable-copy protections above pass acceptance together.
+custody, the independent witness/disclosure/restore barrier, and complete
+recoverable-copy protections above pass acceptance together.
 There is no plaintext stage-three intermediate format. Encryption, key-service
 integration and explicit validator decryption grants are part of this stage's
-cost, even though deletion, sentinel reads and erasure recovery wait for ADR 0028.
+cost, even though deletion, sentinel reads and erasure-overlay recovery wait for
+ADR 0028. Restore fencing and refusal of unsupported erased history cannot wait.
 The provider must already support independently erasable key custody; no early
 backup design may make future per-unit erasure impossible.
 
@@ -542,93 +727,71 @@ release scheduling and any combined version allocation remain unratified.
 | [0002](0002-payload-stored-plaintext-in-v0.md) | End the plaintext exception for all new protected stage-three writes; preserve old event bytes and require explicit legacy conversion. |
 | [0007](0007-payloads-keyed-by-event-id-not-payload-hash.md) | Preserve event-unit identity and independent keys; new payload hashes commit to recorded sealed bodies. Equal plaintext does not pool keys or define retry identity. |
 | [0025](0025-incremental-result-commitment.md), sections 2-6 and schema selection | Introduce schema 5 and protected `nyx-map/2` members/opaque keys under projector 3; preserve canonical routing, incremental publication, complete commitments and frozen projector 2. |
+| Architecture Invariant 8 | Add explicit operational-security exceptions for independently held secret keys and the rollback-resistant custody witness in sections 3.2/3.3. They gate availability and recovery; they do not supply alternative event or belief truth. |
+
+The reducer remains deterministic from the same authoritative ordered history,
+enrollment trust pin, protected content when permitted, and version. A witness
+does not vote on belief standing or inject current wall-clock data into fold.
+Restoration without its security proof blocks disclosure; it does not silently
+replay a different truth history. This availability boundary is an explicit
+narrowing of unconditional recovery from an arbitrary old snapshot alone.
 
 ## Remaining unresolved questions
 
-These questions record matters requiring review before ratification or dependent
-implementation. They do not select answers or amend the proposed rules above.
+The following are **ratification blockers**, not permission to invent an
+implementation default. Sections 3.1-3.3 settle framing, public canonical bytes,
+algorithm selection, commitment coverage, signature scope, nonce retention,
+embedded signatures in AAD, key independence and the recovery barrier. Those
+decisions are no longer open questions.
 
-- **Canonical cryptographic encoding:** What exact versioned byte contract defines
-  U, E, A, S, D, SIG, the attestation object, AAD and the sealed body, including
-  object versus JSON-string fields, absent versus null fields, Unicode, numeric
-  encodings, duplicate-key rejection, canonical set ordering and binary encodings;
-  does this extend the existing `canonical_json`/`canonical_set` contract in
-  [hashing.py](../src/nyx/hashing.py), or require a separate version-isolated
-  cryptographic codec, and why would that choice prevent two implementations from
-  agreeing semantically but disagreeing on signatures and hashes without changing
-  frozen projector bytes?
-- **Commitment coverage and domain separation:** For each signature, ciphertext
-  digest, body hash, envelope hash, lineage root and AAD input, exactly which bytes
-  cover nonce, raw ciphertext versus its hex text, AEAD tag, key identifier/version
-  and context; where are algorithm/version identifiers and domain separators
-  committed, and does section 3's exclusion of signatures from AAD exclude only
-  top-level SIG, authenticating the complete S including embedded attestation
-  signatures, or also those nested signatures; if the latter, what exact canonical
-  projection of S is authenticated instead of the full S committed by U?
-- **Key hierarchy and recovery:** Given the proposed fresh random per-event DEK,
-  what derivation, wrapping, KEK/DEK rotation, escrow and recovery hierarchy is
-  permitted under encryption before the first durable write; how would immutable
-  signed key identifiers/versions relate to mutable service wrappers, and what
-  recovery material could survive without making destroyed unit keys recoverable?
-- **Completion evidence across backups and snapshots:** What independently
-  checkable provider acknowledgements, replica inventories, wrapper/escrow audits
-  and backup/snapshot evidence would establish that all recoverable copies of a
-  unit key were destroyed, and what must the independent Stage Three release
-  demonstrate about that future capability before its storage format is frozen?
-- **Crash and partial-erasure semantics:** What exact durable states, retry rules
-  and read barriers cover a crash between key provisioning, sealed-body append,
-  identity publication, future key destruction and completion; who may clean up
-  uncommitted/orphan keys from a failed or re-signed submission when committed-key
-  destruction is reserved to a later authorized erasure protocol?
-- **Pre-erasure snapshot restoration:** Which trusted monotonic checkpoint outside
-  a restored ledger/key-service snapshot establishes the current redaction and
-  authority history, and how would a projector-3 reader discover later erasure
-  and refuse access before an old snapshot can serve a previously valid unit?
-- **Read/replay integrity integration:** Given that shipped
-  [integrity.verified_log](../src/nyx/integrity.py) calls `validate_event`, whose
-  payload/idempotency recomputation needs the full committed dictionary, and that
-  today's `decode_payload` obtains that dictionary from plaintext JSON and refuses
-  redacted rows, what versioned dispatch would distinguish legacy recoverable
-  plaintext from the retained sealed-body dictionary; which envelope/body checks
-  remain possible without decryption, and what explicitly authorized verification
-  result would replace legacy content recomputation after erasure while preserving
-  full ordered-log predecessor verification before cutoff filtering?
-- **Merkle erasure and historical roots:** Given
-  [merkle.py](../src/nyx/merkle.py)'s complete-leaf hashing, node decoding and value
-  proofs under [ADR 0025](0025-incremental-result-commitment.md), should a future
-  erasure use an explicitly versioned tombstone and new effective root, the opaque
-  authorized-pruning proof proposed by ADR 0028, or refusal when an old root's
-  retained-hash obligations cannot be satisfied; how would each preserve the
-  original root without treating a tombstone's bytes as its erased leaf preimage?
-- **Signed-object and enrollment completeness:** What exact per-event S schemas,
-  attestation signature container, codec identifier and signer-key binding are
-  required, and how would genesis enrollment and a transition's new private unit
-  be decrypted for validation when its subject IDs/grants do not yet exist at the
-  preceding prefix, without granting implicit administrator or curator read access?
-- **Custody and pending publication:** What concrete permit-invalidation protocol
-  closes the interval between an accepted identity append and derived publication,
-  including in-flight readers, compound shared/ambiguous bindings and concurrent
-  redaction; does selection of an explicit successor subset identify the complete
-  affected private-unit scope without silently converting uncertainty into support?
-- **Public/private classification:** Which exact data-class rule distinguishes
-  opaque public metadata, protected captured credentials, live key-service secrets
-  and public nonces, given ADR 0028 section 2's distinction between captured and
-  custody credentials but unresolved scope of "encryption randomness" relative to
-  this draft's permanently retained nonce/tag descriptors; what disclosure
-  limits and rejection checks would prevent private identifiers or source details
-  from entering a permanent public field?
-- **Read authority and audit results:** Who may receive the separate decrypt
-  capability without deciding ADR 0020's general contributor/ownership policy,
-  and how would APIs distinguish a structurally/signature-verified result from a
-  semantically verified one when current read permission or content is unavailable?
-- **Release and legacy boundary:** Will Stage Three ship independently only after
-  its protection prerequisites are verified, or with the erasure-capability release;
-  what projector/schema allocation and explicit legacy enrollment/refusal rules
-  would be ratified for that choice, including legacy signatures over private data?
-- **Deferred identity/standing mechanisms:** Which later contracts will govern
-  resolving a distinctness veto, candidate-target corrections, mention correction,
-  scored links and standing restoration, without the current draft's acceptance
-  language being taken as permission to implement those still-deferred operations?
+- **Closed operation schemas:** What are the complete required/optional fields,
+  types, selectors, set constraints and validation rules for each event's S and A,
+  each admissible-basis attestation T, genesis/rotation records and protected
+  content schema, including rejection of unknown fields? The generic envelope is
+  defined, but prose inventories do not yet define interoperable event objects.
+- **Private value codec:** What exact cross-language value/number domain and
+  decoding rules does `nyx-private-json/1` admit, and which fixtures establish
+  compatibility with existing values without changing frozen canonical bytes?
+  Signing a fixed opaque byte string is settled; producing and semantically
+  interpreting that string from independent value models is not.
+- **Compound custody representation:** What closed recorded representation and
+  normalization rules preserve shared versus ambiguous provenance through multiple
+  splits and merges, including a shared set containing one ambiguously partitioned
+  predecessor? How do fixtures show that a merged subset neither loses remaining
+  ambiguity nor invents a claim-support association?
+- **Custody service wire schemas:** What exact canonical inventory, denial and
+  pending-fence member records produce section 3.3's checkpoint roots; what
+  enrollment/rotation and provider-profile records bind their signers, copy IDs,
+  generations and permitted wrapping algorithms? Which signed records establish
+  inventory completeness rather than merely hashing an unspecified list?
+- **Interoperability evidence:** Which published known-answer vectors and negative
+  cases cover canonical Unicode/set ordering, strict Ed25519 verification,
+  attestation nesting, AEAD context, fixed-key/nonce sealed bodies, retries,
+  prefix changes and checkpoint reconciliation, so two implementations agree on
+  both accepted inputs and bytes?
+
+Concrete provider/host qualification is a **deployment gate**, not a claimed
+property of this document: can the chosen provider and independent witness
+demonstrate per-unit recovery closure, non-rollback, orphan-key reconciliation
+and disclosure barriers under crashes, backups, swap and dumps? No tested provider
+profile is supplied here.
+
+The following remain **outside this limited stage**, rather than hidden blockers
+to its explicit capability model: how should general contributor entitlement and
+contested multi-user ownership be resolved under ADR 0020; what future contracts
+will govern corrections, scored links and restoration; and will deployment choose
+the allocated separate cutovers or ratify a combined allocation?
+
+## Ratification-readiness assessment
+
+At the audit baseline `b7609d4`, and with this revision's proposed protocol
+clarifications, **not ready to ratify independently yet**: the five blockers above
+must be closed before the new frozen format can be implemented. Acceptance of
+ADR 0028's erasure handlers is not itself a prerequisite. After these blockers
+and the deployment gates are satisfied, Stage Three can use fresh protected
+ledgers independently: its first durable representation, key custody and restore
+barrier already accommodate later destruction. Omitting any of those prerequisites
+would create legacy debt and fails section 8.2's independent-release condition.
 
 ## Acceptance cases
 
@@ -683,7 +846,8 @@ implementation. They do not select answers or amend the proposed rules above.
 
 ## Consequences
 
-Stage three becomes implementable under one explicit trust policy, with no implicit
+After its ratification blockers are closed, Stage Three becomes implementable
+under one explicit trust policy, with no implicit
 owner and no repeated authority decisions per handler. Its cost is enrolled signing
 keys, recorded attestations, a larger acceptance inventory, and potentially broad
 dependency recomputation on identity changes. No source-independent truth guarantee
