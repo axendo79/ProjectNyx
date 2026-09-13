@@ -394,7 +394,9 @@ def test_canonical_collections_and_source_coverage(log):
     snap = projection.project_snapshot(decoded(log[:3]), T2)
     env, payload = decoded(log)[3]
     one = reducer.reduce(snap, env, payload, T2)
-    two = reducer.reduce(snap, env, {"claims": payload["claims"][::-1]}, T2)
+    reversed_event = event(events.OBSERVATION_RECORDED,
+                           {"claims": payload["claims"][::-1]}, 4, log[2])
+    two = reducer.reduce(snap, *decoded([reversed_event])[0], T2)
     # Recorded payload sequences remain dependencies; holding those fixed,
     # enumeration of snapshot sets cannot affect the computed result.
     records = snap.complete()
@@ -403,8 +405,9 @@ def test_canonical_collections_and_source_coverage(log):
     three = reducer.reduce(reducer.Snapshot(**records), env, payload, T2)
     assert canonical(asdict(one)) == canonical(asdict(three))
     assert {c["claim_candidate_id"] for c in one.beliefs["b-a"]["claim_candidates"]} == {c["claim_candidate_id"] for c in two.beliefs["b-a"]["claim_candidates"]}
-    modified = replace(env, source_class="different")  # Hold global event hash fixed.
-    changed = reducer.reduce(snap, modified, payload, T2)
+    modified = event(events.OBSERVATION_RECORDED, payload, 4, log[2], source_class="different")
+    changed = reducer.reduce(snap, *decoded([modified])[0], T2)
+    assert changed.beliefs["b-a"]["claim_candidates"] != one.beliefs["b-a"]["claim_candidates"]
     assert changed.beliefs["b-a"]["view_version_hash"] != one.beliefs["b-a"]["view_version_hash"]
 
 

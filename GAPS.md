@@ -46,18 +46,39 @@ For the current unimplemented merge/split stage, see [ADR 0023](decisions/0023-s
 ### Redaction breaks the write path and replay
 `src/nyx/storage.py` · Invariant 14 · unbuilt, **will fail loudly if reached**
 
-A redacted payload has `ciphertext = NULL` (key destroyed). Two sites assume it is present:
+Redaction and crypto-shredding are not implemented. Stored redacted rows explicitly
+raise `NotImplementedError` through `integrity.decode_payload`; missing rows or
+unmarked NULL content raise `IntegrityError`. Replay still cannot reconstruct a
+redacted history. The specified typed REDACTED sentinel does not exist yet.
+Integrity validation closes silent payload loss, not the redaction semantics gap.
 
-- `safe_append_event` extracts the entity key with `json.loads(payload.ciphertext)["belief_id"]`
-  → `TypeError` on `None`.
-- `read_all_events` yields a `None` payload for a redacted row, which `project` then
-  subscripts → `TypeError`.
+### Read/replay integrity and append parity — resolved
+**RESOLVED:** `src/nyx/integrity.py`, `storage.py`, `projection.py`, `reducer.py`,
+`committed.py`, and `skeleton.py`; regression coverage in `tests/test_event_integrity.py`.
+All versions verify payload content against the envelope's payload hash, stored
+envelope hashes, predecessor associations, and existing envelope schema/taxonomy.
+Full log reads and rebuilds refuse missing payload rows instead of dropping events
+through an inner join. Pending publication checks the applied anchor and each
+event it reads, without scanning the entire already-published prefix.
 
-So the moment redaction exists, **replay of a log containing a redacted event dies** — and
-replay is the crash-recovery path *and* the determinism oracle (§6). The spec's own answer
-is that replay must yield a **typed REDACTED sentinel** rather than a broken chain
-(`schema.sql`, V0 §4); that sentinel does not exist yet. Redaction is unbuilt, so this is
-unreachable today.
+Legacy append now rejects invalid hashes/links and conflicting reused IDs or keys.
+Only identical retained event/payload pairs are retries; the raw legacy writer
+retrieves its original pair. No hash formula or accepted event semantics changed.
+
+### Typed identity freshness and `is_stale` — resolved for stage two
+**RESOLVED:** `storage.read_identity_status` and its typed wrappers disclose
+record presence, applied progress, and append freshness for versions "1"/"2".
+Existing typed record readers warn on stale results, including unpublished `None`.
+Unknown-subject absence conservatively uses the log tip. `projection.is_stale`
+uses positions under ADR 0014. Legacy raw belief reads retain their original shape;
+these fixes do not add a general retrieval subsystem.
+
+### Version-2 snapshot read parity — resolved
+**RESOLVED:** `committed.Snapshot.events()` returns the canonical event list and
+`current_belief()` returns the complete belief, matching version "1". Internal
+`current_header()` preserves indexed incremental writes. Both public contracts and
+detachment are tested in `tests/test_event_integrity.py`; existing incremental-write
+guards remain in `tests/test_incremental_commitment.py`.
 
 ### `project()` event dispatch — resolved for supported stages
 `src/nyx/projection.py` · **RESOLVED**
@@ -109,16 +130,16 @@ Automatic migrations remain outside scope; incompatible databases are rejected.
 `src/nyx/immune.py` · follow-on from
 [ADR 0006](decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md)
 
-Stored timestamp strings are not canonicalized on ingestion. In projector "0",
-immune Stage 1 accepts a naive (offset-less) `occurred_at`. `_instant()` refuses
-it only when a comparison is reached; a first value can bypass that comparison
-and materialize successfully. Later comparison can fail after an observation has
-already appended. See `immune.stage1_schema_validate`, `projection.fold`, and
-`projection.assert_not_backdated`.
+Stored timestamp strings are not canonicalized on ingestion. Shared integrity
+validation now rejects offset-less `occurred_at` and `recorded_at` before append
+and during replay in every version, closing the legacy post-append comparison
+failure. Valid strings are not rewritten. Boundary canonicalization remains a
+separate follow-on under ADR 0006.
 
-Projector "1" validates timezone-bearing timestamps through `reducer.reduce`
-before append and again during replay, without rewriting the recorded strings.
-The remaining legacy boundary gap must not be mistaken for guaranteed refusal.
+The standalone Immune Stage 1 helper still checks parseability without requiring
+an offset. Only the legacy writer calls that pipeline; versions "1"/"2" validate
+through shared integrity checks and their reducer inside the append transaction.
+This fix does not wire the full Immune pipeline into stage two.
 
 ---
 
@@ -212,8 +233,10 @@ The implemented candidate records and constitutive links do not supply those dec
 
 - **`idempotency_key` omits `event_type`.** V0 §1 defines it as
   `SHA256(source_id || occurred_at || canonicalize(payload))`. An observation and a
-  correction with identical source, time, and payload would collide into one row. §1 is
-  explicit, so this was not changed — recorded as a latent edge. ([ADR 0004](decisions/0004-correction-appended-supersedes-via-superseding-events.md))
+  correction with identical source, time, and payload still have the same key.
+  Conflicting submissions now refuse instead of silently becoming one retry.
+  The formula is explicit and unchanged; accepting both would require a decision.
+  ([ADR 0004](decisions/0004-correction-appended-supersedes-via-superseding-events.md))
 - ~~**Python version.** Runtime is **3.14.2**; `CLAUDE.md` says 3.11/3.12 ("the spec's earlier
   3.14 target was walked back"). Suite is green on 3.14. One of the two is stale.~~ **RESOLVED
   ([ADR 0009](decisions/0009-python-314-re-adopted-as-target.md)):** 3.14 re-adopted as the

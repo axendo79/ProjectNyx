@@ -6,8 +6,9 @@ spec/NYX_ARCHITECTURE.md §1 (materialized-delta, decided) and Invariant 9
 
 Two derivation paths that MUST agree (executable invariant, spec §12):
   incremental `fold` folded event-by-event  ≡  `project` (full replay from genesis)
-under the current redaction/merge set. Full replay is the crash-recovery path and
-the test oracle; the incremental fold is the hot path.
+for supported events. Redaction and merge handlers are not implemented. Full
+replay is the crash-recovery path and test oracle; incremental reduction is the
+hot path. Replay validates payloads, envelopes and the event chain first.
 
 Value-recency guard (§1/§4): fold ORDER is rowid (insertion) for hash determinism,
 but the VALUE a belief resolves to keys on `occurred_at`. A late-arriving event
@@ -20,7 +21,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from . import hashing
+from . import hashing, integrity
 from .events import CORRECTION_APPENDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED, Envelope
 from .reducer import ReducerProjector, Snapshot
 from . import committed
@@ -62,10 +63,9 @@ def _instant(timestamp: str, field: str = "occurred_at") -> datetime:
 
     A NAIVE (offset-less) timestamp is refused rather than assumed to be UTC. Its instant
     is genuinely unknown, and silently picking one would reintroduce exactly the class of
-    quiet wrong answer this function exists to remove. The real fix is canonicalizing
-    timezone-bearing timestamps at the INGESTION boundary (immune Stage 1), so the system
-    does not rely on compare-time normalization forever — logged as a follow-on gap in
-    decisions/0006, not built here.
+    quiet wrong answer this function exists to remove. Shared append/replay integrity
+    validation also rejects offset-less envelope timestamps. Stored spellings remain
+    unchanged; boundary canonicalization is still a separate follow-on in ADR 0006.
     """
     parsed = datetime.fromisoformat(timestamp)
     if parsed.tzinfo is None:
@@ -178,6 +178,8 @@ def fold(
             "see spec/NYX_V0_IMPLEMENTATION.md §8"
         )
 
+    integrity.validate_event(envelope, payload)
+
     # Backdated corrections are refused, not quietly absorbed by the guard below
     # (decisions/0005 — interim fail-loud, semantics open). The write path checks this
     # BEFORE appending; this call is the replay-side backstop.
@@ -272,7 +274,7 @@ def project(
     view: dict[str, Any] = {}
     position = 0
     previous_id = None
-    for envelope, payload in events:
+    for envelope, payload in integrity.verified_log(events):
         if _instant(envelope.recorded_at, "recorded_at") > cutoff:
             continue
         if isinstance(reducer, ReducerProjector):
@@ -298,7 +300,7 @@ def project_snapshot(events, as_of: str, projector_version: str = "1") -> Snapsh
     cutoff = _instant(as_of, "as_of")
     snapshot = (committed.Snapshot() if projector_version == "2"
                 else Snapshot({}, projector_version=projector_version))
-    for position, (envelope, payload) in enumerate(events, 1):
+    for position, (envelope, payload) in enumerate(integrity.verified_log(events), 1):
         if _instant(envelope.recorded_at, "recorded_at") > cutoff:
             continue
         delta = projector.reduce(snapshot, envelope, payload, as_of)
@@ -306,13 +308,21 @@ def project_snapshot(events, as_of: str, projector_version: str = "1") -> Snapsh
     return snapshot
 
 
-def is_stale(view_version_hash_lineage: str, latest_event_hash: str) -> bool:
-    """Stale-projection check: compare the materialized view_version_hash lineage
-    against entity_event_index.latest_event_hash for the belief's entity. Mismatch
-    → serve stale-labeled (never block on a re-fold). The synchronous index (§4)
-    is what makes this not race. spec/NYX_V0_IMPLEMENTATION.md §1.
+def is_stale(applied_position: int | None, latest_position: int | None, *,
+             record_present: bool | None = None, progress_valid: bool = True) -> bool:
+    """ADR 0014: compare applied progress with relevant append freshness.
+
+    Callers obtain both positions and validate progress identity in one read
+    transaction. Hash strings and timestamps cannot establish publication progress.
+    An absent record with no relevant append is an ordinary missing lookup.
+    Without an explicit presence flag, applied progress implies a materialization.
     """
-    raise NotImplementedError(
-        "is_stale — implement with the read path; "
-        "see spec/NYX_V0_IMPLEMENTATION.md §1, spec/NYX_ARCHITECTURE.md §8"
-    )
+    for position in (applied_position, latest_position):
+        if position is not None and (type(position) is not int or position < 0):
+            raise ValueError("freshness requires nonnegative log positions, not hashes")
+    if record_present is None:
+        record_present = applied_position is not None
+    return (not progress_valid
+            or (record_present and applied_position is None)
+            or (latest_position is not None
+                and (not record_present or latest_position > (applied_position or 0))))

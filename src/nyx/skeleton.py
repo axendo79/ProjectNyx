@@ -1,7 +1,6 @@
 """Walking skeleton — the single vertical slice that is Phase 1's acceptance bar.
 
-spec/NYX_V0_IMPLEMENTATION.md §6. NOT "build the immune system." One event, end
-to end, before anything is built wide:
+The original projector-0 acceptance slice from spec/NYX_V0_IMPLEMENTATION.md §6:
 
     1. Submit one observation_recorded event (simplest origin type — no affect-split).
     2. Immune Stage 1 ONLY (schema validation); Stages 2–4 stubbed.
@@ -9,7 +8,7 @@ to end, before anything is built wide:
     4. Delta-reducer folds it into `resolved_beliefs` (view_version_hash computed).
     5. Read it back; a fresh full-replay fold produces an identical hash.
 
-Acceptance test (implement TEST-FIRST in commit 2, spec §6):
+Implemented acceptance behavior (tests/test_walking_skeleton.py):
 
     GIVEN a fresh database
     WHEN an observation_recorded event for "legion.ram = 64GB" is submitted
@@ -21,9 +20,9 @@ Acceptance test (implement TEST-FIRST in commit 2, spec §6):
     AND resubmitting the exact same event (same idempotency_key) does not create a second row
     AND attempting UPDATE on events raises an error (trigger enforcement, Invariant 1)
 
-This function is deliberately unimplemented in the scaffold. It is the seam the
-walking skeleton drives through — write the test first, then the minimum code in
-ids/hashing/events/immune/storage/projection to make THIS pass. Nothing else.
+The legacy writer uses Immune Stage 1. Stage-two writers submit retained event
+pairs through schema/identity validation inside the append transaction and then
+publish separately. Neither path implements the wider Immune cascade.
 """
 
 from __future__ import annotations
@@ -32,7 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from . import immune, projection, storage
+from . import immune, projection, storage, hashing
 from .events import CORRECTION_APPENDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED, build_event
 
 
@@ -75,19 +74,27 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any],
         # correction appended and only THEN rejected at fold time would sit in the log
         # permanently, and every future replay would raise on it. See decisions/0005.
         storage.materialize_pending(conn, datetime.now(timezone.utc).isoformat(), projector_version)
-        if projector_version == "0":
+        retained = storage.find_recorded_event(conn, hashing.idempotency_key(
+            submission["source"]["actor_id"], submission["occurred_at"], payload))
+        if retained is not None:
+            envelope, payload_row = retained
+            expected = (event_type, ORIGIN_OBSERVED, hashing.canonical_json(submission["source"]),
+                        submission["source_class"], submission["occurred_at"])
+            if (envelope.event_type, envelope.origin_type, envelope.source,
+                    envelope.source_class, envelope.occurred_at) != expected:
+                raise ValueError("retry differs from retained submitted contents")
+        else:
             prior = storage.read_belief(conn, payload["belief_id"])
             projection.assert_not_backdated(prior, event_type, submission["occurred_at"])
-
-        envelope, payload_row = build_event(
-            event_type=event_type,
-            origin_type=ORIGIN_OBSERVED,
-            source=submission["source"],
-            source_class=submission["source_class"],
-            occurred_at=submission["occurred_at"],
-            payload=payload,
-            prev_event_hash=storage.last_event_hash(conn),
-        )
+            envelope, payload_row = build_event(
+                event_type=event_type,
+                origin_type=ORIGIN_OBSERVED,
+                source=submission["source"],
+                source_class=submission["source_class"],
+                occurred_at=submission["occurred_at"],
+                payload=payload,
+                prev_event_hash=storage.last_event_hash(conn),
+            )
         storage.safe_append_event(conn, envelope, payload_row, projector_version)
         # Separate derived transaction, including retries after an append
         # committed but publication/worker acknowledgement did not finish.

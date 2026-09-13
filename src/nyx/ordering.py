@@ -1,13 +1,9 @@
-"""The internal ordering scalar — what the entity-link ceiling and Liver consume.
+"""Unimplemented scalar/ceiling interfaces from the original v0 specification.
 
-spec/NYX_V0_IMPLEMENTATION.md §1. The architecture (§2) defers the *user-facing*
-synthesized confidence score (Invariant 2: never render fake-precise confidence),
-but an *internal ordering scalar* is load-bearing NOW (entity-link ceiling §11,
-Liver queue, corroboration gating). This module decides it so the arithmetic that
-consumes it has a real, non-invented source.
-
-At v0 claim_confidence is NOT a synthesized float — it is the STATE ORDINAL,
-normalized. The only thing deferred is a *richer* synthesized score later (§3).
+The constants below record the specified state ordinals; both functions still
+raise NotImplementedError. Liver and corroboration consumers do not ship.
+Stage-two constitutive-link handling lives in reducer.py under ADR 0021 and
+does not call these stubs. Later link treatment still requires decisions.
 """
 
 from __future__ import annotations

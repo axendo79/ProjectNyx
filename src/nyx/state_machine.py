@@ -1,9 +1,9 @@
-"""Verification state machine — the enforcement of No Silent Promotion (Invariant 3).
+"""Verification vocabulary and an unimplemented general transition interface.
 
-spec/NYX_ARCHITECTURE.md §2 (two-dimensional state, transition contract) and
-spec/NYX_V0_IMPLEMENTATION.md §1 (state-transition validator). The transition
-table is not prose to interpret — it is a literal lookup guard. Promotion toward
-`verified` requires a world oracle (Invariant 3/4); demotion may fire offline.
+The state table is empty and transition() raises NotImplementedError. Current
+observed-origin handling is enforced in projection.py and the stage-two reducers.
+General transitions remain subject to the specifications and superseding ADRs;
+these declarations do not establish implemented promotion or demotion behavior.
 """
 
 from __future__ import annotations
@@ -32,17 +32,15 @@ class TransitionRule:
 
 
 # The transition contract from spec/NYX_ARCHITECTURE.md §2, keyed (from, to).
-# Populate as a literal table in the walking skeleton — do not infer transitions
-# at runtime. Left empty in the scaffold on purpose (no logic in commit 1).
+# Still unimplemented; populate only where accepted decisions settle transitions.
 STATE_TABLE: dict[tuple[str, str], TransitionRule] = {}
 
 
 def transition(from_state: str, to_state: str, trigger_type: str, has_world_oracle: bool) -> bool:
     """Return True if the transition is permitted, else raise / reject.
 
-    The entire enforcement mechanism for Invariant 3 is this lookup — not a model
-    call: reject unknown transitions; reject promotion without a world oracle.
-    spec/NYX_V0_IMPLEMENTATION.md §1. Implement alongside the walking skeleton.
+    Reserved lookup-guard interface from spec/NYX_V0_IMPLEMENTATION.md §1.
+    No general transition enforcement is implemented in this function.
     """
     raise NotImplementedError(
         "transition — implement the STATE_TABLE lookup guard; "

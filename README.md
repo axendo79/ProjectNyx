@@ -16,10 +16,14 @@ into world evidence or mutate the log. The current code implements deterministic
 belief projection and a materialized Resolved View; it does not implement the
 broader synthesis subsystems described in the architecture.
 
-The implemented path validates observations through Immune Stage 1, appends them
-with idempotency protection, updates the entity-event index, folds the event into
-a belief, and reads the result. It also handles corrections, late-arriving
-observations, historical recording-time cutoffs, and projector-version dispatch.
+The legacy projector `"0"` writer runs observations through Immune Stage 1.
+Stage-two writers (`"1"` and `"2"`) instead validate supported events in the reducer
+inside the append transaction; they do not run the Immune Stage 1 pipeline.
+All versions validate envelope schema/taxonomy, offset-bearing timestamps, payload
+hashes, event hashes and predecessor links at append. The implemented paths append
+with idempotency protection, update freshness indexes, publish derived state, and
+read the result. Legacy corrections, late-arriving observations, historical
+recording-time cutoffs, and projector-version dispatch are implemented.
 Database creation requires explicit authorization, and each connection validates
 schema metadata. Append refuses backward recording timestamps.
 
@@ -68,7 +72,12 @@ defaults remain unchanged. Use `project_snapshot(log, as_of, "2")` and pass
 `submit`, and skeleton writers. Mention preparation produces the same event pair.
 
 Full belief reads reconstruct the original logical shape; only the lineage hash
-differs between versions. A version-2 snapshot's `header(belief_id)` exposes
+differs between versions. In both versions, `Snapshot.events()` returns a canonical
+list and `current_belief(subject_id, property_id)` returns the complete belief or
+`None`. Version 2 uses the separate indexed `current_header` lookup internally so
+ordinary writes do not enumerate accumulated collections. These public methods
+are covered together in [test_event_integrity.py](tests/test_event_integrity.py).
+A version-2 snapshot's `header(belief_id)` exposes
 `collection_roots` and `result_root`. Its `inclusion_proof(belief_id, collection,
 key)` supplies a path for `nyx.merkle.verify(root, key, value, proof)` against a
 trusted collection root. A proof establishes membership, not completeness or
@@ -115,24 +124,15 @@ values and internal punctuation; their field names, enclosing punctuation, and
 all other lineage fields belong to `other`. The four counts sum to the complete
 lineage bytes without double-counting.
 
-Earlier version-1 `Snapshot.apply` comparison, recorded on Python 3.14.2 / Windows
-11 on 2026-09-12, in sequential baseline and
-optimized runs, using `--sizes 32 64 128 256 512 --repeat 3`:
-
-| Observations | Cumulative lineage bytes, unchanged | Median seconds before | Median seconds after |
-|---:|---:|---:|---:|
-| 32 | 914,109 | 0.053945 | 0.038552 |
-| 64 | 3,500,237 | 0.194593 | 0.138406 |
-| 128 | 13,692,578 | 0.736572 | 0.523406 |
-| 256 | 54,232,418 | 2.885680 | 2.040403 |
-| 512 | 215,970,530 | 11.628160 | 8.634262 |
-
 `Snapshot.apply` now retains immutable canonical strings for unchanged records
 and serializes only incoming delta records, copying changed maps to preserve old
-prefixes. Elapsed time fell by 26–29% in this workload. Baseline and optimized runs
-matched all 997 complete snapshot fingerprints and every prefix's belief lineage,
-as well as cumulative and final-record component counts. Projector "0" goldens
-remain unchanged; the full suite passed (222 tests).
+prefixes. Earlier before/after timings came from implementation-session worktrees
+without revision-bound measurement artifacts, so they are no longer presented as
+committed-code benchmarks. The component profile below and version comparison
+were rerun against clean commit `7598b6bd2b0cbf824a9d9c67bdfae69d2fe5c889`
+on Python 3.14.2 / Windows 11 during the reconciliation check on 2026-09-13.
+That revision predates the subsequent integrity fixes; these timings describe
+that baseline, not later working-tree changes. Commands and measurement scope follow.
 
 | Observations | Candidate collection bytes | Event dependency bytes | Identity record bytes | Other bytes |
 |---:|---:|---:|---:|---:|
@@ -164,9 +164,9 @@ production throughput and do not measure storage snapshot loading/publication.
 For the governing scope
 and unresolved work, see [ADR 0023](decisions/0023-stage-two-contract.md).
 
-The ADR 0025 comparison below uses the current version `"1"` as baseline and
-version `"2"` with the same fixed workload. Both were measured sequentially on
-Python 3.14.2 / Windows 11 on 2026-09-12, three runs per size:
+The ADR 0025 comparison below uses versions `"1"` and `"2"` at the same clean
+commit `7598b6bd2b0cbf824a9d9c67bdfae69d2fe5c889`, with the fixed workload above.
+Both were measured sequentially, three runs per size:
 
 ```powershell
 .\.venv\Scripts\python.exe -B scripts/probe_lineage_scaling.py --sizes 32 64 128 256 512 --repeat 3 --projector-version 1 --database --json lineage-before.json
@@ -183,18 +183,17 @@ Python 3.14.2 / Windows 11 on 2026-09-12, three runs per size:
 
 | Observations | V1 reducer seconds | V2 reducer seconds | V1 SQLite seconds | V2 SQLite seconds |
 |---:|---:|---:|---:|---:|
-| 32 | 0.040526 | 0.014482 | 0.196863 | 0.124991 |
-| 64 | 0.144533 | 0.029998 | 0.592123 | 0.257137 |
-| 128 | 0.552268 | 0.064664 | 2.211006 | 0.525239 |
-| 256 | 2.111444 | 0.137076 | 11.294039 | 1.161736 |
-| 512 | 17.821730 | 0.294341 | 30.827170 | 2.413890 |
+| 32 | 0.041178 | 0.014794 | 0.193943 | 0.124358 |
+| 64 | 0.143726 | 0.031045 | 0.597366 | 0.282684 |
+| 128 | 0.584769 | 0.065983 | 2.071371 | 0.558517 |
+| 256 | 2.283213 | 0.138295 | 8.588238 | 1.173536 |
+| 512 | 9.389988 | 0.297721 | 35.681309 | 2.391661 |
 
 Reducer timing uses the same timer scope described above. SQLite timing is a
 separate sample on a fresh temporary database using the production WAL settings,
 event construction, safe append and publication, with separate append and
 publication commits. Initialization and final read validation are outside that
-timer. These are workload measurements, not universal latency guarantees; the
-version-1 512-observation timing in particular differs from the earlier run.
+timer. These are workload measurements, not universal latency guarantees.
 
 Publication bytes count serialized changed delta records in version `"1"`, and
 emitted tree nodes, compact belief headers, and changed root descriptors in
@@ -217,7 +216,7 @@ final lineage hashes match the previous baseline. Tests additionally compare
 incremental, SQLite and replay results at each prefix, independently reconstruct
 roots from full content, exercise proofs and corrupted storage, and prevent
 collection enumeration on the write path. Version `"0"` goldens remain unchanged.
-The full pytest suite passes: 265 tests on the recorded runtime.
+The benchmark revision's full pytest suite passed: 265 tests on the recorded runtime.
 
 Doubling observations at the upper end now multiplies publication material by
 about 2.15 rather than 4. Bounded updates copy tree paths, typically O(log n),
@@ -235,6 +234,31 @@ use `storage.rebuild_projection(conn, as_of, projector_version="1")` for full
 replay from Layer A; it replaces the selected new-version materialization in one
 transaction. The walking-skeleton calls drive publication synchronously after
 the separate append commit; they do not start a background worker.
+
+Layer A reads and replay recompute payload hashes against the envelope commitment,
+verify envelope hashes, and check predecessor links in insertion order. Missing
+payload rows or content fail loudly. `read_all_events`, whole-view evaluation and
+rebuild validate the full stored log. Pending publication validates its applied
+anchor and the suffix it reads, preserving incremental work; it is not an audit
+of older unread content. Redacted histories still refuse because no REDACTED
+sentinel is implemented. Ordinary materialized reads do not replay or certify the
+entire Layer A history. Hash validation establishes consistency with commitments;
+it does not establish the truth of the submitted evidence.
+
+An identical retained `(Envelope, Payload)` pair is a retry even after the log tip
+advances. A reused event ID or idempotency key with different contents refuses.
+The legacy raw-input wrapper retrieves and reuses the original pair for a genuine
+retry. The accepted idempotency-key formula is unchanged, including its omission
+of event type; conflicting types are rejected rather than silently collapsed.
+
+For typed identity freshness in versions `"1"`/`"2"`, use `read_entity_status`,
+`read_mention_status`, or `read_entity_link_status`. Each returns `record`, `stale`,
+`derived_progress`, `append_freshness`, and `freshness_scope`. An absent mention or
+link with no known subject conservatively uses log-wide freshness, so unpublished
+absence is disclosed. Existing record-returning readers preserve their shapes and
+emit `StaleProjectionWarning` with the status attached when stale, including a
+stale `None`. `projection.is_stale` compares applied and appended positions under
+ADR 0014; it no longer accepts the superseded hash-comparison arguments.
 
 Database schema version `4` is required under
 [ADR 0025](decisions/0025-incremental-result-commitment.md), superseding ADR 0017's
@@ -323,7 +347,7 @@ merge, split, approval, or authority handlers.
 | [0013](decisions/0013-cross-belief-identity-semantics.md) | [reducer.py] `reduce`, `evidence_event_ids`; [storage.py] typed read functions. Merge/split and successor-resolution handlers are absent. | `test_same_spelling_in_distinct_id_scopes_never_aliases`, `test_typed_reads_never_search_other_id_scopes`, `test_no_head_named_candidate_and_event_evidence_scope`, `test_deferred_events_refuse_both_boundaries` |
 | [0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md) | [reducer.py] `Snapshot`, `EventDelta`, `reduce`; [hashing.py] `belief_lineage`, `canonical_set`; [storage.py] `_append_stage_two`, `_publish_delta`, `materialize_pending`, `read_belief_status`, `rebuild_projection` | `test_snapshot_detached_pure_and_no_clock_or_allocation`, `test_snapshot_apply_detached_branches_and_constructor_equivalence`, `test_snapshot_apply_only_serializes_delta_records`, `test_lineage_complete_result_and_pre_event_dependencies`, `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`, `test_recovery_ignores_corrupt_snapshot_and_rolls_back_failure`, `test_two_connections_cannot_authorize_against_old_append_position` |
 | [0015](decisions/0015-candidate-scoped-verification.md) | [reducer.py] `canonical_claim_candidates`, `evidence_event_ids`, `reduce`. Later standing/approval handlers are absent. | `test_same_value_different_standing_and_identity_paths_survive` (supplied-state fixture), `test_no_head_named_candidate_and_event_evidence_scope`, `test_lineage_covers_candidate_contents_with_predecessors_fixed` |
-| [0016](decisions/0016-schema-version-2.md) | [schema.sql](schema.sql) `derived_progress`; [storage.py] `_publish_delta`, `_read_snapshot`; current schema selection is in row 0017 | `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
+| [0016](decisions/0016-schema-version-2.md) | [schema.sql](schema.sql) `derived_progress`; [storage.py] `_publish_delta`, `_read_snapshot`; current schema selection is in row 0025 | `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
 | [0017](decisions/0017-schema-version-3.md) | [storage.py] `_validate_schema`; [schema.sql](schema.sql) `projected_*` tables. Current schema selection is in row 0025. | `test_version_two_existing_database_refuses_byte_unchanged`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
 | [0018](decisions/0018-correction-supersedes-candidates.md) | No version-"1" correction handler; refusal boundaries in [storage.py] `_append_stage_two` and [reducer.py] `reduce` | `test_deferred_events_refuse_both_boundaries`; successful candidate-correction coverage is absent |
 | [0019](decisions/0019-identity-bootstrap.md) | [ingestion.py] `prepare_mention`, `prepare_observation`, `submit`; [reducer.py] `reduce`; [skeleton.py] `record_mention`, `_record_stage_two` | `test_bootstrap_mention_only_and_confidence`, `test_new_mentions_with_identical_text_and_different_actors_are_isolated`, `test_retained_retry_mention_survives_and_no_remint`, `test_writer_lookup_and_skeleton_two_then_one_events` |

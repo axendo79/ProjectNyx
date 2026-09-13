@@ -6,7 +6,7 @@ import json
 from dataclasses import asdict, dataclass, field
 from types import MappingProxyType
 
-from . import hashing, merkle
+from . import hashing, merkle, integrity
 from .events import ENTITY_MENTION_RECORDED
 from .reducer import (EventDelta, RECORD_KINDS, SUPPORTED_EVENTS, ReducerProjector,
                       _entity_refs, _fields, _fresh, _required, _string,
@@ -65,6 +65,12 @@ def full_result_roots(belief):
 
 @dataclass(frozen=True)
 class Snapshot:
+    """Version-1 logical read shapes backed by version-2 incremental trees.
+
+    Public belief/event reads reconstruct canonical content. Header methods are
+    separate indexed operations for reducers and commitment inspection.
+    """
+
     roots: object = field(default_factory=lambda: MappingProxyType(dict.fromkeys(INDEX_KINDS)))
     log_position: int = 0
     event_id: str | None = None
@@ -120,9 +126,15 @@ class Snapshot:
         return self.record("events", event_id)
 
     def events(self):
-        return self.records("events")
+        return hashing.canonical_set(list(self.records("events").values()))
 
     def current_belief(self, subject_id, property_id):
+        """Complete logical belief, matching the version-1 snapshot read contract."""
+        header = self.current_header(subject_id, property_id)
+        return None if header is None else self.belief(header["belief_id"])
+
+    def current_header(self, subject_id, property_id):
+        """Indexed reducer lookup; does not reconstruct accumulated collections."""
         key = merkle.get(self.roots["current_beliefs"], pair_key(subject_id, property_id))
         return None if key is None else self.header(key)
 
@@ -170,6 +182,7 @@ def reduce(snapshot, envelope, payload, as_of):
         raise ValueError("snapshot projector version does not match reducer")
     if envelope.event_type not in SUPPORTED_EVENTS:
         raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
+    integrity.validate_event(envelope, payload)
     _instant(as_of, "as_of")
     _instant(envelope.occurred_at)
     _instant(envelope.recorded_at, "recorded_at")
@@ -230,7 +243,7 @@ def reduce(snapshot, envelope, payload, as_of):
         identity_confidence_ceiling([link])
         belief_id, candidate_id = claim["belief_id"], claim["claim_candidate_id"]
         _fresh(snapshot, "claim_candidates", candidate_id, delta.claim_candidates)
-        current = snapshot.current_belief(subject_id, claim["property_id"])
+        current = snapshot.current_header(subject_id, claim["property_id"])
         if current is not None and current["belief_id"] != belief_id:
             raise ValueError("subject/property already has a current belief; name its existing ID")
         prior = snapshot.header(belief_id)

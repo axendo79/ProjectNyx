@@ -4,6 +4,8 @@
 
 **Provenance:** Originated in conversation, recorded 2026-09-07. This document preserves the user's design direction and the subsequent feedback-loop review; it is not a ratified specification. Recommendations and candidate definitions below remain proposals.
 
+**Accepted boundary:** [ADR 0026](../decisions/0026-usage-is-not-evidence.md) binds this direction: Dream references, retrieval exposures, and activation records are usage, never belief evidence dependencies or lineage inputs. Recording location and operational mechanics remain unresolved. The remaining proposals here are unratified.
+
 ## Temporal layer
 
 Machine-readable temporal information: `event_time`, `first_seen`, `last_referenced`, `last_activated`, `sequence_id`, and `relations`. Relative dates are derived from timestamps rather than stored as authoritative relative descriptions.
@@ -137,7 +139,7 @@ Architecture §10 closes the kernel's governance scope. The placement of activat
 
 Existing `occurred_at`, `recorded_at`, insertion-order replay, and the projection-parameters ADR remain authoritative. New names do not authorize schema changes or a historical-validity interpretation that contradicts the knowledge-time cutoff. Backdated-correction semantics remain open under [ADR 0005](../decisions/0005-backdated-corrections-fail-loud-pending-semantics.md).
 
-Operational associations do not authorize identity merges or cross-belief projection behavior. [ADR 0008](../decisions/0008-fold-signature-cannot-express-cross-belief-events.md) remains the fold-shape/hash-lineage blocker; missing global event dispatch is a separate existing gap. Additional origin-state semantics also remain undecided.
+Operational associations do not authorize identity merges or cross-belief projection behavior. [ADR 0014](../decisions/0014-cross-belief-reducer-and-hash-lineage.md) supersedes ADR 0008; stage-two snapshot dispatch and lineage are implemented. [ADR 0025](../decisions/0025-incremental-result-commitment.md) selects database schema 4 and projector "2" for incremental commitments. Merge/split handlers remain outside the implemented [ADR 0023](../decisions/0023-stage-two-contract.md) stage, and additional origin-state semantics remain undecided.
 
 The proposed `/audit` and `/selftest` interfaces and retrieval-coherence measures have no existing implementation contract. Their names do not imply that command handlers or approved metric definitions already exist.
 
@@ -146,8 +148,8 @@ The proposed `/audit` and `/selftest` interfaces and retrieval-coherence measure
 1. Preserve this direction and its non-authoritative status; ratify concrete contracts before dependent implementation.
 2. Address the outstanding ingestion timestamp-canonicalization gap before persistent temporal data. Database version checking is implemented under [ADR 0011](../decisions/0011-database-schema-versioning.md). Any future migration mechanism for persistent data conversion requires a separate decision; this direction does not authorize one.
 3. Ratify temporal meanings, then build the smallest read-side temporal surface using existing projection behavior where appropriate. Preserve fail-loud behavior for unsettled corrections and origins.
-4. Establish baseline retrieval and observable relevance outcomes before ranking bias. Specify proposed audit/selftest interfaces and address the existing stale-read detection stub as part of the read path.
+4. Establish baseline retrieval and observable relevance outcomes before ranking bias. Specify proposed audit/selftest interfaces. Stage-two belief and typed identity reads now disclose freshness using applied progress and append positions; the general retrieval surface is not implemented.
 5. Ratify activation's storage, authority, replay, update, and ranking contracts. Implement and evaluate only the minimal components after those decisions, with versioned operational defaults and explicit retuning criteria.
-6. Keep cross-belief work behind ADR 0008 and relevant dispatch decisions. Fix redaction replay before supporting redacted histories, including activation logs or caches that could retain payload-derived content. Defer experimental mechanisms until baseline measurements justify them.
+6. Keep cross-belief work within ADRs 0013–0015 and the stage limits in ADR 0023; the old ADR 0008 seam blocker is resolved. Fix redaction replay before supporting redacted histories, including activation logs or caches that could retain payload-derived content. Defer experimental mechanisms until baseline measurements justify them.
 
 A read-only ranking experiment over existing beliefs need not resolve every open gap, but it cannot bypass a gap by implementing undecided semantics. New feature questions belong here until ratified; [GAPS.md](../GAPS.md) remains the register of verified existing findings, not a general wishlist.

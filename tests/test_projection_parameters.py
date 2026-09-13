@@ -171,7 +171,9 @@ def test_live_projection_defaults_to_one_current_time(monkeypatch):
         return T1
 
     monkeypatch.setattr(projection, "_now_iso", current_time)
-    result = projection.project([make_event(), make_event(recorded_at=T2)],
+    first = make_event()
+    result = projection.project([first, make_event(recorded_at=T2, value="128GB",
+                                                  previous=first[0].event_hash)],
                                 projector_version="0")
     assert calls == [True]
     assert result[BELIEF_ID]["projected_as_of"] == T1

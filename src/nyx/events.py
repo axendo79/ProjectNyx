@@ -3,9 +3,10 @@
 spec/NYX_ARCHITECTURE.md §1 (event taxonomy, write path) and Invariant 14
 (envelope/payload split). spec/NYX_V0_IMPLEMENTATION.md §4 (schema).
 
-The envelope is PII-free by construction (no free text; actor is an opaque id) and
-is the ONLY thing the hash chain covers. The payload is stored separately,
-content-addressed, and separately destroyable via crypto-shredding.
+Envelopes are intended to carry non-PII metadata, but these types do not enforce
+that policy. The hash chain covers envelope fields, including payload_hash;
+payload bytes are verified separately. Payload rows are keyed by event ID
+(ADR 0007) and contain plaintext JSON (ADR 0002). Crypto-shredding is not built.
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ ORIGIN_PERSONAL = "personal"
 
 @dataclass(frozen=True)
 class Envelope:
-    """PII-free event envelope — the hash chain covers these fields only.
+    """Immutable event envelope — the hash chain covers these fields only.
 
     Field set mirrors the `events` table (spec/NYX_V0_IMPLEMENTATION.md §4). Frozen
     because an appended envelope is immutable (Invariant 1/5); correction is a new
@@ -71,11 +72,11 @@ class Envelope:
 
 @dataclass(frozen=True)
 class Payload:
-    """Separately-stored, content-addressed, separately-destroyable payload.
+    """Separately stored payload with a committed content hash.
 
-    spec/NYX_V0_IMPLEMENTATION.md §4. `ciphertext` becomes NULL after redaction
-    (key destroyed); the envelope row is untouched, so replay yields a typed
-    REDACTED sentinel rather than a broken chain.
+    `ciphertext` currently holds plaintext JSON. The schema reserves redaction
+    fields, but replay refuses redacted payloads; no REDACTED sentinel or
+    crypto-shredding implementation ships.
     """
 
     payload_hash: str
@@ -100,10 +101,9 @@ def build_event(
 ) -> tuple[Envelope, Payload]:
     """Assemble a hashed (Envelope, Payload) pair ready for append.
 
-    Wires ids (§1), hashing (§1), and the affect-split write path
-    (spec/NYX_ARCHITECTURE.md §1: semantic payload → extraction; affect metadata
-    parallel, never through extraction — Invariant 11). The skeleton only carries a
-    semantic payload; there is no affect metadata to split off yet.
+    Allocates missing IDs and recording times and hashes the supplied semantic
+    payload. This helper does not implement extraction or affect routing.
+    Append validates the resulting pair against the schema and hash contract.
     """
     source_str = hashing.canonical_json(source)
     entity_refs_str = hashing.canonical_json(entity_refs) if entity_refs is not None else None

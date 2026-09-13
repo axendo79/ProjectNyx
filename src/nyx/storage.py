@@ -6,9 +6,9 @@ spec/NYX_V0_IMPLEMENTATION.md §4 (schema). The append is THE durable commit
 
 Append-only is engine-enforced (UPDATE/DELETE triggers in schema.sql), not a
 convention (Invariant 1). `safe_append_event` is the sole write path into Layer A;
-it inserts the envelope + payload AND updates `entity_event_index` synchronously in
-ONE transaction (the one exception to "append is the only sync step" — §1; without
-it, stale-read detection races the async projection).
+it inserts the envelope and payload with append freshness in one transaction.
+Version 0 uses entity_event_index; versions 1/2 use identity_event_index and
+belief_event_index. Derived publication and its progress commit separately.
 """
 
 from __future__ import annotations
@@ -16,11 +16,11 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-from dataclasses import asdict
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import hashing, projection, committed, committed_storage
+from . import hashing, projection, committed, committed_storage, integrity
 from .events import Envelope, Payload
 from .projection import _instant
 from .reducer import EventDelta, RECORD_KINDS, SUPPORTED_EVENTS
@@ -196,9 +196,10 @@ def last_event_hash(conn: sqlite3.Connection) -> str | None:
 
 def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Payload,
                       projector_version: str = "0") -> bool:
-    """Append one event to Layer A: envelope + payload + entity_event_index, all in
-    a single transaction (Invariant 8, §1). Returns True if newly appended, False if
-    the idempotency key already existed (dedup — no second row).
+    """Append a validated retained pair and freshness in one transaction.
+
+    Return False only for an identical recorded retry. Reused IDs or idempotency
+    keys with different contents refuse; they are not silently ignored.
 
     Idempotency is enforced by the unique index on idempotency_key. Formerly
     `safe_write_jsonl` under the superseded flat-JSONL design (spec/HANDOFF_2026-07-11.md).
@@ -208,33 +209,28 @@ def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Pay
         return _append_stage_two(conn, envelope, payload, projector_version)
     if envelope.event_type not in projection._VALUE_SETTING:
         raise NotImplementedError(f"append handler for {envelope.event_type!r} not implemented")
-    with conn:  # atomic transaction
-        cur = conn.execute(
-            f"INSERT OR IGNORE INTO events ({','.join(_EVENT_COLUMNS)}) "
-            f"VALUES ({','.join('?' for _ in _EVENT_COLUMNS)})",
-            tuple(getattr(envelope, col) for col in _EVENT_COLUMNS),
-        )
-        if cur.rowcount == 0:
-            return False  # duplicate idempotency_key — no-op, no second row
-        # The tentative insert acquires the write lock. A refusal rolls it back
-        # before payload/index writes; duplicates remain idempotent no-ops.
+    if conn.in_transaction:
+        raise RuntimeError("append requires its own transaction")
+    with conn:
+        conn.execute("BEGIN IMMEDIATE")
+        if _is_recorded_retry(conn, envelope, payload):
+            return False
+        data = integrity.decode_payload(envelope, payload)
         previous = conn.execute(
-            "SELECT recorded_at FROM events WHERE rowid < ? ORDER BY rowid DESC LIMIT 1",
-            (cur.lastrowid,),
+            "SELECT event_hash, recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
         ).fetchone()
         recorded_at = _instant(envelope.recorded_at, "recorded_at")
-        if previous and recorded_at < _instant(previous[0], "recorded_at"):
+        if previous and recorded_at < _instant(previous[1], "recorded_at"):
             raise BackdatedRecordingError(
-                f"recorded_at {envelope.recorded_at!r} precedes previous event {previous[0]!r}"
+                f"recorded_at {envelope.recorded_at!r} precedes previous event {previous[1]!r}"
             )
-        # Keyed by event_id (decisions/0007). No conflict clause, deliberately: the
-        # events INSERT OR IGNORE above already returned False on a duplicate
-        # idempotency_key, so this line is reached ONLY for a freshly-appended event —
-        # whose event_id is new by construction. A PK violation here would therefore be
-        # a real bug (a reused event_id), and must fail loudly rather than be absorbed
-        # by an ON CONFLICT. Note payload_hash is deliberately NOT unique: two
-        # independent sources reporting the same value share a content hash, and that
-        # is corroboration, not duplication.
+        if envelope.prev_event_hash != (None if previous is None else previous[0]):
+            raise integrity.IntegrityError("event was built against a different append position")
+        conn.execute(
+            f"INSERT INTO events ({','.join(_EVENT_COLUMNS)}) VALUES ({','.join('?' for _ in _EVENT_COLUMNS)})",
+            tuple(getattr(envelope, col) for col in _EVENT_COLUMNS))
+        # Payloads are keyed by event ID, not content hash (ADR 0007). Conflicting
+        # identities have already refused under the same write lock.
         conn.execute(
             "INSERT INTO payloads (event_id, payload_hash, canonical_entity_id, ciphertext, redacted) "
             "VALUES (?,?,?,?,?)",
@@ -243,7 +239,7 @@ def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Pay
         )
         # Synchronous stale-read index, keyed by the belief's entity (§1/§4). For the
         # skeleton the belief_id stands in as the entity key (one belief, no graph yet).
-        entity_id = json.loads(payload.ciphertext)["belief_id"]
+        entity_id = data["belief_id"]
         conn.execute(
             "INSERT INTO entity_event_index (entity_id, latest_event_id, latest_event_hash, updated_at) "
             "VALUES (?,?,?,?) "
@@ -255,6 +251,45 @@ def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Pay
     return True
 
 
+def _recorded_pair(conn, event_id):
+    """Read one retained submission and check its actual predecessor association."""
+    row = conn.execute(
+        f"SELECT e.rowid, e.{',e.'.join(_EVENT_COLUMNS)}, "
+        "p.payload_hash,p.event_id,p.canonical_entity_id,p.ciphertext,p.redacted, "
+        "(SELECT event_hash FROM events prior WHERE prior.rowid<e.rowid ORDER BY prior.rowid DESC LIMIT 1) "
+        "FROM events e LEFT JOIN payloads p ON p.event_id=e.event_id WHERE e.event_id=?",
+        (event_id,)).fetchone()
+    if row is None:
+        return None
+    envelope = Envelope(**dict(zip(_EVENT_COLUMNS, row[1:1+len(_EVENT_COLUMNS)])))
+    payload = Payload(*row[1+len(_EVENT_COLUMNS):-1])
+    integrity.decode_payload(envelope, payload)
+    if envelope.prev_event_hash != row[-1]:
+        raise integrity.IntegrityError("stored event predecessor mismatch")
+    return envelope, payload
+
+
+def find_recorded_event(conn, idempotency_key):
+    """Retrieve a verified retained pair for a legacy raw-submission retry."""
+    if not conn.in_transaction:
+        with conn:
+            conn.execute("BEGIN")
+            return find_recorded_event(conn, idempotency_key)
+    row = conn.execute("SELECT event_id FROM events WHERE idempotency_key=?", (idempotency_key,)).fetchone()
+    return None if row is None else _recorded_pair(conn, row[0])
+
+
+def _is_recorded_retry(conn, envelope, payload):
+    rows = conn.execute(
+        "SELECT event_id FROM events WHERE event_id=? OR idempotency_key=?",
+        (envelope.event_id, envelope.idempotency_key)).fetchall()
+    if not rows:
+        return False
+    if len(rows) != 1 or _recorded_pair(conn, rows[0][0]) != (envelope, payload):
+        raise integrity.IntegrityError("retry differs from retained recorded IDs or submitted contents")
+    return True
+
+
 def _append_stage_two(conn, envelope, payload, version="1"):
     """Validate at the locked append prefix; exact retained submissions retry."""
     if envelope.event_type not in SUPPORTED_EVENTS:
@@ -263,33 +298,11 @@ def _append_stage_two(conn, envelope, payload, version="1"):
         raise RuntimeError("append requires its own transaction")
     with conn:
         conn.execute("BEGIN IMMEDIATE")
-        existing = conn.execute(
-            f"SELECT {','.join(_EVENT_COLUMNS)} FROM events WHERE idempotency_key=?",
-            (envelope.idempotency_key,),
-        ).fetchone()
-        if existing is not None:
-            stored_payload = conn.execute(
-                "SELECT payload_hash,event_id,canonical_entity_id,ciphertext,redacted "
-                "FROM payloads WHERE event_id=?", (existing[0],),
-            ).fetchone()
-            if existing != tuple(getattr(envelope, col) for col in _EVENT_COLUMNS) or stored_payload != (
-                payload.payload_hash, payload.event_id, payload.canonical_entity_id,
-                payload.ciphertext, int(payload.redacted)
-            ):
-                raise ValueError("retry differs from retained recorded IDs or submitted contents")
+        if _is_recorded_retry(conn, envelope, payload):
             return False
         if payload.redacted or payload.ciphertext is None or payload.canonical_entity_id is not None:
             raise NotImplementedError("stage two does not implement redaction or canonical key binding")
-        data = json.loads(payload.ciphertext)
-        if (payload.event_id != envelope.event_id or payload.payload_hash != envelope.payload_hash
-                or hashing._sha256_hex(hashing.canonical_json(data)) != envelope.payload_hash):
-            raise ValueError("envelope/payload identity or hash mismatch")
-        material = asdict(envelope)
-        del material["event_hash"], material["prev_event_hash"]
-        if hashing.event_hash(material, envelope.prev_event_hash) != envelope.event_hash:
-            raise ValueError("envelope hash mismatch")
-        if hashing.idempotency_key(json.loads(envelope.source)["actor_id"], envelope.occurred_at, data) != envelope.idempotency_key:
-            raise ValueError("idempotency key does not match submitted contents")
+        data = integrity.decode_payload(envelope, payload)
         tip = conn.execute(
             "SELECT rowid,event_id,event_hash,recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
         ).fetchone()
@@ -299,7 +312,7 @@ def _append_stage_two(conn, envelope, payload, version="1"):
         if (snapshot.log_position, snapshot.event_id) != ((0, None) if tip is None else tip[:2]):
             raise ProjectionBehindError("derived prefix is behind append position; publish pending events first")
         if envelope.prev_event_hash != (None if tip is None else tip[2]):
-            raise ValueError("event was built against a different append position")
+            raise integrity.IntegrityError("event was built against a different append position")
         delta = projection.PROJECTORS[version].reduce(snapshot, envelope, data, envelope.recorded_at)
         conn.execute(
             f"INSERT INTO events ({','.join(_EVENT_COLUMNS)}) VALUES ({','.join('?' for _ in _EVENT_COLUMNS)})",
@@ -326,20 +339,12 @@ def _append_stage_two(conn, envelope, payload, version="1"):
 
 
 def read_all_events(conn: sqlite3.Connection) -> list[tuple[Envelope, dict]]:
-    """Read the full log in insertion (rowid) order as (Envelope, payload_dict)
-    pairs — the input to a full replay (spec §6, projection.project). A redacted
-    payload (ciphertext NULL) yields a None payload (typed REDACTED sentinel is a
-    later slice; the skeleton has no redactions)."""
-    rows = conn.execute(
-        f"SELECT e.{', e.'.join(_EVENT_COLUMNS)}, p.ciphertext "
-        "FROM events e JOIN payloads p ON p.event_id = e.event_id ORDER BY e.rowid"
-    ).fetchall()
-    out: list[tuple[Envelope, dict]] = []
-    for row in rows:
-        env = Envelope(**dict(zip(_EVENT_COLUMNS, row[:-1])))
-        payload_dict = json.loads(row[-1]) if row[-1] is not None else None
-        out.append((env, payload_dict))
-    return out
+    """Read and verify the complete Layer A chain, including every payload row.
+
+    Missing or mismatched content refuses. Redaction remains unsupported; no
+    absent payload is skipped or represented as usable evidence.
+    """
+    return [(env, data) for _, env, data in _pending_events(conn, 0)]
 
 
 def evaluate_whole_view(
@@ -509,16 +514,88 @@ def _read_record(conn, kind, identifier, projector_version="1"):
     return None if row is None else json.loads(row[0])
 
 
+class StaleProjectionWarning(UserWarning):
+    """A raw identity lookup used an incomplete publication; status is attached."""
+
+    def __init__(self, status):
+        self.status = status
+        super().__init__("identity projection is stale; absence is not authoritative; "
+                         "inspect read_identity_status for progress and append freshness")
+
+
+def read_identity_status(conn, kind, identifier, projector_version="1"):
+    """Read identity content and freshness together without replaying pending events.
+
+    For an absent mention/link its subject is not known from materialization, so
+    conservatively disclose whole-log lag. Once caught up, absence is conclusive.
+    Existing records and entity IDs use the append-side subject index.
+    """
+    _snapshot_projector(projector_version)
+    if kind not in ("entities", "mentions", "entity_links"):
+        raise ValueError("identity status requires an entity, mention, or entity link")
+    if not conn.in_transaction:
+        with conn:
+            conn.execute("BEGIN")
+            return read_identity_status(conn, kind, identifier, projector_version)
+    record = _read_record(conn, kind, identifier, projector_version)
+    progress_row = conn.execute(
+        "SELECT d.log_position,d.event_id,e.event_id FROM derived_progress d "
+        "LEFT JOIN events e ON e.rowid=d.log_position WHERE d.projector_version=?",
+        (projector_version,)).fetchone()
+    position = None if progress_row is None else progress_row[0]
+    progress = None if progress_row is None else {
+        "projector_version": projector_version, "log_position": position, "event_id": progress_row[1]}
+    subject = identifier if kind == "entities" else (None if record is None else record["subject_id"])
+    if subject is None:
+        scope = "log"
+        latest = conn.execute("SELECT rowid,event_id,event_hash FROM events ORDER BY rowid DESC LIMIT 1").fetchone()
+    else:
+        scope = "subject"
+        latest = conn.execute(
+            "SELECT e.rowid,e.event_id,e.event_hash FROM identity_event_index i "
+            "JOIN events e ON e.event_id=i.latest_event_id WHERE i.projector_version=? AND i.subject_id=?",
+            (projector_version, subject)).fetchone()
+    freshness = None if latest is None else {
+        "log_position": latest[0], "event_id": latest[1], "event_hash": latest[2]}
+    # With no known subject, a missing record does not itself prove staleness:
+    # the whole-log position establishes whether this absence is authoritative.
+    present = record is not None or (scope == "log" and position is not None)
+    stale = projection.is_stale(position, None if latest is None else latest[0],
+                                record_present=present,
+                                progress_valid=progress_row is None or progress_row[1] == progress_row[2])
+    return {"record": record, "stale": stale, "derived_progress": progress,
+            "append_freshness": freshness, "freshness_scope": scope}
+
+
+def read_entity_status(conn, subject_id, projector_version="1"):
+    return read_identity_status(conn, "entities", subject_id, projector_version)
+
+
+def read_mention_status(conn, mention_id, projector_version="1"):
+    return read_identity_status(conn, "mentions", mention_id, projector_version)
+
+
+def read_entity_link_status(conn, mention_id, projector_version="1"):
+    return read_identity_status(conn, "entity_links", mention_id, projector_version)
+
+
+def _read_identity(conn, kind, identifier, version):
+    status = read_identity_status(conn, kind, identifier, version)
+    if status["stale"]:
+        warnings.warn(StaleProjectionWarning(status), stacklevel=3)
+    return status["record"]
+
+
 def read_entity(conn, subject_id, projector_version="1"):
-    return _read_record(conn, "entities", subject_id, projector_version)
+    return _read_identity(conn, "entities", subject_id, projector_version)
 
 
 def read_mention(conn, mention_id, projector_version="1"):
-    return _read_record(conn, "mentions", mention_id, projector_version)
+    return _read_identity(conn, "mentions", mention_id, projector_version)
 
 
 def read_entity_link(conn, mention_id, projector_version="1"):
-    return _read_record(conn, "entity_links", mention_id, projector_version)
+    return _read_identity(conn, "entity_links", mention_id, projector_version)
 
 
 def read_claim_candidate(conn, claim_candidate_id, projector_version="1"):
@@ -598,13 +675,32 @@ def _publish_delta(conn: sqlite3.Connection, version: str, position: int, delta)
 
 
 def _pending_events(conn: sqlite3.Connection, position: int, *, limit: int = -1):
+    if not conn.in_transaction:
+        with conn:
+            conn.execute("BEGIN")
+            return _pending_events(conn, position, limit=limit)
+    previous_hash, previous_recorded_at = None, None
+    if position:
+        anchor = conn.execute(
+            f"SELECT {','.join(_EVENT_COLUMNS)} FROM events WHERE rowid=?", (position,)).fetchone()
+        if anchor is None:
+            raise integrity.IntegrityError("missing event at derived progress")
+        envelope, _ = _recorded_pair(conn, anchor[0])
+        previous_hash = envelope.event_hash
+        previous_recorded_at = _instant(envelope.recorded_at, "recorded_at")
     rows = conn.execute(
-        f"SELECT e.rowid, e.{', e.'.join(_EVENT_COLUMNS)}, p.ciphertext "
-        "FROM events e JOIN payloads p ON p.event_id = e.event_id "
+        f"SELECT e.rowid, e.{', e.'.join(_EVENT_COLUMNS)}, "
+        "p.payload_hash,p.event_id,p.canonical_entity_id,p.ciphertext,p.redacted "
+        "FROM events e LEFT JOIN payloads p ON p.event_id = e.event_id "
         "WHERE e.rowid > ? ORDER BY e.rowid LIMIT ?", (position, limit),
     ).fetchall()
-    return [(row[0], Envelope(**dict(zip(_EVENT_COLUMNS, row[1:-1]))),
-             json.loads(row[-1]) if row[-1] is not None else None) for row in rows]
+    entries = []
+    for row in rows:
+        envelope = Envelope(**dict(zip(_EVENT_COLUMNS, row[1:1+len(_EVENT_COLUMNS)])))
+        payload = Payload(*row[1+len(_EVENT_COLUMNS):])
+        entries.append((envelope, integrity.decode_payload(envelope, payload)))
+    verified = integrity.verified_log(entries, previous_hash, previous_recorded_at)
+    return [(row[0], envelope, data) for row, (envelope, data) in zip(rows, verified)]
 
 
 def materialize_pending(conn: sqlite3.Connection, as_of: str,
@@ -708,10 +804,8 @@ def read_belief_status(conn: sqlite3.Connection, belief_id: str,
     freshness = None if latest_position is None else {
         "log_position": latest_position, "event_id": latest_id, "event_hash": latest_hash,
     }
-    stale = ((position is not None and event_id != applied_id)
-             or (content is not None and position is None)
-             or (latest_position is not None and
-                 (content is None or latest_position > (position or 0))))
+    stale = projection.is_stale(position, latest_position, record_present=content is not None,
+                                progress_valid=position is None or event_id == applied_id)
     belief = None if content is None else json.loads(content)
     if projector_version == "2" and belief is not None:
         snapshot = _read_snapshot(conn, "2")

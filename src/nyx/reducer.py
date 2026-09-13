@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass, field
 from types import MappingProxyType
 from typing import Mapping
 
-from . import hashing
+from . import hashing, integrity
 from .events import ENTITY_MENTION_RECORDED, OBSERVATION_RECORDED, Envelope
 
 PROJECTOR_VERSION = "1"
@@ -178,6 +178,7 @@ def reduce(snapshot: Snapshot, envelope: Envelope, payload: dict, as_of: str) ->
         raise ValueError("snapshot projector version does not match reducer")
     if envelope.event_type not in SUPPORTED_EVENTS:
         raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
+    integrity.validate_event(envelope, payload)
     _instant(as_of, "as_of")
     _instant(envelope.occurred_at)
     _instant(envelope.recorded_at, "recorded_at")

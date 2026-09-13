@@ -1,13 +1,11 @@
 """Content-addressing and tamper-evidence hashing — the single canonical utility.
 
-spec/NYX_V0_IMPLEMENTATION.md §1. Everything hashable in Nyx goes through here so
-there is exactly one canonicalization discipline (sorted keys, fixed float format,
-no whitespace variance). The Liver's dependency hash (§3) and the process trace's
-hypothesis/semantic hash (§7) are the SAME underlying pattern and MUST share this
-utility — do not grow a second ad hoc scheme (spec §13 unification TBD, closed here).
+spec/NYX_V0_IMPLEMENTATION.md §1, as amended by the accepted hashing ADRs.
+Canonical JSON uses sorted keys, compact separators, and Python's JSON number
+serialization. It does not implement a separate fixed-float format. The dependency
+hash helper exists; Liver and process-trace consumers remain unimplemented.
 
-Hash determinism is load-bearing: `event_hash` and `view_version_hash` must be
-byte-for-byte reproducible across machines (see .gitattributes / CLAUDE.md).
+Hash determinism is load-bearing: accepted projector bytes must remain reproducible.
 """
 
 from __future__ import annotations
@@ -26,9 +24,8 @@ _SEP = "\x1f"
 def canonical_json(obj: Any) -> str:
     """Serialize to canonical JSON: sorted keys, compact separators, no whitespace
     variance. Standard content-addressing practice — spec/NYX_V0_IMPLEMENTATION.md §1.
-    (Python's float repr is shortest-round-trip and deterministic; the skeleton
-    carries no floats. A stricter fixed float format is a later concern, not needed
-    to start — §3 defer-don't-invent.)
+    Numbers use the standard Python JSON encoder. Changing that representation
+    would change committed bytes and is outside this utility's current contract.
     """
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
@@ -80,9 +77,10 @@ def idempotency_key(source_id: str, occurred_at: str, payload: Mapping[str, Any]
 def event_hash(envelope_minus_hash_fields: Mapping[str, Any], prev_event_hash: str | None) -> str:
     """SHA256(canonical_json(event_minus_hash_fields) || prev_event_hash).
 
-    Tamper-evidence chain over ENVELOPE fields only (not payload), so a destroyed
-    payload never breaks verification (Invariant 14). The genesis link uses the
-    empty string for a missing prev hash. spec/NYX_V0_IMPLEMENTATION.md §1.
+    The envelope commits to payload_hash. Envelope-chain verification can survive
+    payload destruction; verifying payload content requires recomputing its hash.
+    Redacted replay is not implemented. The genesis link uses the empty string
+    for a missing prev hash. spec/NYX_V0_IMPLEMENTATION.md §1.
     """
     return _sha256_hex(canonical_json(envelope_minus_hash_fields) + (prev_event_hash or ""))
 
@@ -90,8 +88,8 @@ def event_hash(envelope_minus_hash_fields: Mapping[str, Any], prev_event_hash: s
 def dep_hash(dependency_event_hashes: Sequence[str]) -> str:
     """SHA256(sorted([event_hash for event in dependency_set])).
 
-    Hashes the event_hashes (not ids) so the dependency hash also changes when an
-    upstream event is *superseded* (new event_hash chained on), not only when one
-    disappears. Shared by the Liver (§3) and the process trace (§7).
+    Hashes exactly the supplied event hashes. Supersession changes this result
+    only if the caller changes the dependency set; this helper does not discover
+    superseding events. Intended Liver/process-trace consumers are not implemented.
     """
     return _sha256_hex(canonical_json(sorted(dependency_event_hashes)))
