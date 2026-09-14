@@ -941,6 +941,16 @@ above, not unanswered alternatives.
   What negative fixtures prevent a forged, rolled-back or incomplete receipt
   inventory from being reported completed?
 
+  **Backup/replica deletion acknowledgment:** Does destroying a wrapper handle
+  constitute deletion acknowledgment under this draft's section 3 for a backup
+  or replica that never independently acknowledged, and if not, what evidence
+  does? Proposed [ADR 0027 section 3.2](0027-stage-three-authority-and-acceptance.md#32-key-lifecycle-required-before-the-first-protected-append)
+  permits backup wrappers rendered irrecoverable through handle destruction,
+  while this draft requires deletion acknowledgment at backups and replicas.
+  A wrapper surviving in an unacknowledged backup is the resurrection case this
+  draft exists to prevent; the two provisions cannot be assumed equivalent
+  without deciding this question.
+
 **Deployment validation remains outstanding:** can the selected key service,
 witness and host prove the claimed boundary under replica loss, offline backups,
 pre-erasure restores, paging, hibernation and crash dumps; and which actual legacy
