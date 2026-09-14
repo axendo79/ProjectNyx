@@ -129,6 +129,65 @@ def test_proposed_markers_and_reference_classification(tree):
     assert failures(tree, 'adr_markers')
 
 
+@pytest.mark.parametrize('path,section', [
+    ('design/nested/brief.md', 'design'),
+    ('GAPS.md', 'baseline'),
+    ('spec/design-notes.md', 'baseline'),
+])
+def test_reference_context_reported_in_its_source_section(tree, monkeypatch, capsys, path, section):
+    before = result(tree)
+    target = tree / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text('# Context\n\nSee ADR 0027.\n', encoding='utf-8')
+    report = result(tree)
+    context = next(item for item in report['unchecked'] if item['path'] == path)
+    assert context['check'] == 'proposed_references'
+    assert len(report['unchecked']) == len(before['unchecked']) + 1
+    for name in ('baseline', 'design'):
+        assert report['unchecked_counts'][name] == before['unchecked_counts'][name] + (name == section)
+
+    main = checker['main']
+    monkeypatch.setitem(main.__globals__, 'check_repository', lambda: result(tree))
+    assert main([]) == 0
+    output = capsys.readouterr().out
+    baseline, design = output.split('Design unchecked (in design/):')
+    finding = f'UNCHECKED {path}:3 [proposed_references]'
+    assert 'Baseline unchecked (outside design/):' in baseline
+    assert finding in (design if section == 'design' else baseline)
+    assert finding not in (baseline if section == 'design' else design)
+    assert output.count(finding) == 1
+    counts = report['unchecked_counts']
+    assert (f"0 failures; {counts['baseline']} unchecked baseline; "
+            f"{counts['design']} unchecked in design/ ({len(report['unchecked'])} total)") in output
+    assert main(['--json']) == 0
+    structured = json.loads(capsys.readouterr().out)
+    assert structured['unchecked'] == report['unchecked']
+    assert structured['unchecked_counts'] == counts
+
+
+def test_design_acceptance_misrepresentation_remains_a_failure(tree, monkeypatch, capsys):
+    (tree / 'design/brief.md').write_text(
+        '# Draft\n\nADR 0027 is accepted.\nSee ADR 0027.\n', encoding='utf-8')
+    report = result(tree)
+    assert not report['ok']
+    assert len(report['failures']) == 1
+    assert report['failures'][0]['path'] == 'design/brief.md'
+    assert report['failures'][0]['check'] == 'proposed_references'
+    assert report['unchecked_counts']['design'] == 1
+    main = checker['main']
+    monkeypatch.setitem(main.__globals__, 'check_repository', lambda: result(tree))
+    assert main([]) == 1
+    output = capsys.readouterr().out
+    failure = 'FAILURES design/brief.md:3 [proposed_references]'
+    assert output.count(failure) == 1
+    assert output.index(failure) < output.index('Baseline unchecked (outside design/):')
+    assert '1 failures;' in output
+    assert main(['--json']) == 1
+    structured = json.loads(capsys.readouterr().out)
+    assert structured['failures'] == report['failures']
+    assert structured['unchecked_counts'] == report['unchecked_counts']
+
+
 @pytest.mark.parametrize('claim', [
     'Accepted boundary: [0027](decisions/0027-test.md).',
     '[the identity decision](decisions/0027-test.md) is ratified.',

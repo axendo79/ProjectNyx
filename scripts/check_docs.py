@@ -12,7 +12,9 @@ not an implementation of Proposed ADR 0027's parser or cryptographic protocol.
 
 Natural-language authority claims cannot be proved by a Markdown checker.
 Unclassified Proposed references, non-executable formulas and unsupported markup
-are reported as unchecked. Task-specific diff-scope reviews and general semantic
+are reported as unchecked, with design/ findings displayed separately from the
+non-design baseline. All failures share one count regardless of source directory.
+Task-specific diff-scope reviews and general semantic
 contradiction audits still require a human; this is not ratification clearance.
 """
 
@@ -52,9 +54,21 @@ class Report:
 
     def result(self):
         key = lambda item: (item['path'], item['line'], item['check'], item['message'])
+        unchecked = sorted(self.unchecked, key=key)
+        sections = unchecked_sections(unchecked)
         return dict(ok=not self.failures, checked=dict(self.checked),
                     failures=sorted(self.failures, key=key),
-                    unchecked=sorted(self.unchecked, key=key))
+                    unchecked=unchecked,
+                    unchecked_counts={name: len(items) for name, items in sections.items()})
+
+
+def unchecked_sections(items):
+    """Group by the finding's source, retaining every item and its severity."""
+    sections = {'baseline': [], 'design': []}
+    for item in items:
+        category = 'design' if item['path'].replace('\\', '/').startswith('design/') else 'baseline'
+        sections[category].append(item)
+    return sections
 
 
 def plain(text):
@@ -506,10 +520,17 @@ def main(argv=None):
     if args.json:
         print(json.dumps(result, ensure_ascii=True, indent=2))
     else:
-        for category in ('failures', 'unchecked'):
-            for item in result[category]:
-                print(f"{category.upper()} {item['path']}:{item['line']} [{item['check']}] {item['message']}")
-        print(f"{len(result['failures'])} failures; {len(result['unchecked'])} unchecked findings")
+        for item in result['failures']:
+            print(f"FAILURES {item['path']}:{item['line']} [{item['check']}] {item['message']}")
+        labels = {'baseline': 'Baseline unchecked (outside design/)',
+                  'design': 'Design unchecked (in design/)'}
+        for name, items in unchecked_sections(result['unchecked']).items():
+            print(f'{labels[name]}: {len(items)}')
+            for item in items:
+                print(f"UNCHECKED {item['path']}:{item['line']} [{item['check']}] {item['message']}")
+        counts = result['unchecked_counts']
+        print(f"{len(result['failures'])} failures; {counts['baseline']} unchecked baseline; "
+              f"{counts['design']} unchecked in design/ ({len(result['unchecked'])} total)")
         print('Checked: ' + ', '.join(f'{k}={v}' for k, v in result['checked'].items()))
     return 0 if result['ok'] else 1
 
