@@ -30,6 +30,11 @@ without pretending that a hash or a deletion receipt reconstructs destroyed data
 
 ### 1. Version and storage boundary
 
+This section extends the Stage Three version boundary and independent-release
+prerequisites owned by proposed [ADR 0027 sections 1 and 8.2](0027-stage-three-authority-and-acceptance.md#82-release-gate-and-alternatives).
+It owns the additional projector-4/schema-6 erasure boundary and old-reader
+treatment below; these additions do not replace the Stage Three prerequisites.
+
 Register projector "4" and database schema "6" for erasure-aware storage and reads.
 Projector "4" inherits the proposed stage-three contract only after ADR 0027 is
 ratified; acceptance of this draft alone does not ratify that draft. Its authority
@@ -89,24 +94,21 @@ PII inside a legacy envelope is not removable through payload crypto-shredding.
 
 ### 3. Key binding and custody
 
-Use a fresh random 256-bit data-encryption key (DEK) for each event unit. Encrypt
-once with ChaCha20-Poly1305, using the 96-bit nonce and 128-bit authentication tag
-defined by [RFC 8439](https://www.rfc-editor.org/rfc/rfc8439). A key is never reused
-for a second encryption. The writer retains ciphertext and nonce for retries;
-it does not re-encrypt a retry. Decryption verifies authentication before decoding.
+The encryption parameters, AAD construction, sealed-body representation,
+authentication-before-decoding and retry rules are owned by proposed
+[ADR 0027 sections 3–3.2](0027-stage-three-authority-and-acceptance.md#3-permanent-signed-public-envelope-and-protected-body).
+Apply that protocol under each event's recorded projector/contract; no separate
+encryption, signature, serialization or private-codec default is defined here.
 Use a maintained cryptographic library, not a new implementation of the primitive.
-
-Use ADR 0027 section 3's exact `nyx-unit-aad/1` associated data, `nyx-public-operation/1`
-signed public object and `nyx-sealed-body/1` stored representation, with the event's
-recorded projector/contract. Do not redefine a second encryption or signature
-construction here. Swapping ciphertext, manifests, authority scope, events or
+Swapping ciphertext, manifests, authority scope, events or
 ledgers must fail authentication, signature or committed-hash validation.
 
-ADR 0027 sections 3.1-3.3 also govern exact C/F wire bytes, domain labels, key
-generations/wrapper rotation and the rollback-resistant witness. In particular,
-AAD includes embedded attestation signatures inside S and excludes only enclosing
-SIG, D and final hashes; `D.aad_hash` commits to those exact framed AAD bytes.
-There is no second serialization, signature suite or private-codec default here.
+The shared independent-key lifecycle and recoverable-copy prerequisites are
+owned by proposed [ADR 0027 section 3.2](0027-stage-three-authority-and-acceptance.md#32-key-lifecycle-required-before-the-first-protected-append),
+with the service boundary in ADR 0027 section 3. This section extends those prerequisites
+with projector-4 destruction-service behavior; sections 4 and 9 own execution,
+completion evidence and managed-copy erasure. Those additions are not a substitute
+for the inherited generation, wrapping, rotation and recovery inventory rules.
 
 DEKs live in a separate privileged key service, indexed by opaque key-unit ID and
 version. They are not wrapped solely by a recoverable master key inside SQLite.
@@ -125,25 +127,20 @@ version from its retained backup, it does not satisfy this contract. Key-service
 outage is not evidence of redaction. Missing keys without an authorized committed
 request are integrity/recovery errors, not REDACTED.
 
-Use ADR 0027 section 5.1's two distinct concepts: immutable `original_binding`
-in the creation manifest and `effective_binding(unit_id, locked_prefix)` derived
-from recorded identity/custody transitions. "Canonical subject" means the same
-prefix-specific identity in both documents. A current-binding table or key-service
-cache is not historical authority. Ordinary accepted association links do not
-change custody; only explicitly accepted merge/split custody dispositions do.
-Merge A+B -> M deterministically substitutes M in the effective sets and retains
-the originals. Split A -> B+C must record B, C, shared B/C or ambiguous B/C for
-each affected unit, including retired/erased units. It never silently fans out
-plaintext, support or DEKs. Unknown applicability remains explicitly ambiguous.
-
-Read/decrypt requests use the live locked prefix, even for historical content.
-They need a separate purpose/unit-scoped grant covering every effective subject
-of a shared/ambiguous unit; a B-only reader cannot decrypt B/C content. A subject
-identity transition invalidates old permits before publication is externally
-readable. It does not confer successor grants or restore any erased key. This
-enforces capabilities without deciding who among contributors should receive them.
+Historical/effective bindings, canonical-subject meaning, association treatment,
+merge/split custody dispositions and live-prefix decrypt scope are owned by
+proposed [ADR 0027 section 5.1](0027-stage-three-authority-and-acceptance.md#51-historical-and-effective-custody-are-separate-from-claim-support).
+Apply its complete rules, together with ADR 0027 section 2's capability contract
+and [section 3.3's disclosure barrier](0027-stage-three-authority-and-acceptance.md#33-rollback-resistant-custody-checkpoint-and-disclosure-barrier).
+No separate subject-binding or decrypt-entitlement contract is defined here.
 
 ### 3.1. Retired identifiers and frozen destructive scope
+
+This section extends the binding and successor-resolution rules owned by
+proposed [ADR 0027 section 5.1](0027-stage-three-authority-and-acceptance.md#51-historical-and-effective-custody-are-separate-from-claim-support)
+with projector-4 redaction selection, whole-scope authorization and a frozen
+destructive manifest. These selection rules do not replace identity transitions
+or authorize rewriting their historical bindings.
 
 Resolve the request's subject selectors at the actual locked append prefix, using
 recorded identity-successor edges only. Record the supplied selectors, resolved
@@ -347,6 +344,13 @@ there is no automatic recovery authority. Historical authorization still stands.
 
 ### 4.2. Failure states and restoration
 
+The common witness, disclosure fence and restoration refusal contract is owned
+by proposed [ADR 0027 section 3.3](0027-stage-three-authority-and-acceptance.md#33-rollback-resistant-custody-checkpoint-and-disclosure-barrier).
+This section extends it for projector 4 with per-copy execution states, erasure
+receipts, completion reconciliation and erasure-aware publication during recovery.
+The following restoration procedure applies that common contract plus these
+erasure-specific steps; it does not replace the common barrier.
+
 Report execution separately from the logical redaction set and verification state.
 Per-copy progress is `not_started`, `destroyed` (verified receipt), or `unknown`;
 never infer successful erasure from inability to decrypt. A committed request's
@@ -395,6 +399,12 @@ same mandatory barrier and refuse erased/unsupported history; they need not
 implement projector-4 sentinel/standing semantics to prevent resurrection.
 
 ### 5. Typed REDACTED and reader plumbing
+
+This reader contract extends the disclosure barrier owned by proposed
+[ADR 0027 section 3.3](0027-stage-three-authority-and-acceptance.md#33-rollback-resistant-custody-checkpoint-and-disclosure-barrier)
+with projector-4 typed erasure responses, generation checks and masking-dependent
+read availability. The common permit/fence protocol remains required; the response
+table below is not a complete replacement for that protocol.
 
 Define an immutable tagged type, distinct from Python `None`, strings, JSON null,
 and a verification-state enum:
@@ -460,6 +470,15 @@ revoked. Erasure guarantees cover managed storage and processes, not data alread
 exported, copied by a client, or captured outside that boundary.
 
 ### 6. Standing, dependencies and deterministic replay
+
+Proposed [ADR 0027 section 6](0027-stage-three-authority-and-acceptance.md#6-dependent-links-and-standing-across-a-partition)
+owns the identity-transition restriction and justification rules. This section
+extends those rules for projector 4 and owns the transition to terminal redacted
+standing, erasure-driven dependency propagation and the current-erasure replay
+overlay. The inherited dependency-loss destinations remain applicable to surviving
+content; the erased claim's own content follows this section's terminal rule.
+The operation cases below apply both contracts, not a replacement identity or
+split-acceptance contract.
 
 Treat dependency roles separately: `payload_content`, `envelope_fact`, and
 `structural_relation`. A historical support edge remains as provenance, with its
@@ -533,15 +552,19 @@ request set. Tests compare complete sweep and replay results under the same inpu
 
 ### 7. Commitments that remain verifiable after erasure
 
-New encrypted events retain ADR 0027's schema "2". Their `payload_hash` commits to
-the exact `nyx-sealed-body/1` body `{format,public,signature,sealed_content}`, with
-its permanent U, SIG, structural manifest, protected descriptor and recorded
-ciphertext. It is not an unsalted plaintext fingerprint. Envelope hashing keeps
-the existing formula; idempotency uses the source/time/canonical-body construction
-on that recorded sealed body. Exact retries retain it. Ciphertext randomness is
-chosen by the writer, never replay. Prefix changes require fresh encryption and,
-for signed event classes, new review and signatures as specified in ADR 0027;
-no plaintext-content deduplication is implied.
+The shared permanent-signature and protected-content verification contract is
+owned by proposed [ADR 0027 section 3](0027-stage-three-authority-and-acceptance.md#3-permanent-signed-public-envelope-and-protected-body),
+with its exact wire profile in ADR 0027 section 3.1. This section extends that contract
+for projector 4: erasure-event signatures, versioned verification results,
+authorized legacy pruning, and original versus effective commitments. Its
+erasure-specific cases do not replace the owned signature contract, including
+its distinction between signed operations and unsigned ordinary events. Read
+both sections; a pruning or capsule rule here is not an alternative signature
+verification procedure for an original signed public envelope.
+
+New encrypted events retain ADR 0027's schema "2". For body, payload, idempotency
+and envelope commitments, encryption inputs and retained retries, apply the
+protocol owned by proposed [ADR 0027 sections 3–3.2](0027-stage-three-authority-and-acceptance.md#3-permanent-signed-public-envelope-and-protected-body).
 
 Original-signature verification binds the signed classes in ADR 0027 section 3:
 authority enrollment/updates (including required rotation countersignatures),
@@ -698,6 +721,14 @@ obligations are satisfied is consumed under Gate 3 and is what its assurance
 verifies. The obligations and the gate must be read together; the gate's evidence
 and authorization requirements are not restated here.
 
+The Stage Three first-write protection and derivative-registration prerequisite
+is owned by proposed [ADR 0027 section 8.1](0027-stage-three-authority-and-acceptance.md#81-protection-before-the-first-durable-write).
+This section extends that prerequisite with the concrete managed-location
+inventory, erasure closure, completion obligations and legacy sanitization owned
+here. The inventory applies to protected Stage Three storage; destruction and
+legacy-conversion procedures remain this draft's additional scope. Neither the
+general prerequisite nor this erasure extension is the whole storage contract.
+
 Secret-bearing material must be encrypted before its first durable write. Durable
 plaintext representations that cannot themselves be securely erased are prohibited.
 This applies first to authoritative Layer A, not only to its derived projections.
@@ -823,6 +854,13 @@ the earlier text; the cited current sections now make the obligations explicit:
 | 0028 section 9's legacy sanitization obligation did not prevent new plaintext stage-three debt | Independent Stage Three permits only fresh protected writable ledgers; legacy conversion is separate, explicit and incomplete until all managed plaintext copies are addressed |
 
 Two deployment paths remain coherent, conditional on these storage guarantees:
+
+The independent Stage Three prerequisites and separate/combined release
+alternatives are owned by proposed [ADR 0027 section 8.2](0027-stage-three-authority-and-acceptance.md#82-release-gate-and-alternatives).
+The paths below apply those prerequisites and extend them with this draft's
+erasure-capability cutover, reader and operational scope. Section 1 owns that
+additional version boundary; neither these paths nor that boundary supersedes
+ADR 0027's prerequisites or chooses a release sequence.
 
 - **Protected Stage Three first:** projector 3/schema 5 already implements sealed
   ingestion, separate key custody, explicit decrypt grants, permanent signatures,

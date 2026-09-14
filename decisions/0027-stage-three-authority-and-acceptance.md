@@ -548,6 +548,13 @@ does not require decryption; the destructive workflow belongs to ADR 0028.
 
 ### 6. Dependent links and standing across a partition
 
+This section owns the identity-transition restriction and justification rules.
+Its conditional redacted cases apply the terminal-redaction extension owned by
+proposed [ADR 0028 section 6](0028-redaction-and-crypto-shredding.md#6-standing-dependencies-and-deterministic-replay)
+only under an accepted erasure-capable projector. They do not define an erasure
+transition for projector 3 or replace that extension's dependency propagation
+and replay rules.
+
 Constitutive links retain their historical meaning and ADR 0021's no-confidence
 treatment. New non-constitutive links admitted here have `link_state="accepted"`,
 `basis_kind` from section 4 and `confidence_treatment="recorded_basis"`; there is
