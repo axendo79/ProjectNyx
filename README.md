@@ -343,6 +343,28 @@ shapes. Coverage: [test_read_surface.py](tests/test_read_surface.py) and
 [test_cli.py](tests/test_cli.py). No write, audit, selftest, retrieval or activation
 command is provided.
 
+For independent store inspection, run the standalone
+[replay verifier](scripts/verify_store.py):
+
+```powershell
+python scripts/verify_store.py --db scratch/demo-p0.sqlite --projector 0 --json
+python scripts/verify_store.py --db scratch/demo-p2.sqlite --projector 2 --json
+```
+
+It uses the read-only opener and shared hash/Merkle primitives, independently
+reconstructing log integrity, projected event coverage and belief contents
+without normal readers, validators or reducers. For projector "2" it also
+rebuilds declared roots from leaves and checks retained historical headers
+against independently reconstructed predecessor lineage. Counts and all
+failures are reported; failures return exit status 1. Events beyond validated
+stored publication progress are reported as pending without failing verification;
+the projector-2 seed passes with one pending event. A missing event that progress
+claims was applied, or a projected reference absent from the log, fails coverage.
+Publication freshness is disclosed separately. Unsupported semantics,
+evaluation-only `projected_as_of`, and unavailable historical lineage checks
+are explicitly unchecked; this is not an audit of world truth. Coverage is in
+[test_verify_store.py](tests/test_verify_store.py).
+
 ## Repository layout
 
 | Path | Contents |

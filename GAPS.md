@@ -121,6 +121,25 @@ are in [ADR 0023](decisions/0023-stage-two-contract.md).
 
 ## Schema / operational gaps
 
+### Standalone replay verifier — implemented for shipped contracts
+
+[scripts/verify_store.py](scripts/verify_store.py), covered by
+[tests/test_verify_store.py](tests/test_verify_store.py), independently checks
+envelope/payload commitments, genesis and predecessor links, recording-time
+monotonicity and materialized event coverage. It reconstructs legacy and
+stage-two contents from the log without normal read/projector validation.
+For projector "2", it rebuilds roots from leaves and checks retained headers
+against independently reconstructed lineage under
+[ADR 0025](decisions/0025-incremental-result-commitment.md).
+Full-log accounting reports events beyond validated stored publication progress
+as pending without failing verification. Missing applied events and projected
+references absent from the log fail coverage; unknown progress is not inferred
+from timestamps or hashes. Evaluation-only time and unavailable
+version-specific checks remain explicitly unchecked. This does not implement
+redaction, merge/split or other deferred semantics. Architecture section 13's
+unbuilt-verifier wording predates this implementation; the protected spec has
+not been edited in this pass.
+
 ### Database schema versioning — resolved
 **RESOLVED ([ADR 0011](decisions/0011-database-schema-versioning.md)):** `init_db()`
 validates metadata on every new connection. Ordinary opens never create or stamp
