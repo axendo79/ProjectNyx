@@ -140,6 +140,139 @@ redaction, merge/split or other deferred semantics. Architecture section 13's
 unbuilt-verifier wording predates this implementation; the protected spec has
 not been edited in this pass.
 
+### Duplicate-key payload text is accepted outside canonical writer preparation
+**Open hardening / decision-blocked:** `src/nyx/integrity.py`, `storage.py`;
+original-text authentication and cross-decoder interpretation are not established
+by the current canonical-content commitment. No accepted-contract violation is
+demonstrated by this finding, so it is not classified as a correctness fix.
+
+The [B2 findings](design/0027-b2-private-value-codec-ruling-brief.md#2-complete-call-site-inventory-and-external-payload-reachability)
+record successful synthetic duplicate-key payload appends under projectors
+"0", "1" and "2", with the submitted text retained unchanged and last-wins
+decoded content returned on read. All **31 `json.loads` call sites** across
+`src/nyx/` and `scripts/verify_store.py` omit `object_pairs_hook` (and the three
+numeric parsing hooks); duplicate object keys therefore collapse last-wins under
+the shared default decoder. The verifier's log checks accepted the same samples.
+
+**Hash distinction:** `{"value":1,"value":2}` and `{"value":2}` have different
+raw UTF-8 SHA-256 digests, respectively
+`ef07538311c29ebdde0960d157b1222ff7f39622c0367ff23305a592d997dbda` and
+`49c987621f206f09e5fbe23b516b55a36f838cb14867961f1d84a554d3a35b6b`.
+Both decode to the same object and produce the **same Nyx canonical payload
+hash**, the second digest above. They do not produce different accepted
+`payload_hash` values. `events.py:114–115` hashes canonical object content;
+`integrity.py:90,93,101,105–106` checks the supplied commitments against that
+decoded/canonical content. Submitting a raw-text digest that differs from the
+recomputed canonical digest would fail that check. This is parser information
+loss, not a hash collision.
+
+**Contract assessment:** [architecture Invariant 14](spec/NYX_ARCHITECTURE.md)
+states:
+
+> The constitutional guarantee is that nothing is *silently* rewritten. Envelopes retain event identity, order and payload/hash-chain commitments; payload content is stored separately.
+
+The envelope-only `event_hash` scope does not mean payload content is unbound:
+the envelope includes `payload_hash`. It does mean that the outer hash does not
+independently authenticate the original payload text. [ADR 0002, Decision and
+Rationale](decisions/0002-payload-stored-plaintext-in-v0.md#decision) governs
+`build_event`'s canonical plaintext output and describes the envelope-only chain;
+it does not define strict decoding of independently supplied payload text.
+[ADR 0007, Context](decisions/0007-payloads-keyed-by-event-id-not-payload-hash.md#context)
+records the canonical-content formula:
+
+> `payload_hash = SHA256(canonical_json({belief_id, value, verifiability}))`
+
+[ADR 0014 §5](decisions/0014-cross-belief-reducer-and-hash-lineage.md#5-lineage-covers-ancestry-and-result)
+requires:
+
+> Referenced observation and
+> identity-event dependencies are identified by event ID and event hash so their
+> recorded contents are covered as well as their names.
+
+Its [§6](decisions/0014-cross-belief-reducer-and-hash-lineage.md#6-canonical-serialization)
+also states:
+
+> Lineage uses the shared canonical JSON discipline in src/nyx/hashing.py: sorted
+> object keys, compact separators, preserved Unicode strings, and UTF-8 bytes for
+> hashing.
+
+ADR 0014 does not separately redefine `payload_hash` as a hash of raw input text
+or specify duplicate-key rejection. [ADR 0025 §§1/3](decisions/0025-incremental-result-commitment.md#decision)
+preserves Layer A hashes and complete logical dependency contents. The probes
+retain the original Layer A text and replay the same decoded object; they do not
+show an append-only rewrite or divergent replay under the shipped interpreter.
+The stressed boundary is what "recorded contents" authenticates across parsers:
+strict original-text identity is outside the demonstrated canonical-content
+guarantee. This is an open hardening/interpretation boundary, not evidence that
+the existing envelope or lineage hash formula was implemented incorrectly.
+
+**Reachability:** the Python append API accepts caller-supplied
+`Payload.ciphertext` text; it does not require provenance from Nyx's encoder.
+`storage.py:289,310,397,413–415` and `ingestion.py:56–64` expose this path.
+The demonstrated caller changed text before its first ordinary append, without
+direct SQL writes or changes to validation code. An external producer can thus
+supply such text through an application using these APIs; this is not restricted
+to a hostile writer editing the database. No remote/untrusted import endpoint
+was demonstrated, and the shipped CLI is read-only. Exact retained-pair retries
+and canonical stored Merkle-node checks remain separate rejection boundaries.
+
+**Classification rationale:** the register separates implemented correctness
+failures from open semantics and explicitly versioned contract changes. The
+evidence establishes permissive input and a commitment-scope limitation; changing
+that acceptance boundary requires a ruling. The ruling questions remain in the
+[B2 brief, questions 4/8](design/0027-b2-private-value-codec-ruling-brief.md#additive-ruling-questions-and-overlap-with-questions-17).
+This entry supplies no fix or default.
+
+### Cross-language canonicalization and verifier independence remain unproven
+**Open / decision-blocked:** the proposed private-codec and conformance contract
+is incomplete; the existing Python hashing implementation remains in force.
+
+`src/nyx/hashing.py:30` uses Python float formatting and omits `allow_nan=False`.
+The [B2 cross-language findings](design/0027-b2-private-value-codec-ruling-brief.md#3-float-bytes-hashes-and-the-limit-of-verifier-independence)
+record different Python/Node bytes and SHA-256 digests for `1e-6`
+(`1e-06` / `0.000001`), `1.2345678901234567e20` and negative zero (`-0.0` / `0`).
+Bare `NaN`/`Infinity` output is outside RFC 8259's JSON number grammar; Node's
+strict JSON decoder rejects it. [RFC 8259 §6](https://www.rfc-editor.org/rfc/rfc8259).
+This demonstrates a failure of cross-language **default** interchange, not that
+another language is incapable of reproducing Python-compatible bytes. Current
+evidence verifies the recorded Python runtime; cross-Python-version stability is
+also unverified.
+
+[ADR 0014 §§5–6](decisions/0014-cross-belief-reducer-and-hash-lineage.md#5-lineage-covers-ancestry-and-result)
+and [ADR 0025 §§2–6](decisions/0025-incremental-result-commitment.md#2-canonical-authenticated-map)
+bind complete logical content through the shared canonical serializer. Formatting
+differences can propagate through payload commitments, Merkle roots and lineage.
+No independent cross-language value/number and parser contract is supplied by
+those accepted decisions. This is a portability/assurance gap, not a demonstrated
+failure to reproduce the accepted frozen fixtures on the recorded runtime.
+
+`scripts/verify_store.py:2–7` discloses shared hashing/Merkle primitives; its digest
+at line 45 calls the same serializer and its payload parser at line 112 uses the
+same default decoder. Its independent record reconstruction therefore does not
+independently validate canonicalization or detect a shared parser interpretation.
+Its recomputation claim remains valid within that stated scope; a passing result
+is not cross-language conformance or independent cryptographic review.
+Proposed [ADR 0027 Gate 2](decisions/0027-stage-three-authority-and-acceptance.md#gate-2-independent-protocol-review)
+requires independent protocol findings, and
+[Gate 3](decisions/0027-stage-three-authority-and-acceptance.md#gate-3-implementation-and-operational-assurance)
+requires implementation evidence including frozen-vector conformance and parser
+strictness. The present verifier alone establishes neither gate.
+
+**Observed corpus:** the two existing seed stores contain 9 and 11 committed
+events and no floats in the inspected stored JSON or SQL cells; the retained
+`tests/fixtures/version0_ordinary.json` is also float-free. Python test fixtures
+do contain floats: `test_reducer_boundary.py:297–305` canonicalizes snapshot value
+`1.25`, and lines 196–210 prepare float-bearing invalid submissions. This supports
+absence in the inspected persisted corpus, not a universal "no float ever
+committed" claim. Float exclusion would not change those seed values, but is not
+a no-op across the existing encoder/replay domain and helper fixtures.
+
+**Classification rationale:** closing the cross-language private codec and its
+evidence requires unresolved B2 rulings under the Proposed contract, rather than
+an already specified correctness fix. Questions 1–3/6–7/9–11 and the measurement
+limits remain in the [B2 brief](design/0027-b2-private-value-codec-ruling-brief.md).
+No codec, parser, hash or compatibility default is chosen here.
+
 ### Database schema versioning — resolved
 **RESOLVED ([ADR 0011](decisions/0011-database-schema-versioning.md)):** `init_db()`
 validates metadata on every new connection. Ordinary opens never create or stamp
