@@ -878,3 +878,371 @@ the resulting protocol and evidence:
 The earlier remaining domain/API, compatibility-coverage and review questions
 retain their recorded statuses. F1–F5 supply the current float format; they do
 not close the whole private codec, B5 evidence, independent review or Gate 1.
+
+## Resource bounds
+
+**Evidence only; all five bounds remain OPEN.** This section expands O2 and
+question 6 without selecting limits, refusal defaults or a new value domain.
+It concerns specification completeness for the new private codec. Frozen
+projectors "0", "1" and "2" retain their contracts unchanged. Their observed
+behavior below is not a proposed admission policy for projector "3".
+
+### Probe scope and append reachability
+
+Measured at repository commit `0996428`, using CPython 3.14.2 (64-bit Windows),
+SQLite 3.50.4, `sys.getrecursionlimit() == 1000` and
+`sys.get_int_max_str_digits() == 4300`. Synthetic probes used fresh in-memory
+databases initialized from the repository's `schema.sql`; no seeded or private
+store was modified. Each stage-two case first submitted/materialized a
+constitutive mention, then prepared one observation with one candidate.
+Version "0" used its ordinary `belief_id/value/verifiability` payload.
+Construction, `safe_append_event`, `materialize_pending`, and payload/candidate
+reads were checked separately. Event counts after exceptions distinguish a
+refused append from failure after Layer A commit.
+
+The temporary script was `scratch/b2-resource-bounds-probe.py`, run with no
+option, `--depth`, and `--focused`, then deleted. Size samples were bounded
+experiments, not attempts to exhaust RAM or reach SQLite's billion-byte ceiling.
+Successful sizes below are demonstrated lower bounds on acceptance, not maxima.
+
+**Reachability applies to all five dimensions:** `events.py:114–115,145`
+serializes and hashes caller values; `ingestion.py:26–53` copies claims and
+resolves the recorded belief association without a resource-bound check.
+`ingestion.py:56–65` accepts retained/imported pairs, explicitly allowing them
+to bypass preparation. `storage.py:289–330,385–415` accepts caller-provided
+`Envelope/Payload` pairs through ordinary Python API calls; hostile direct SQL
+access is unnecessary. Externally assembled JSON must still match the envelope's
+payload and idempotency hashes and the event chain. The probes constructed such
+pairs; no bypass of those integrity checks was used.
+
+The shipped CLI exposes inspection commands and opens stores read-only
+(`cli.py:31–48,150`), so it supplies no append command or remote ingestion
+endpoint. That narrows the shipped entry surface, not the Python API's accepted
+payloads. An attacker needs influence over an API caller/imported event or a
+store subsequently inspected; a careless caller can supply these values directly.
+Read-only operation does not bound parsing, replay or output work on an existing
+store. In particular, CLI `events --limit` validates the full log before slicing
+(`cli.py:74–84`); that option is not an input-resource limit.
+
+### Integer range
+
+**Observed acceptance.** All three append paths accepted `2**53 + 1`,
+`2**64`, `-(2**64)`, and `10**4299` (4,300 decimal digits). Versions "1"/"2"
+also published and read back the payload integers exactly. Version "0" appended
+the larger integers but publication raised
+`OverflowError: Python int too large to convert to SQLite INTEGER`.
+Focused tests found its direct binding boundary: `-(2**63)` and `2**63 - 1`
+published, while the immediately adjacent out-of-range values appended and then
+failed. That is a legacy materialization binding constraint
+(`storage.py:501–530`), not a Layer A integer-admission bound.
+
+At the default digit setting, `10**4300` exists as a Python integer but event
+construction raises `ValueError` at `hashing.py:30`: integer string conversion
+exceeds 4,300 digits. An externally assembled 4,301-digit payload instead fails
+append with `IntegrityError: invalid payload JSON`; `integrity.py:37–43`
+wraps the decoder's `ValueError`. No observation is appended in either case.
+Changing only the scratch process's digit setting to 5,000 allowed that same
+integer through construction and append on all versions, and publication/readback
+on "1"/"2"; "0" still hit its binding overflow. The setting was restored.
+
+Thus arbitrary-precision integer representation, configurable decimal conversion
+limits, and SQLite integer binding are different constraints. None specifies the
+new codec's integer range. Python documents the distinction between integer
+precision and decimal conversion limits in its
+[integer conversion documentation](https://docs.python.org/3.14/library/stdtypes.html#integer-string-conversion-length-limitation).
+
+**ADR text.** Proposed ADR 0027 §3.1 says:
+
+> Public counts/positions/key generations are nonnegative integers; application ranges belong in the closed field schema.
+
+It immediately distinguishes private values:
+
+> Private claim values are not public numbers; this profile must not coerce their types or precision.
+
+It specifies no private integer range. The remaining **Private value codec**
+blocker asks for the "exact cross-language value/number domain and decoding
+rules". MADE ruling 2 requires exact preservation of admitted integers; it does
+not turn the observed Python or SQLite limits into that range.
+
+**Exposure and interactions.** Large decimal values consume conversion, sorting/
+serialization, allocation and hashing work before a payload can be appended;
+replay repeats conversion and validation. A caller can also append an integer
+which version "0" cannot publish. The decimal spelling enters the payload-hash
+preimage and complete candidate/dependency leaf values. Its size therefore adds
+to changed-node serialization and retained lineage-related data under ADR 0025,
+even when the outer digest is fixed-width. Increasing the Python digit setting
+changes the observed refusal point; it is not a portable wire decision.
+
+### String length
+
+**Observed acceptance.** A value consisting of 1,048,576 ASCII characters, and a
+value of 262,144 U+1F600 scalars (also 1,048,576 UTF-8 bytes before JSON quotes),
+each constructed, appended, published and read back on all three versions.
+A single object key of 1,048,576 ASCII characters also appended on all versions
+and published/read on "1"/"2". Version "0" publication failed with
+`ProgrammingError: Error binding parameter 2: type 'dict' is not supported`;
+this is a container-binding failure, not evidence of a key-length limit.
+No application string/key maximum was encountered in these samples.
+
+**ADR text.** Proposed ADR 0027 §3.1 specifies string escaping, Unicode and key
+ordering, including:
+
+> Objects have unique string keys, sorted lexicographically by Unicode scalar values, not locale or UTF-16 code units.
+
+It is silent on a general private string/key length and its counting unit.
+Fixed cryptographic-field widths in that subsection constrain those fields only;
+they are not limits on claim strings or object keys. MADE rulings 4/5 constrain
+key equality and Unicode preservation, not length.
+
+**Exposure and interactions.** An API caller can cause large allocations and
+repeated serialization/UTF-8 hashing with long strings or keys. Long common key
+prefixes also increase comparison work during sorting. Escaping means scalar
+count, Python string length, and encoded byte length are different measurements.
+The full encoded strings occur in candidate/dependency values and payload-hash
+work, so small Merkle roots do not make those bytes free. A single ASCII-string
+case on "2" produced a largest node of 1,049,558 bytes and 2,102,030 total
+`committed_nodes.content` UTF-8 bytes (10 nodes, including the initial mention);
+this is logical node content, not database-file or cumulative serialization size.
+
+Python memory/address-space limits and SQLite's text/row limits eventually
+constrain storage; neither supplies a specified codec maximum. The common SQLite
+experiment and lineage contract below apply here as well.
+
+### Nesting depth
+
+**Depth convention for these observations only:** start with integer `0` at
+depth zero; apply `value = [value]` or `value = {"x": value}` exactly `d`
+times. Payload/envelope and derived-record wrappers are additional nesting.
+This does not choose a codec counting convention.
+
+An adaptive search followed by adjacent success/failure checks found the
+following boundaries in one final `--depth` invocation. The downstream trials
+assembled the nested JSON text directly and recomputed the matching envelope
+hashes from shallow objects, so event construction's recursion boundary did not
+mask append behavior. Each trial used the same
+`main -> boundaries -> depth_check -> run` call chain.
+
+| Version | Nested value | Construction: last success / first failure | Append: last success / first failure | Publication: last success / first failure |
+|---|---|---|---|---|
+| "0" | Lists | 15,499 / 15,500 | 15,499 / 15,500 | 0 / 1; unsupported list binding |
+| "0" | Objects | 9,299 / 9,300 | 9,299 / 9,300 | 0 / 1; unsupported dict binding |
+| "1" | Lists | 15,496 / 15,497 | 15,490 / 15,491 | 994 / 995; SQLite JSON parser |
+| "1" | Objects | 9,298 / 9,299 | 9,294 / 9,295 | 994 / 995; SQLite JSON parser |
+| "2" | Lists | 15,496 / 15,497 | 15,493 / 15,494 | 15,484 / 15,485; encoder stack guard |
+| "2" | Objects | 9,298 / 9,299 | 9,296 / 9,297 | 9,291 / 9,292; encoder stack guard |
+
+Construction/append failures were caught `RecursionError` exceptions from the
+JSON encoder at `hashing.py:30`, not hangs or successful unbounded recursion.
+Messages were `Stack overflow (used 2912 kB) while encoding a JSON object`
+(lists) or `Stack overflow (used 2912 kB) while getting the repr of an object`
+(objects). Version "2" publication reached the same kinds of exception.
+Construction/append failures left zero new observation events; each publication
+failure left one already committed observation. Final payload/candidate reads
+also succeeded at the successful "1"/"2" publication depths.
+
+These native-stack-sensitive numbers are measured failure points, **not stable
+Python-version or process-independent maxima**. Earlier invocations with a
+different probe frame layout found slightly different encoder boundaries.
+Although `sys.getrecursionlimit()` was 1,000, successful depths greatly exceeded
+1,000. A separate scratch-process test temporarily set it to 200 and still
+constructed, appended, published and read a 1,500-deep list under "2", then
+restored it. Equating that setting with a JSON nesting limit is contradicted by
+the probes. Python documents the interpreter setting at
+[`sys.getrecursionlimit`](https://docs.python.org/3.14/library/sys.html#sys.getrecursionlimit);
+the measured native-stack guard is a separate practical constraint here.
+
+Version "1" has a different, lower failure: at `d=995`, append succeeds but
+`storage.py:737` publication raises `sqlite3.OperationalError: malformed JSON`.
+The derived `projected_beliefs` index invokes `json_extract`
+(`schema.sql:150–154`), so the derived wrapper depth matters. A standalone SQL
+probe returned `json_valid=1` for 1,000 nested arrays and `0` for 1,001;
+Python decoded both. This agrees with
+[SQLite JSON §3.5](https://www.sqlite.org/json1.html#compatibility).
+SQLite's SQL-expression-depth setting is a different limit. Version "0"'s
+depth-one publication failure is its direct list/dict binding, not recursion.
+
+**ADR text.** Proposed ADR 0027 §3.1 says:
+
+> Arrays retain sequence order unless their field is explicitly a set.
+
+Neither that subsection nor the Gate 1/remaining-blocker text specifies private
+JSON nesting depth, a counting convention, or a resource refusal boundary.
+The remaining private-codec blocker supplies no number.
+
+**Exposure and interactions.** A deeply nested but small payload can exhaust
+encoder stack capacity during hashing/reduction. More significantly, a value
+accepted into Layer A can fail later publication, leaving materialization behind
+the committed prefix; the "1" example's payload was only 2,146 bytes for lists
+or 6,126 bytes for objects. `ingestion.submit` cannot roll back an earlier
+successful append when its separate publication fails. Extra payload, candidate,
+dependency and Merkle-leaf wrappers consume depth independently of raw size.
+ADR 0025's maximum 256 trie branch levels is a bound on routing structure, **not**
+on nested JSON inside a leaf. Repeated lineage/replay processing must still
+serialize those values. Read-only CLI access does not remove this exposure on
+already recorded inputs.
+
+### Total document size
+
+**Observed acceptance.** The value `["a" * 65536 for _ in range(64)]` produced
+a canonical payload of 4,194,562 bytes on "0" and 4,194,652 on "1"/"2".
+All appended; "1"/"2" published and read back exactly. Version "0" failed later
+on list binding. Version "2" retained 8,393,868 node-content bytes across 10 nodes;
+its largest node was 4,195,477 bytes. This does not establish a maximum or include
+SQLite pages, indexes, transaction overhead or transient copies.
+
+Externally authored byte volume can also exceed the re-encoded value size:
+adding 1,048,576 trailing spaces to a valid payload containing value `"x"`
+passed append, publication and reads on every version with unchanged envelope
+hashes. On "1"/"2" the stored text was 1,048,734 bytes, while canonical payload
+hashing covered the original 158-byte JSON. These legacy paths decode and
+re-encode for validation (`integrity.py:86–108`); they do not hash the retained
+text verbatim. This illustrates reachability and measurement distinctions, not
+a new duplicate-key finding. New-codec MADE ruling 6 already rejects such
+noncanonical private input; it supplies no size bound.
+
+**ADR text and implied capacities.** Proposed ADR 0027 §3.1 states:
+
+> P is the exact UTF-8 private JSON byte string prepared once by the writer, with codec `nyx-private-json/1`.
+
+It states no application maximum for P. Its framing rule says:
+
+> length counts octets and has exactly eight big-endian bytes.
+
+That implies a representable length through `2**64 - 1` for framed public C(o),
+not an adopted maximum for private JSON. The AEAD row specifies "private
+plaintext bytes P" and output "per RFC 8439". The selected algorithm therefore
+already has a primitive capacity: RFC 8439 §2.8 defines P_MAX as 274,877,906,880
+bytes and A_MAX as `2**64 - 1` bytes. Those are algorithm constraints inherited
+by this Proposed format, not incidental Python limits and not a selected
+application resource budget. Framing overhead also counts toward AAD capacity.
+No near-capacity encryption experiment was run.
+[Source: RFC 8439 §2.8](https://www.rfc-editor.org/rfc/rfc8439#section-2.8)
+
+**Incidental SQLite bound.** The probe connection reported
+`SQLITE_LIMIT_LENGTH=1,000,000,000`. SQLite applies its length constraint to
+text/BLOB values and encoded rows; row overhead prevents treating it as an exact
+private-document allowance. On a scratch connection lowered to 4,096, an
+8,192-character value failed all three append paths with
+`sqlite3.DataError: string or blob too big` at the payload INSERT, leaving zero
+new events. This demonstrates enforcement, not a recommendation for 4,096.
+The normal billion-byte boundary was queried, not allocation-tested.
+[SQLite length limits](https://www.sqlite.org/limits.html)
+
+**Exposure and interactions.** Large documents can consume CPU, memory and
+storage before SQLite rejection: decoding, canonicalization and hash validation
+precede payload insertion; "1"/"2" also reduce before insertion. Repetition can
+grow the append-only log and retained nodes even when every individual document
+fits an incidental bound. A codec document bound alone would not specify a
+ledger-wide quota. Hashing still processes the whole canonical payload.
+Under Proposed §3.1 the new payload commitment instead covers the sealed body;
+`sealed_content=hex(X)` doubles ciphertext's textual length before container
+overhead. P, framed public objects, sealed bodies and derived nodes are therefore
+different size surfaces, with no application maxima supplied by this brief.
+
+### Object key count
+
+**Observed acceptance.** One nested value object with 65,536 distinct keys
+(`{f"k{i:05}": i for i in range(65536)}`) produced payloads of 971,996 bytes
+on "0" and 972,086 on "1"/"2". All appended; "1"/"2" published and read back
+exactly. Version "0" failed publication on dict binding. Version "2"'s largest
+node was 972,911 bytes; total node content was 1,948,736 bytes across 10 nodes.
+No application key-count limit was encountered.
+
+**ADR text.** Proposed ADR 0027 §3.1 requires "unique string keys" and their
+ordering; its **Closed operation schemas** blocker requires "rejection of unknown
+fields". Neither defines a generic private-value object's maximum member count.
+A closed public object's allowed fields are not a cardinality limit for an
+arbitrary private claim object. MADE ruling 4 supplies duplicate-key rejection,
+not the count of distinct admitted keys.
+
+**Exposure and interactions.** Many keys cause parsing/allocation and sorted-key
+canonicalization work; long keys compound it. The whole object is serialized
+into the relevant candidate/dependency values and payload-hash preimage.
+It does not become one Merkle member per JSON property, so ADR 0025's routing
+height does not bound the member object's width. SQLite reported a 2,000-column
+limit, yet the 65,536-key object succeeded on "1"/"2": JSON keys occupy text,
+not SQL columns. Available memory and serialized text/row size impose incidental
+constraints. Any eventual finite document bound would also imply some finite
+key count through encoding overhead, but neither that derivation nor the need
+for an additional independent count limit has been decided.
+
+### Shared cost contract and remaining gate questions
+
+For every dimension above, the payload path is `events.py:114–115,145`,
+`hashing.py:24–30,65–75`, and `integrity.py:37–43,86–108`: materialize JSON,
+decode it at append, serialize again for payload/idempotency validation, and
+encode UTF-8 for hashing. A fixed-size hash does not bound its preimage cost.
+
+Accepted ADR 0025 §2 defines a leaf's V as "the complete canonical JSON member
+value, not a mutable reference". Section 3 retains the entire candidate and
+complete event dependency, including payload. Section 4 replaces accumulated
+collections in the lineage object with commitments; it does not limit leaf
+values. Section 7 explicitly states:
+
+> Rewriting an unbounded value within one leaf is not a bounded change.
+
+It also states:
+
+> Immutable nodes retained over many updates consume space; a compact lineage record alone is not a storage-size measurement.
+
+Those contracts apply to all five dimensions. The node measurements above
+demonstrate content costs for single observations only; this task did not repeat
+the historical scaling benchmark or measure cumulative serialization traffic.
+
+Proposed ADR 0027 Gate 1 requires:
+
+> Exact canonical bytes and serialization rules, including the private value codec.
+
+It also requires "Positive and negative interoperability vectors". Gate 3 lists
+"Canonical serialization and parser strictness" and "Fault injection and
+independent code review". **Gate classification below is an extraction of those
+requirements:** cross-language admission/refusal rules belong in the Gate 1
+candidate; actual enforcement, resource-cost and recovery evidence belongs in
+Gate 3. Gate 3 cannot silently supply a divergent decoder admission contract.
+No value for a bound, nor whether a separate bound is needed when another
+implies it, is decided here.
+
+The following questions expand the existing O2/question 6 inventory. Questions
+1–4 restate its existing bounds; question 5 makes object cardinality explicit.
+All are **unanswered**. "Both" means maintainer decision plus independent review,
+not that an outside reviewer chooses the maintainer's policy.
+
+1. **Integer range — OPEN; both.** What exact range is admitted, and what
+   interoperable refusal applies outside it while preserving admitted integers
+   exactly? **Gate 1:** settle the domain and refusal contract.
+   **Gate 2:** independent protocol reviewer assesses cross-language consistency.
+   **Gate 3:** code/resource and storage/recovery reviewer assesses conversion,
+   binding and post-append failure behavior. Operational evidence can wait for
+   Gate 3; the integer domain cannot.
+2. **String/key length — OPEN; both.** What bounds, counting units and rejection
+   boundaries apply to values and keys, including escaped versus decoded forms?
+   **Gate 1:** settle admission and measurement rules, including whether a
+   document bound alone supplies the constraint. **Gate 2:** protocol reviewer
+   assesses the wire contract; **Gate 3:** resource/storage reviewer assesses
+   allocation, encoding and persistence under that contract.
+3. **Nesting depth — OPEN; both.** What maximum, counting convention and refusal
+   boundary cover private input and its containing/derived representations?
+   **Gate 1:** settle the portable rule rather than inherit a process stack or
+   SQLite JSON limit. **Gate 2:** protocol reviewer assesses interoperability;
+   **Gate 3:** independent code and storage/recovery review assesses stack use,
+   wrapper depth and append/publication/replay behavior.
+4. **Total document size — OPEN; both.** What bounds and counting boundaries
+   apply to P and its related serialized/encrypted containers, and what refusal
+   behavior is required? **Gate 1:** settle wire admission and primitive-capacity
+   compatibility. **Gate 2:** independent cryptographer reviews framing/AEAD
+   capacity and the protocol rule. **Gate 3:** storage/recovery and code review
+   assesses actual memory, persistent growth and failure handling; operational
+   capacity evidence can defer, the interoperable admission rule cannot.
+5. **Object key count — OPEN; both.** Is a separate member-count bound required
+   or is it wholly implied by the eventual size rules; what count scope and
+   refusal semantics define either answer? **Gate 1:** settle that contract
+   question without inferring a SQL-column or trie-node limit. **Gate 2:**
+   protocol reviewer assesses consistency with key equality/canonicality;
+   **Gate 3:** code/resource reviewer assesses sorting, allocation and storage
+   costs. This overlaps O2/question 6 rather than reopening MADE ruling 4.
+
+The independent protocol judgment remains the independent cryptographer's
+Gate 2 responsibility; systems/storage/recovery expertise may require the
+separately scoped reviewer named in the ADR's review-record requirements.
+Reviewer assignment or operational testing does not replace the maintainer's
+unanswered bounds rulings. No gate is declared passed by these probes.
