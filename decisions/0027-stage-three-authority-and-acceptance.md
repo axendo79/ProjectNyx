@@ -785,13 +785,132 @@ the allocated separate cutovers or ratify a combined allocation?
 ## Ratification-readiness assessment
 
 At the audit baseline `b7609d4`, and with this revision's proposed protocol
-clarifications, **not ready to ratify independently yet**: the five blockers above
-must be closed before the new frozen format can be implemented. Acceptance of
-ADR 0028's erasure handlers is not itself a prerequisite. After these blockers
-and the deployment gates are satisfied, Stage Three can use fresh protected
-ledgers independently: its first durable representation, key custody and restore
-barrier already accommodate later destruction. Omitting any of those prerequisites
-would create legacy debt and fails section 8.2's independent-release condition.
+clarifications, **not ready to ratify independently yet**: the specification
+blockers above belong to Gate 1 below; closing them alone does not satisfy Gate 2
+or authorize implementation. Acceptance of ADR 0028's erasure handlers is not
+itself a prerequisite. After Gates 1 and 2 and explicit ratification, Stage Three
+can be implemented against the reviewed contract. Production use with genuinely
+private data additionally requires Gate 3 and section 8.2's independent-release
+conditions. Its first durable representation, key custody and restore barrier
+must already accommodate later destruction; omitting these prerequisites would
+create legacy debt.
+
+### Gate 1: Specification completeness
+
+Evidence must include:
+
+- Closed operation, authorization and attestation schemas.
+- Exact canonical bytes and serialization rules, including the private value codec.
+- Encryption envelope and AAD construction.
+- Key hierarchy and custody schemas.
+- Compound-custody representation.
+- Crash, replay, rollback, restoration and erasure state machines, including the
+  shared boundary with proposed ADR 0028; reviewing that boundary does not ratify
+  or implement its erasure handlers.
+- Positive and negative interoperability vectors.
+- A pinned commit representing the review candidate.
+
+Before Gate 1, limited specification-development work is permitted solely to
+produce Gate 1 evidence:
+
+- Synthetic fixtures.
+- Interoperability-vector generators.
+- Parser/serializer experiments.
+- Formal models.
+- Non-production conformance prototypes.
+
+This work must not write or migrate production Stage Three ledgers, process
+genuine private user data, create permanent private Stage Three state, be
+represented as production-ready security implementations, or make claims of
+confidentiality or secure erasure. It supplies specification evidence, not
+shipped Stage Three implementation or ratification.
+
+This gate corresponds to the existing specification blockers. Passing Gate 1
+authorizes submission of the frozen candidate specification and evidence package
+for independent Gate 2 review. Freezing the review candidate does not ratify it.
+
+Before Gate 2, migration of real Nyx private data into Stage Three, permanent
+production Stage Three ledgers containing genuinely private user data, and claims
+of confidentiality, secure erasure or production cryptographic assurance are
+explicitly prohibited. Gate 2 alone does not lift the production-use or security
+claim restrictions: those require Gate 3.
+
+### Gate 2: Independent protocol review
+
+Evidence must include:
+
+- Written findings against a pinned commit.
+- Explicit review scope and exclusions.
+- Remediation status.
+- Remediation verification against the resulting candidate revision.
+- Residual assumptions and known limitations.
+
+The person providing the independent Gate 2 judgment must be independent of the
+design being reviewed. Another expert may provide prior design assistance, but
+design assistance and independent review must not collapse into self-review.
+
+This gate authorizes ratification of ADR 0027 and, after explicit ratification,
+implementation against the reviewed protocol contract. External review supplies
+evidence; it does not transfer responsibility from Nyx's maintainers and is not
+certification. A review does not itself change this ADR's status.
+
+### Gate 3: Implementation and operational assurance
+
+Evidence must include, as applicable to the implementation, configuration and
+claims under review:
+
+- Conformance against frozen interoperability vectors.
+- Fault injection and independent code review.
+- Canonical serialization and parser strictness.
+- Signature and commitment verification.
+- Nonce generation and nonce-reuse prevention.
+- AAD construction and context binding.
+- Key generation, storage, wrapping, deletion and recovery behavior.
+- Interrupted/partial-write recovery and rollback behavior.
+- Backup and snapshot restoration behavior.
+- Deployment configuration relevant to confidentiality and erasure.
+
+The record must identify exclusions and why any listed evidence is inapplicable;
+an unreviewed capability cannot support a security claim. This gate authorizes
+production use with genuinely private data and security claims only within the
+reviewed implementation, configuration and stated scope. Protocol review cannot
+substitute for this evidence. A Stage Three release without erasure handlers
+cannot claim implemented secure erasure merely because its format accommodates
+later erasure.
+
+These gates are proposed authorization boundaries. This draft declares none of
+them satisfied, does not ratify itself, and records no implementation.
+
+## Review record required before ratification
+
+Complete this record, with durable references to the evidence, before ratifying
+ADR 0027. Record implementation and operational reviews separately; they may be
+explicitly not performed at ratification, in which case Gate 3 remains unmet.
+The report and its defined scope are the evidence, not the reviewer's name or
+organization.
+
+| Field | Required record; currently not supplied |
+|---|---|
+| Reviewer identity | Named independent reviewer and any organization or separately scoped reviewers |
+| Relevant experience | Evidence of experience relevant to the assigned protocol and systems scope |
+| Independence | Relationship to this design and any prior design assistance; identify separate design advisers |
+| Commit reviewed | Exact candidate commit and report reference |
+| Explicit scope | Protocol objects, state machines, threat assumptions and boundaries examined |
+| Explicit exclusions | Objects, behaviors and claims not examined |
+| Findings | Written findings and their disposition, with report references |
+| Remediation status | Changes or unresolved findings, resulting candidate commit, and remediation verification evidence |
+| Residual assumptions | Remaining trust assumptions, known limitations and their effect on claims |
+| Implementation reviewed separately | Yes/no, reviewer, exact revision, scope and evidence; not implied by protocol review |
+| Operational/deployment behavior reviewed | Yes/no, reviewer, configuration, scope and evidence; not implied by protocol or code review |
+
+**Engagement-scope question:** ADR 0028's storage, backup, rollback, restoration
+and erasure-completion claims are adjacent to cryptography but not reducible to
+cryptography. Does the Gate 2 reviewer have sufficient systems/storage/recovery
+expertise for the shared protocol boundary, or is a separately scoped reviewer
+required? The engagement must answer and record this question, including scope
+allocation and exclusions; this ADR does not predetermine staffing. Reviewing
+these protocol requirements does not claim that a concrete provider or deployment
+has passed Gate 3.
 
 ## Acceptance cases
 
@@ -846,7 +965,7 @@ would create legacy debt and fails section 8.2's independent-release condition.
 
 ## Consequences
 
-After its ratification blockers are closed, Stage Three becomes implementable
+After Gates 1 and 2 are satisfied and this ADR is explicitly ratified, Stage Three becomes implementable
 under one explicit trust policy, with no implicit
 owner and no repeated authority decisions per handler. Its cost is enrolled signing
 keys, recorded attestations, a larger acceptance inventory, and potentially broad
