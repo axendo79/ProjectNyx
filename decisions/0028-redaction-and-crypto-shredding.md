@@ -690,6 +690,14 @@ workflow; do not promise replay while deleting required unrecorded structure.
 
 ### 9. Complete managed-copy erasure
 
+Within these Proposed contracts, this section and section 11 are authoritative
+for the concrete deployment and erasure obligations; proposed
+[ADR 0027 Gate 3](0027-stage-three-authority-and-acceptance.md#gate-3-implementation-and-operational-assurance)
+is authoritative for the assurance gate. Evidence that these applicable
+obligations are satisfied is consumed under Gate 3 and is what its assurance
+verifies. The obligations and the gate must be read together; the gate's evidence
+and authorization requirements are not restated here.
+
 Secret-bearing material must be encrypted before its first durable write. Durable
 plaintext representations that cannot themselves be securely erased are prohibited.
 This applies first to authoritative Layer A, not only to its derived projections.
@@ -783,6 +791,14 @@ O(log n). Completion includes every registered store, not just the main database
 | Architecture Invariant 8 and sections 5/11 | Make separate key custody/destruction and ADR 0027's independent anti-rollback witness explicit operational-security exceptions, backed by ledger intent and resumable manifest execution. Neither is an alternative source of world-truth semantics. Replace a literal shared entity key with independently erasable event keys and recorded canonical-subject binding. |
 
 ### 11. Release gate, audit reconciliation and remaining decisions
+
+Within these Proposed contracts, this section and section 9 are authoritative
+for the concrete deployment and erasure obligations; proposed
+[ADR 0027 Gate 3](0027-stage-three-authority-and-acceptance.md#gate-3-implementation-and-operational-assurance)
+is authoritative for the assurance gate. Evidence that these applicable
+obligations are satisfied is consumed under Gate 3 and is what its assurance
+verifies. This section must be read with that gate; its evidence and authorization
+requirements are not restated here.
 
 The previous draft pair was not safe to ship sequentially: ADR 0027 section 3
 required signatures over complete private payloads, section 1 retained plaintext

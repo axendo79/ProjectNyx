@@ -856,6 +856,14 @@ certification. A review does not itself change this ADR's status.
 
 ### Gate 3: Implementation and operational assurance
 
+Within these Proposed contracts, this section is authoritative for the assurance
+gate; proposed [ADR 0028 section 9](0028-redaction-and-crypto-shredding.md#9-complete-managed-copy-erasure)
+and [section 11](0028-redaction-and-crypto-shredding.md#11-release-gate-audit-reconciliation-and-remaining-decisions)
+are authoritative for the concrete persistence, recoverable-copy, key-destruction,
+restoration and legacy-sanitization obligations that applicable Gate 3 evidence
+must demonstrate. Those obligations are not restated here; the gate and the
+referenced obligations must be read together.
+
 Evidence must include, as applicable to the implementation, configuration and
 claims under review:
 
