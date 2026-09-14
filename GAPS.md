@@ -240,6 +240,51 @@ location, durable authority, ordering, retention, recovery, configuration, and
 usage replay remain unspecified. No usage recorder ships; submitting a usage
 event to the world-evidence reducer refuses at append and replay.
 
+### Dream emission semantics and operational contracts
+**Proposed / decision-blocked; no implementation:**
+[ADR 0029](decisions/0029-dream-emission-semantics.md) records a distinct emission
+type, inseparable recall origin, exclusion from the reducer's Layer A event-domain
+inputs, no promotion path, and process provenance that may prevent overcounting
+but never create support. It consistently extends ADR 0026 without amending it.
+These are proposed boundaries, not shipped Dream enforcement or a storage contract.
+
+The complete open list is in
+[ADR 0029's unresolved questions](decisions/0029-dream-emission-semantics.md#remaining-unresolved-questions):
+
+- **Recording/durability:** concrete location outside Layer A, append-only versus
+  mutable policy, durable authority, ordering, identity/retries, retention and
+  recovery, including explicit resolution of Invariant 8.
+- **Process-history replay/verification:** operation scope and checks establishing
+  origin, identity, completeness and causal links. Emissions are excluded from
+  belief replay; model regeneration is not an established history verifier.
+- **Acquisition linkage/counting restrictions:** whether an observation records
+  its initiating emission, where and with what authority/verification, and how
+  restrictions remain deterministic within the Layer A input boundary. ADR 0021's
+  constitutive mention/subject link supplies no default for this relationship.
+- **Redaction/recall representation:** emission units, private dependencies, safe
+  retained origin/causal records and unavailable recall; preserve counting
+  restrictions without retaining protected content. Proposed ADR 0028's managed
+  closure applies conditionally, with its own unresolved protocol/evidence gates.
+- **Retrieval/activation provenance and feedback:** preserve the adopted generated,
+  exposed (top-k), referenced (explicit citation) vocabulary; decide update timing
+  and dedup, scope, credit assignment, cross-component feedback, candidate-generation
+  bias and access for underexposed evidence, plus recording and replay. Denying the
+  scorer a causal-provenance handle constrains this work without resolving it.
+- **Dream instrumentation:** define Generative Flux over attempted cycles with
+  `R_opportunity`/`R_zero`, non-deduplicated raw emission count `N`, and Inquiry
+  Yield. Preserve pre-governance measurement so accuracy pressure cannot suppress
+  generation upstream; no pre-recording filter is implied by process history.
+- **Question/open-inquiry lifecycle:** distinguish retrieval-to-answer,
+  missing-evidence acquisition-to-answer and insufficient-evidence preserved
+  inquiry with expiry/indexing. Recording, scope, closure, expiry and recovery of
+  open inquiries need decisions; acquisition does not settle them.
+- **Spleen Dream yield:** operational inputs, calculation, consumers and relation
+  to Inquiry Yield remain undefined; a metric must not give Dream salience the
+  causal-provenance handle excluded by proposed ADR 0029 section 7.
+
+Dependent implementation stops at these gaps. Existing projectors, accepted
+stage limits and ADRs 0027/0028's Proposed status remain unchanged.
+
 ### Additional scalar belief reads
 **Deferred:** [ADR 0024 §2](decisions/0024-no-authoritative-head.md#2-scalar-belief-requests-and-named-candidate-reads).
 Common-value reads for multiple agreeing candidates are undecided. The code also
