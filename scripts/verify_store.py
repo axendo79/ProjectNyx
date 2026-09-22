@@ -493,7 +493,7 @@ def verify_connection(conn, version, report):
             continue
         try:
             replay.append(envelope, payload)
-            if p <= position:
+            if p == position:
                 expected = deepcopy(replay.records)
         except NotImplementedError as error:
             complete = False

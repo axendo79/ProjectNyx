@@ -315,6 +315,51 @@ def test_unknown_version_and_empty_store_are_explicit(tmp_path):
     assert not absent.exists()
 
 
+@pytest.mark.parametrize('shape', ['mentions', 'observations'])
+def test_replay_copy_count_scales_without_recopying_prefix(tmp_path, monkeypatch, shape):
+    # Count the verifier's imported deepcopy, not recursive calls inside copy.
+    namespace = verifier['verify_connection'].__globals__
+    original = namespace['deepcopy']
+    calls = 0
+
+    def counted(value):
+        nonlocal calls
+        calls += 1
+        return original(value)
+
+    monkeypatch.setitem(namespace, 'deepcopy', counted)
+    counts = []
+    for size in (12, 24):
+        path = tmp_path / f'{shape}-{size}.sqlite'
+        previous = None
+        with closing(storage.init_db(path, create=True)) as conn:
+            for index in range(size):
+                subject = index if shape == 'mentions' else index // 6
+                sid, mid, bid = f's-{subject}', f'm-{subject}', f'b-{subject}'
+                if shape == 'mentions' or index % 6 == 0:
+                    kind, data = events.ENTITY_MENTION_RECORDED, mention(sid, mid)
+                else:
+                    kind = events.OBSERVATION_RECORDED
+                    data = {'claims': [claim(f'c-{index}', bid, sid, mid, value='x' * 200)]}
+                previous = event(kind, data, index + 1, previous)
+                storage.safe_append_event(conn, *previous, '2')
+                storage.materialize_pending(conn, T2, '2')
+        calls = 0
+        report = verifier['verify_store'](path, '2')
+        assert report['ok'], report['failures']
+        counts.append(calls)
+    small, large = counts
+    print(f'{shape}: events=12/24, deepcopy calls={small}/{large}')
+    assert small > 0
+    if shape == 'mentions':
+        assert small == large
+    else:
+        # Each observation keeps its historical-header copy. C=2 allows the
+        # two fixed snapshots (empty state and publication boundary), never
+        # an allowance proportional to store size or elapsed time.
+        assert large <= 2 * small + 2
+
+
 def test_cli_json_human_and_failing_exit(database, capsys):
     path, conn, version, _ = database
     main = verifier['main']

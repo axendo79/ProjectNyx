@@ -105,6 +105,53 @@ and verifiability. The claim's containing observation is its explicit support.
 Bootstrap takes two appends; later observations through an existing mention take
 one. A committed mention remains valid if its observation never commits.
 
+The [whole-store scaling probe](scripts/probe_store_scaling.py) measures the
+production ingestion and independent verifier paths on fresh stores. Each subject
+has one mention and five single-claim observations on one property, with fixed
+200-byte values. Default event scales are 300/600/1200/2400; custom sizes round to
+the nearest complete six-event subject, with a minimum of one subject.
+
+```powershell
+.\.venv\Scripts\python.exe -B scripts/probe_store_scaling.py --projector-1-max-events 600 --json scratch/store-scaling-step0.json
+```
+
+Omit the cap to measure both projectors at every scale, or use
+`--skip-projector-1`. This is a manual diagnostic, not a CI benchmark; pytest
+executes only a tiny smoke case. Ingestion includes preparation, append and
+publication, excluding initialization. Verification includes opening the store,
+excluding process startup. Content bytes below count UTF-8 `committed_nodes.content`
+only, including retained historical nodes; projector "1" has none. File bytes
+count the entire SQLite file after a successful truncating WAL checkpoint and
+writer closure, including tables, indexes and free pages. Neither metric counts
+cumulative disk writes.
+
+[Recorded measurements](design/2026-09-22-store-scaling.json), 2026-09-22,
+Python 3.14.2 / Windows 11: one run per sample, using the Step 0 working tree based
+on `23be8dd`, with the verifier fix and probe committed alongside this table.
+These reproduce the review's workload shape, not its exact IDs or node counts.
+Times are machine/run dependent; bytes describe these fixed fixtures.
+
+| Projector | Events | Ingest s | Verify s | Nodes | Node content bytes | Content B/event | File bytes | File B/event |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 300 | 10.502508 | 0.093599 | 0 | 0 | 0.00 | 2,101,248 | 7,004.16 |
+| 1 | 600 | 37.988647 | 0.255254 | 0 | 0 | 0.00 | 3,969,024 | 6,615.04 |
+| 1 | 1,200 | capped | - | - | - | - | - | - |
+| 1 | 2,400 | capped | - | - | - | - | - | - |
+| 2 | 300 | 2.434998 | 1.341488 | 7,796 | 2,708,679 | 9,028.93 | 4,861,952 | 16,206.51 |
+| 2 | 600 | 6.673959 | 4.335636 | 17,538 | 5,944,924 | 9,908.21 | 10,399,744 | 17,332.91 |
+| 2 | 1,200 | 12.061119 | 14.838082 | 39,181 | 13,002,942 | 10,835.78 | 22,523,904 | 18,769.92 |
+| 2 | 2,400 | 24.545916 | 48.101215 | 86,559 | 28,229,551 | 11,762.31 | 48,660,480 | 20,275.20 |
+
+All measured stores pass verification. The publication-prefix copy now occurs
+once at the boundary; the initial empty-state copy and per-observation historical
+header copies remain. Deterministic tests count 2/2 calls on 12/24 mention events
+and 12/22 calls on 12/24 events with five observations per mention. Existing seed
+stores retain identical verifier output. This fixes the repeated full-prefix
+copy, not every source of superlinear verifier work: the measured version-2
+verification time still grows faster than event count. Retained-tree validation
+and historical-header handling remain unchanged. No storage-growth threshold or
+garbage collection policy is inferred from these measurements.
+
 The [standalone lineage-scaling probe](scripts/probe_lineage_scaling.py) measures
 the ADR 0023 implementation hazard. Run it from the checkout root, outside pytest:
 

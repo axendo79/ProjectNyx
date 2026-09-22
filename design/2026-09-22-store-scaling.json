@@ -1,0 +1,107 @@
+{
+  "python": "3.14.2",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "workload": "one mention + five observations per subject; one property; 200-byte values",
+  "content_bytes": "UTF-8 committed_nodes.content only; retained nodes included; zero for 1",
+  "file_bytes": "main SQLite file after TRUNCATE checkpoint and writer close",
+  "samples": [
+    {
+      "projector_version": "1",
+      "requested_events": 300,
+      "events": 300,
+      "subjects": 50,
+      "ingestion_seconds": 10.502507899999955,
+      "verifier_seconds": 0.09359850000009828,
+      "committed_nodes": 0,
+      "node_content_bytes": 0,
+      "content_bytes_per_event": 0.0,
+      "file_bytes": 2101248,
+      "file_bytes_per_event": 7004.16,
+      "verified": true
+    },
+    {
+      "projector_version": "1",
+      "requested_events": 600,
+      "events": 600,
+      "subjects": 100,
+      "ingestion_seconds": 37.98864709999998,
+      "verifier_seconds": 0.2552537999999913,
+      "committed_nodes": 0,
+      "node_content_bytes": 0,
+      "content_bytes_per_event": 0.0,
+      "file_bytes": 3969024,
+      "file_bytes_per_event": 6615.04,
+      "verified": true
+    },
+    {
+      "projector_version": "2",
+      "requested_events": 300,
+      "events": 300,
+      "subjects": 50,
+      "ingestion_seconds": 2.4349977000001672,
+      "verifier_seconds": 1.3414883000000373,
+      "committed_nodes": 7796,
+      "node_content_bytes": 2708679,
+      "content_bytes_per_event": 9028.93,
+      "file_bytes": 4861952,
+      "file_bytes_per_event": 16206.506666666666,
+      "verified": true
+    },
+    {
+      "projector_version": "2",
+      "requested_events": 600,
+      "events": 600,
+      "subjects": 100,
+      "ingestion_seconds": 6.673959299999979,
+      "verifier_seconds": 4.33563590000017,
+      "committed_nodes": 17538,
+      "node_content_bytes": 5944924,
+      "content_bytes_per_event": 9908.206666666667,
+      "file_bytes": 10399744,
+      "file_bytes_per_event": 17332.906666666666,
+      "verified": true
+    },
+    {
+      "projector_version": "2",
+      "requested_events": 1200,
+      "events": 1200,
+      "subjects": 200,
+      "ingestion_seconds": 12.061118999999962,
+      "verifier_seconds": 14.838081899999906,
+      "committed_nodes": 39181,
+      "node_content_bytes": 13002942,
+      "content_bytes_per_event": 10835.785,
+      "file_bytes": 22523904,
+      "file_bytes_per_event": 18769.92,
+      "verified": true
+    },
+    {
+      "projector_version": "2",
+      "requested_events": 2400,
+      "events": 2400,
+      "subjects": 400,
+      "ingestion_seconds": 24.545915899999954,
+      "verifier_seconds": 48.10121520000007,
+      "committed_nodes": 86559,
+      "node_content_bytes": 28229551,
+      "content_bytes_per_event": 11762.312916666666,
+      "file_bytes": 48660480,
+      "file_bytes_per_event": 20275.2,
+      "verified": true
+    }
+  ],
+  "skipped": [
+    {
+      "projector_version": "1",
+      "requested_events": 1200,
+      "events": 1200,
+      "reason": "explicit projector-1 skip/cap"
+    },
+    {
+      "projector_version": "1",
+      "requested_events": 2400,
+      "events": 2400,
+      "reason": "explicit projector-1 skip/cap"
+    }
+  ]
+}
