@@ -121,6 +121,86 @@ are in [ADR 0023](decisions/0023-stage-two-contract.md).
 
 ## Schema / operational gaps
 
+### Stage-two projector defaults — E2, pending ADR 0032
+**Open / decision-blocked:** stage-two entry points still default to projector
+"1". The [2026-09-22 review, E2](design/2026-09-22-review-and-next-steps.md)
+supplies whole-store measurements of quadratic ingestion for that version.
+The maintainer proposes required explicit selection (R1), but accepted
+[ADR 0025 section 1](decisions/0025-incremental-result-commitment.md#1-version-and-semantic-scope)
+preserves existing API defaults. Proposed ADR 0032 must supersede that clause
+before implementation. No defaults are changed here; legacy CLI selection
+continues to default to "0".
+
+### Writer concurrency and positional retries — E3/O1, pending ADR 0030
+**Open / decision-blocked:** preparation binds `prev_event_hash` and
+`recorded_at` before append. A competing append can invalidate an uncommitted
+retained pair; a retained earlier timestamp then refuses under ADR 0010.
+The [review, E3/O1 and R2](design/2026-09-22-review-and-next-steps.md) calls for
+one writer and a semantic/positional submission split. Proposed ADR 0030 must
+clarify ADR 0023 section 4, committed versus uncommitted retries, skew checks,
+halt/alert/recovery and a separate unbuilt historical-import path. No writer
+ownership mechanism or clock-skew recovery ships. ADR 0010's no-clamping refusal
+remains the baseline; equal recording timestamps are allowed.
+
+### External source-report scope — O2, pending ADR 0031
+**Open / decision-blocked:** every supported observed-origin ClaimCandidate is
+verified under ADR 0001. The writer does not enforce that external-content
+claims describe what an artifact stated instead of asserting its contents as
+world truth. `source_class` alone provides no such boundary.
+The [review, O2 and R3](design/2026-09-22-review-and-next-steps.md) selects
+report-scoped claims as the immediate direction and a separate origin mapping
+as the target. Proposed ADR 0031 must define ingestion-only vocabulary
+enforcement and immutable per-event vocabulary identity/version/hash. Property
+IDs remain exact opaque strings under ADR 0023; no registry or replay-time
+vocabulary check is introduced. None of this enforcement ships in Step 0.
+
+### Listing and search surface — O3, unbuilt
+**Open:** typed ID lookups and explicit replay are available, but no public
+subject/mention/property/belief listing or search API ships. The
+[review, O3 and section 4.3](design/2026-09-22-review-and-next-steps.md) describes
+a future derived index. R5 permits mention text for public corpora only as an
+inventoried copy rebuildable from Layer A; it does not implement the index or
+decide its schema, query API or publication mechanics.
+
+### Whole-store growth — O4, measurement available; retention deferred
+**Measured concern / deferred retention:** the
+[review, O4](design/2026-09-22-review-and-next-steps.md) supplies reviewer evidence
+of 21,381 retained nodes, about 6.8 MB node content and a 12 MB database at
+600 events. Those are supplied measurements, not a universal bytes-per-event
+bound. The [whole-store probe](scripts/probe_store_scaling.py) measures ingestion,
+verification, retained-node content and checkpointed database bytes separately
+with one mention and five observations per subject. Its normal scales are
+300/600/1200/2400 events; projector "1" can be capped or skipped. Full runs are
+manual; only tiny smoke coverage is in pytest. ADR 0025 still retains historical
+nodes. No garbage collection, growth threshold or retention policy is selected.
+The [Step 0 measurements](design/2026-09-22-store-scaling.json), made on
+Python 3.14.2 / Windows 11, retain 17,538 nodes at 600 events and 86,559 at 2,400;
+the latter store is 48,660,480 bytes (20,275.20 bytes/event). These fixed fixture
+IDs differ from the review's, so node counts are not asserted to match it.
+The verifier's repeated publication-prefix copy is fixed and deterministically
+tested, but total version-2 verification still scales superlinearly in this run
+(14.84/48.10 seconds at 1,200/2,400 events). Other verifier work remains unchanged;
+the copy-count regression is not a claim of linear end-to-end verification.
+
+### Corpus restriction — R4, policy in force; erasure unbuilt
+**Public-corpus policy:** public corpus only until the erasure requirements
+(Gate 3 of proposed ADR 0027 together with proposed ADR 0028 9 and 11) are
+accepted, implemented and passed. This is the maintainer's
+[2026-09-22 ruling](design/2026-09-22-review-and-next-steps.md#rulings-2026-09-22),
+not a claim that those Proposed ADRs are ratified or their gates passed.
+ADR 0002's plaintext storage remains in force. The restriction does not provide
+encryption, deletion, private-data migration or a source-classification checker.
+
+### Rename identity — scoped subjects retained
+**Boundary recorded; ingester unbuilt:** under ADR 0019's scoped bootstrap and
+ADR 0023's stage limits, a renamed file remains a separate subject. Git's
+rename/similarity result is only a report-scoped claim; it supplies no accepted
+identity association or merge authority. ADR numbers are metadata/searchable
+text, never identity. The [review's rename ruling](design/2026-09-22-review-and-next-steps.md#rulings-2026-09-22)
+requires the `902467a` R092 rename from `0009-projection-parameters.md` to
+`0010-projection-parameters.md` as a future regression fixture in proposed ADR
+0031. No rename handler or file-history ingester is implemented here.
+
 ### Standalone replay verifier — implemented for shipped contracts
 
 [scripts/verify_store.py](scripts/verify_store.py), covered by
