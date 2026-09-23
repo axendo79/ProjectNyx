@@ -4,7 +4,7 @@ from datetime import datetime
 
 import pytest
 
-from nyx import events, hashing, projection, skeleton, storage
+from nyx import events, hashing, projection, skeleton, storage, writer
 
 T0 = "2026-07-12T11:00:00+00:00"
 T1 = "2026-07-12T12:00:00+00:00"
@@ -21,6 +21,7 @@ def set_clock(monkeypatch, timestamp):
             return datetime.fromisoformat(timestamp)
     monkeypatch.setattr(events, "datetime", Clock)
     monkeypatch.setattr(skeleton, "datetime", Clock)
+    monkeypatch.setattr(writer, "clock_now", lambda: timestamp)
 
 
 def submit(path, belief_id, value):
@@ -40,7 +41,7 @@ def live(tmp_path, monkeypatch):
     a = submit(path, A, "one")
     set_clock(monkeypatch, T2)
     b = submit(path, B, "two")
-    with closing(storage.init_db(path)) as conn:
+    with closing(storage.open_readonly(path)) as conn:
         yield path, conn, {A: a, B: b}
 
 
@@ -128,15 +129,17 @@ def test_time_dependent_evaluation(live, monkeypatch):
 
 
 def test_determinism_and_layer_a_immutability(live, monkeypatch):
-    _, conn, _ = live
-    before = tuple(conn.iterdump())
+    path, conn, _ = live
+    with closing(storage.init_db(path)) as inspect:
+        before = tuple(inspect.iterdump())
     def forbidden_clock():
         pytest.fail("explicit evaluation must not sample the clock")
     monkeypatch.setattr(projection, "_now_iso", forbidden_clock)
     first = storage.evaluate_whole_view(conn, T3)
     second = storage.evaluate_whole_view(conn, T3)
     assert serialized(first) == serialized(second)
-    assert tuple(conn.iterdump()) == before
+    with closing(storage.init_db(path)) as inspect:
+        assert tuple(inspect.iterdump()) == before
     assert not conn.in_transaction
 
 

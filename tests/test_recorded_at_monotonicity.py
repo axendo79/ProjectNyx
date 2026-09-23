@@ -5,7 +5,7 @@ from datetime import datetime
 
 import pytest
 
-from nyx import events, storage
+from nyx import events, storage, writer
 from nyx.skeleton import record_observation
 
 
@@ -23,6 +23,7 @@ def clock(monkeypatch, timestamp):
         def now(tz):
             return datetime.fromisoformat(timestamp)
     monkeypatch.setattr(events, "datetime", FixedClock)
+    monkeypatch.setattr(writer, "clock_now", lambda: timestamp)
 
 
 def test_backward_clock_adjustment_at_append(tmp_path, monkeypatch):
@@ -33,7 +34,7 @@ def test_backward_clock_adjustment_at_append(tmp_path, monkeypatch):
     with closing(storage.init_db(path)) as conn:
         before = tuple(conn.iterdump())
     clock(monkeypatch, "2026-07-12T12:00:00Z")
-    with pytest.raises(storage.BackdatedRecordingError, match="precedes previous event"):
+    with pytest.raises(writer.ClockSkewError, match="tip_ahead_of_clock"):
         record_observation(path, {**BASE, "value": "two"})
     with closing(storage.init_db(path)) as conn:
         assert tuple(conn.iterdump()) == before

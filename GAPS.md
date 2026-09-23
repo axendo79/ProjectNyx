@@ -66,8 +66,10 @@ through an inner join. Pending publication checks the applied anchor and each
 event it reads, without scanning the entire already-published prefix.
 
 Legacy append now rejects invalid hashes/links and conflicting reused IDs or keys.
-Only identical retained event/payload pairs are retries; the raw legacy writer
-retrieves its original pair. No hash formula or accepted event semantics changed.
+Low-level exact-pair append accepts only identical retained event/payload retries.
+ADR 0030's ordinary writer compares retained semantic contents and returns the
+original committed pair; the raw legacy wrapper retains the original event ID.
+No hash formula or accepted event semantics changed.
 
 ### Typed identity freshness and `is_stale` — resolved for stage two
 **RESOLVED:** `storage.read_identity_status` and its typed wrappers disclose
@@ -133,16 +135,19 @@ parameter names are outside the guard; review checks for hidden selectors.
 The explicit legacy default-"0" allowlist remains unchanged. This closes accidental selection,
 not projector "1"'s measured whole-store ingestion cost.
 
-### Writer concurrency and positional retries — E3/O1, pending ADR 0030
-**Open / decision-blocked:** preparation binds `prev_event_hash` and
-`recorded_at` before append. A competing append can invalidate an uncommitted
-retained pair; a retained earlier timestamp then refuses under ADR 0010.
-The [review, E3/O1 and R2](design/2026-09-22-review-and-next-steps.md) calls for
-one writer and a semantic/positional submission split. Proposed ADR 0030 must
-clarify ADR 0023 section 4, committed versus uncommitted retries, skew checks,
-halt/alert/recovery and a separate unbuilt historical-import path. No writer
-ownership mechanism or clock-skew recovery ships. ADR 0010's no-clamping refusal
-remains the baseline; equal recording timestamps are allowed.
+### Writer concurrency and positional retries — E3/O1, resolved by ADR 0030
+**Resolved:** [ADR 0030](decisions/0030-sole-writer-and-positional-fields.md)
+separates retained semantic requests from writer-assigned positions. The writer
+holds an OS-level lock beside the store; a second writer refuses, while read-only
+opens neither acquire nor create the lockfile. Both clock checks run under the
+append lock with a 120-second named constant, inclusive tolerance and clamping
+without an increment. Refusal is typed and synchronous; recovery rechecks the
+persisted tip automatically, without a latch. Committed retries compare every
+caller-owned field, including all source.config, and return the original pair.
+`tests/test_sole_writer.py` covers injected clocks/thresholds, field classification,
+semantic conflicts, read-only access, restart, publication failure and lock release
+after killing the owning subprocess. Cross-process transport and historical-import
+and new-store recovery procedures remain unbuilt and are not authorized here.
 
 ### External source-report scope — O2, pending ADR 0031
 **Open / decision-blocked:** every supported observed-origin ClaimCandidate is
@@ -370,10 +375,11 @@ Automatic migrations remain outside scope; incompatible databases are rejected.
 
 **Boundary refusal resolved:** Immune Stage 1 rejects offset-less `occurred_at`
 before the legacy writer opens storage. `events.build_event` validates supplied
-event timestamps before hashing or ID allocation, covering stage-two preparation.
+event timestamps before hashing or ID allocation at the low-level pair boundary.
 The ingestion preparers validate before writer lookups; `ingestion.submit` checks
-retained pairs before publication or append. The stage-two skeleton wrapper
-validates retained pairs before opening storage. Append and
+retained semantic requests before publication or append. The stage-two skeleton
+wrapper validates requests before opening storage. Ordinary callers cannot supply
+recorded_at; the writer validates its injected clock samples. Append and
 replay retain their integrity backstops in all versions. Regression coverage is in
 `tests/test_timestamp_ingestion.py`.
 

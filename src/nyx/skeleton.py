@@ -20,8 +20,8 @@ Implemented acceptance behavior (tests/test_walking_skeleton.py):
     AND resubmitting the exact same event (same idempotency_key) does not create a second row
     AND attempting UPDATE on events raises an error (trigger enforcement, Invariant 1)
 
-The legacy writer uses Immune Stage 1. Stage-two writers submit retained event
-pairs through schema/identity validation inside the append transaction and then
+The legacy writer uses Immune Stage 1. Stage-two writers submit retained semantic
+requests through schema/identity validation inside the append transaction and then
 publish separately. Neither path implements the wider Immune cascade.
 """
 
@@ -31,8 +31,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from . import immune, projection, storage, hashing
-from .events import CORRECTION_APPENDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED, build_event
+from . import immune, storage, hashing, writer, ingestion
+from .events import CORRECTION_APPENDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED
 from .timestamps import validate_timestamp
 
 
@@ -55,6 +55,8 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any],
     storage._registered_projector(projector_version)
     if projector_version in ("1", "2"):
         return _record_stage_two(db_path, event_type, submission, projector_version)
+    if "recorded_at" in submission or "prev_event_hash" in submission:
+        raise ValueError("recorded_at and prev_event_hash belong to the writer")
     result = immune.stage1_schema_validate(submission)
     if not result.accepted:
         # Rejections should ultimately be logged events (§3); the reject-and-RECORD
@@ -77,26 +79,12 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any],
         storage.materialize_pending(conn, datetime.now(timezone.utc).isoformat(), projector_version)
         retained = storage.find_recorded_event(conn, hashing.idempotency_key(
             submission["source"]["actor_id"], submission["occurred_at"], payload))
-        if retained is not None:
-            envelope, payload_row = retained
-            expected = (event_type, ORIGIN_OBSERVED, hashing.canonical_json(submission["source"]),
-                        submission["source_class"], submission["occurred_at"])
-            if (envelope.event_type, envelope.origin_type, envelope.source,
-                    envelope.source_class, envelope.occurred_at) != expected:
-                raise ValueError("retry differs from retained submitted contents")
-        else:
-            prior = storage.read_belief(conn, payload["belief_id"])
-            projection.assert_not_backdated(prior, event_type, submission["occurred_at"])
-            envelope, payload_row = build_event(
-                event_type=event_type,
-                origin_type=ORIGIN_OBSERVED,
-                source=submission["source"],
-                source_class=submission["source_class"],
-                occurred_at=submission["occurred_at"],
-                payload=payload,
-                prev_event_hash=storage.last_event_hash(conn),
-            )
-        storage.safe_append_event(conn, envelope, payload_row, projector_version)
+        request = writer.prepare_event(
+            event_type=event_type, origin_type=ORIGIN_OBSERVED,
+            source=submission["source"], source_class=submission["source_class"],
+            occurred_at=submission["occurred_at"], payload=payload,
+            event_id=None if retained is None else retained[0].event_id)
+        storage.append_submission(conn, request, projector_version)
         # Separate derived transaction, including retries after an append
         # committed but publication/worker acknowledgement did not finish.
         # Evaluation time belongs to the caller (ADR 0010 section 3b).
@@ -113,17 +101,13 @@ def record_observation(db_path: str | Path, observation: Mapping[str, Any],
 
 
 def _record_stage_two(db_path, event_type, recorded_event, projector_version):
-    from . import ingestion
-    from .events import ENTITY_MENTION_RECORDED, Envelope, Payload
+    from .events import ENTITY_MENTION_RECORDED
     if event_type not in (OBSERVATION_RECORDED, ENTITY_MENTION_RECORDED):
         raise NotImplementedError(f"stage two refuses {event_type!r}")
-    if (not isinstance(recorded_event, tuple) or len(recorded_event) != 2
-            or not isinstance(recorded_event[0], Envelope) or not isinstance(recorded_event[1], Payload)):
-        raise ValueError(f"version {projector_version} requires a retained Envelope/Payload pair from nyx.ingestion")
+    writer.validate_request(recorded_event)
     if recorded_event[0].event_type != event_type:
         raise ValueError("recorded event type does not match writer operation")
     validate_timestamp(recorded_event[0].occurred_at)
-    validate_timestamp(recorded_event[0].recorded_at, "recorded_at")
     conn = storage.init_db(db_path)
     try:
         ingestion.submit(conn, recorded_event, datetime.now(timezone.utc).isoformat(), projector_version)
@@ -138,7 +122,7 @@ def _record_stage_two(db_path, event_type, recorded_event, projector_version):
 
 
 def record_mention(db_path, recorded_event, projector_version):
-    """Submit one retained entity_mention_recorded event under the selected version."""
+    """Submit one retained semantic mention request under the selected version."""
     from .events import ENTITY_MENTION_RECORDED
     return _record_stage_two(db_path, ENTITY_MENTION_RECORDED, recorded_event, projector_version)
 

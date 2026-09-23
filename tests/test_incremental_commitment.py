@@ -11,7 +11,7 @@ from dataclasses import replace
 
 import pytest
 
-from nyx import committed, events, hashing, ingestion, merkle, projection, reducer, skeleton, storage
+from nyx import committed, events, hashing, ingestion, merkle, projection, reducer, skeleton, storage, writer
 from test_reducer_boundary import T0, T1, T2, T3, SOURCE, claim, decoded, event, mention
 
 
@@ -37,6 +37,24 @@ def db(tmp_path):
     path = tmp_path / "nyx.db"
     with closing(storage.init_db(path, create=True)) as conn:
         yield path, conn
+
+
+def submit_fixture(conn, pair, as_of, projector_version):
+    """Feed frozen semantic fixtures through the ordinary writer's clock seam.
+
+    Preserve every fixture byte and hash; no production timestamp override.
+    """
+    from datetime import timedelta
+    envelope, payload = writer.semantic_contents(*pair)
+    request = writer.EventRequest(**envelope), writer.PayloadRequest(**payload)
+    existed = conn.execute("SELECT 1 FROM events WHERE event_id=?", (pair[0].event_id,)).fetchone()
+    clock, threshold = conn.clock, conn.threshold
+    conn.clock, conn.threshold = lambda: pair[0].recorded_at, timedelta(seconds=120)
+    try:
+        assert ingestion.submit(conn, request, as_of, projector_version) == pair
+    finally:
+        conn.clock, conn.threshold = clock, threshold
+    return not existed
 
 
 def canonical(value):
@@ -142,7 +160,7 @@ def test_all_prefixes_replay_storage_independent_roots_and_version_isolation(db,
         delta = committed.reduce(snapshot, env, data, T2)
         following = snapshot.apply(delta, position)
         assert canonical(snapshot.complete()) == previous
-        assert ingestion.submit(conn, log[position-1], T2, "2")
+        assert submit_fixture(conn, log[position-1], T2, "2")
         live = storage.read_snapshot(conn, "2")
         replay = projection.project_snapshot(decoded(log[:position]), T2, "2")
         assert canonical(live.complete()) == canonical(following.complete()) == canonical(replay.complete())
@@ -157,7 +175,7 @@ def test_all_prefixes_replay_storage_independent_roots_and_version_isolation(db,
             assert header["collection_roots"] == committed.full_result_roots(belief)
             assert header["result_root"] == committed.result_root(header["collection_roots"])
         snapshot = following
-    assert not ingestion.submit(conn, log[-1], T2, "2")
+    assert not submit_fixture(conn, log[-1], T2, "2")
     # The same recorded log remains explicitly replayable under frozen version 1.
     storage.rebuild_projection(conn, T2, "1")
     before = canonical(storage.read_snapshot(conn, "1").complete())
@@ -188,7 +206,7 @@ def test_result_coverage_changes_with_predecessors_fixed(log, kind):
 def test_time_cutoffs_purity_detachment_named_reads_and_proofs(db, log, monkeypatch):
     _, conn = db
     for entry in log:
-        ingestion.submit(conn, entry, T2, "2")
+        submit_fixture(conn, entry, T2, "2")
     frozen = storage.read_snapshot(conn, "2")
     before = canonical(frozen.complete())
     frozen.belief("b-a")["claim_candidates"].clear()
@@ -221,7 +239,7 @@ def test_time_cutoffs_purity_detachment_named_reads_and_proofs(db, log, monkeypa
 def test_deferred_and_usage_events_refuse_both_boundaries(db, log, event_type):
     _, conn = db
     for entry in log[:3]:
-        ingestion.submit(conn, entry, T2, "2")
+        submit_fixture(conn, entry, T2, "2")
     bad = event(event_type, {"claims": [claim("new")]}, 4, log[2])
     before = tuple(conn.iterdump())
     with pytest.raises(NotImplementedError):
@@ -237,7 +255,7 @@ def test_deferred_and_usage_events_refuse_both_boundaries(db, log, event_type):
 def test_invalid_claims_refuse_without_mutation(db, log, field, value):
     _, conn = db
     for entry in log[:3]:
-        ingestion.submit(conn, entry, T2, "2")
+        submit_fixture(conn, entry, T2, "2")
     bad = event(events.OBSERVATION_RECORDED, {"claims": [{**claim("fresh"), field: value}]}, 4, log[2])
     before = tuple(conn.iterdump())
     with pytest.raises(ValueError):
@@ -251,7 +269,7 @@ def test_invalid_claims_refuse_without_mutation(db, log, field, value):
 def test_atomic_publication_retry_and_stale_labels(db, log, table):
     _, conn = db
     for entry in log[:2]:
-        ingestion.submit(conn, entry, T2, "2")
+        submit_fixture(conn, entry, T2, "2")
     storage.safe_append_event(conn, *log[2], "2")
     assert storage.read_belief_status(conn, "b-a", "2")["stale"]
     before = tuple(conn.iterdump())
@@ -272,7 +290,7 @@ def test_atomic_publication_retry_and_stale_labels(db, log, table):
 def test_recovery_ignores_corruption_and_failure_rolls_back(db, log, monkeypatch, corruption):
     _, conn = db
     for entry in log:
-        ingestion.submit(conn, entry, T2, "2")
+        submit_fixture(conn, entry, T2, "2")
     detached = storage.read_snapshot(conn, "2")
     expected = canonical(detached.complete())
     with conn:
@@ -311,7 +329,7 @@ def test_recovery_ignores_corruption_and_failure_rolls_back(db, log, monkeypatch
 def test_write_path_does_not_enumerate_or_rewrite_accumulated_collections(db, log, monkeypatch):
     _, conn = db
     for entry in log[:3]:
-        ingestion.submit(conn, entry, T2, "2")
+        submit_fixture(conn, entry, T2, "2")
     before_nodes = dict(conn.execute("SELECT node_hash,content FROM committed_nodes"))
     def forbidden(*args, **kwargs):
         pytest.fail("write path enumerated accumulated content")
@@ -320,7 +338,7 @@ def test_write_path_does_not_enumerate_or_rewrite_accumulated_collections(db, lo
         patch.setattr(committed.Snapshot, "belief", forbidden)
         patch.setattr(committed.Snapshot, "complete", forbidden)
         for entry in log[3:]:
-            ingestion.submit(conn, entry, T2, "2")
+            submit_fixture(conn, entry, T2, "2")
     after_nodes = dict(conn.execute("SELECT node_hash,content FROM committed_nodes"))
     assert all(after_nodes[key] == value for key, value in before_nodes.items())
     for (raw,) in conn.execute("SELECT content FROM projected_beliefs WHERE projector_version='2'"):
@@ -338,14 +356,14 @@ def test_version_one_probe_bytes_remain_frozen():
 def test_cross_version_freshness_and_reader_isolation(db, log, monkeypatch):
     path, conn = db
     for entry in log[:3]:
-        ingestion.submit(conn, entry, T2, "1")
+        submit_fixture(conn, entry, T2, "1")
     assert storage.read_belief_status(conn, "b-a", "2")["stale"]
     storage.materialize_pending(conn, T2, "2")
     old = storage.read_snapshot(conn, "2")
     storage.safe_append_event(conn, *log[3], "2")
     assert storage.read_belief_status(conn, "b-a", "1")["stale"]
     original = storage._publish_delta
-    with closing(storage.init_db(path)) as reader:
+    with closing(storage.open_readonly(path)) as reader:
         def fail_publish(*args):
             original(*args)
             assert storage.read_snapshot(reader, "2").complete() == old.complete()
@@ -366,31 +384,35 @@ def test_cross_version_freshness_and_reader_isolation(db, log, monkeypatch):
 def test_stale_writer_two_connections_and_exact_retained_retry(db, log):
     path, conn = db
     for entry in log[:3]:
-        ingestion.submit(conn, entry, T2, "2")
-    with closing(storage.init_db(path)) as writer:
-        stale = event(events.OBSERVATION_RECORDED, {"claims": [claim("stale")]}, 5, log[2])
-        ingestion.submit(conn, log[3], T2, "2")
-        before = tuple(conn.iterdump())
-        with pytest.raises(ValueError, match="append position"):
-            storage.safe_append_event(writer, *stale, "2")
-        assert tuple(conn.iterdump()) == before
-        altered = replace(log[3][0], event_id="reminted")
-        with pytest.raises(ValueError, match="retry differs"):
-            storage.safe_append_event(writer, altered, log[3][1], "2")
-        assert tuple(conn.iterdump()) == before
+        submit_fixture(conn, entry, T2, "2")
+    with pytest.raises(writer.WriterBusyError):
+        storage.init_db(path)
+    stale = event(events.OBSERVATION_RECORDED, {"claims": [claim("stale")]}, 5, log[2])
+    submit_fixture(conn, log[3], T2, "2")
+    before = tuple(conn.iterdump())
+    with pytest.raises(ValueError, match="append position"):
+        storage.safe_append_event(conn, *stale, "2")
+    assert tuple(conn.iterdump()) == before
+    altered = replace(log[3][0], event_id="reminted")
+    with pytest.raises(ValueError, match="retry differs"):
+        storage.safe_append_event(conn, altered, log[3][1], "2")
+    assert tuple(conn.iterdump()) == before
 
 
 def test_writer_helpers_and_snapshot_survives_connection_close(db):
     path, conn = db
     pair = ingestion.prepare_mention(conn, mention_id="m", subject_id="s", text="the device",
                                      source=SOURCE, source_class="direct_observation", origin_type="observed",
-                                     occurred_at=T1, recorded_at=T1, event_id="mention")
+                                     occurred_at=T1, event_id="mention")
+    conn.close()
     assert skeleton.record_mention(path, pair, "2")["subject_id"] == "s"
+    conn = storage.open_readonly(path)
     observation = ingestion.prepare_observation(conn, claims=[claim("c", "b", "s", "m")],
-        source=SOURCE, source_class="direct_observation", occurred_at=T1, recorded_at=T2,
+        source=SOURCE, source_class="direct_observation", occurred_at=T1,
         event_id="observation", projector_version="2")
+    conn.close()
     assert skeleton.record_observation(path, observation, "2")["b"]["claim_candidates"][0]["value"] == "64GB"
-    with closing(storage.init_db(path)) as other:
+    with closing(storage.open_readonly(path)) as other:
         detached = storage.read_snapshot(other, "2")
     assert detached.belief("b")["claim_candidates"][0]["claim_candidate_id"] == "c"
 

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from nyx import events, hashing, ingestion, projection, reducer, skeleton, storage
+from nyx import events, hashing, ingestion, projection, reducer, skeleton, storage, writer
 
 T0 = "2026-07-12T00:00:00Z"
 T1 = "2026-07-13T00:00:00Z"
@@ -466,7 +466,7 @@ def test_append_failure_and_publication_reader_isolation(db, log, monkeypatch):
     path, conn = db
     before = dump(conn)
     original = reducer.reduce
-    with closing(storage.init_db(path)) as reader:
+    with closing(storage.open_readonly(path)) as reader:
         def fail(snapshot, envelope, payload, as_of):
             original(snapshot, envelope, payload, as_of)
             assert reader.execute("SELECT count(*) FROM events").fetchone() == (0,)
@@ -520,8 +520,8 @@ def test_retained_retry_mention_survives_and_no_remint(db, log, monkeypatch):
     assert storage.read_mention(conn, "m-a", projector_version="1")
     assert not storage.read_snapshot(conn, projector_version="1").beliefs()
     entry = ingestion.prepare_observation(conn, claims=[claim()], source=SOURCE,
-              source_class="direct_observation", occurred_at=T1, recorded_at=T2, projector_version="1")
-    storage.safe_append_event(conn, *entry, "1")  # Crash before publication.
+              source_class="direct_observation", occurred_at=T1, projector_version="1")
+    entry = storage.append_submission(conn, entry, "1")  # Crash before publication.
     storage.materialize_pending(conn, T2, projector_version="1")
     before = dump(conn)
     def forbidden(*args, **kwargs):
@@ -539,7 +539,9 @@ def test_writer_lookup_and_skeleton_two_then_one_events(db):
     path, conn = db
     m = ingestion.prepare_mention(conn, mention_id="m", subject_id="s", text="device",
           source=SOURCE, source_class="direct_observation", occurred_at=T1, origin_type="observed")
+    conn.close()
     skeleton.record_mention(path, m, projector_version="1")
+    conn = storage.open_readonly(path)
     o = ingestion.prepare_observation(conn, claims=[claim("c1", "b", "s", "m")],
           source=SOURCE, source_class="direct_observation", occurred_at=T1, projector_version="1")
     first = skeleton.record_observation(path, o, "1")
@@ -558,7 +560,9 @@ def test_writer_lookup_and_skeleton_two_then_one_events(db):
     with pytest.raises(NotImplementedError):
         skeleton.record_correction(path, {}, "1")
     with pytest.raises(NotImplementedError):
-        storage.materialize_pending(conn, p[0].recorded_at, "0")
+        conn.close()
+        with closing(storage.init_db(path)) as owner:
+            storage.materialize_pending(owner, T3, "0")
 
 
 def test_same_value_different_standing_and_identity_paths_survive(log):
@@ -701,8 +705,9 @@ def test_two_connections_cannot_authorize_against_old_append_position(db, log):
     path, conn = db
     ingest(conn, log[:1])
     stale = event(events.OBSERVATION_RECORDED, {"claims": [claim()]}, 3, log[0])
-    with closing(storage.init_db(path)) as second:
-        ingest(second, log[1:2])
+    with pytest.raises(writer.WriterBusyError):
+        storage.init_db(path)
+    ingest(conn, log[1:2])
     before = dump(conn)
     with pytest.raises(ValueError, match="different append position"):
         storage.safe_append_event(conn, *stale, "1")
@@ -734,7 +739,9 @@ def test_version_two_existing_database_refuses_byte_unchanged(db, log):
     before = dump(conn)
     conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     bytes_before = path.read_bytes()
+    conn.close()
     with pytest.raises(storage.SchemaCompatibilityError, match="unsupported_version"):
         storage.init_db(path)
     assert path.read_bytes() == bytes_before
-    assert dump(conn) == before
+    with closing(sqlite3.connect(path)) as inspect:
+        assert dump(inspect) == before

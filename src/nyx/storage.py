@@ -5,8 +5,9 @@ spec/NYX_V0_IMPLEMENTATION.md §4 (schema). The append is THE durable commit
 (Invariant 8) — everything else is a reconstructible derivative.
 
 Append-only is engine-enforced (UPDATE/DELETE triggers in schema.sql), not a
-convention (Invariant 1). `safe_append_event` is the sole write path into Layer A;
-it inserts the envelope and payload with append freshness in one transaction.
+convention (Invariant 1). `append_submission` assigns ordinary writer positions;
+`safe_append_event` preserves low-level exact-pair integrity checks. Both use the
+same locked insertion helpers for envelope, payload and append freshness.
 Version 0 uses entity_event_index; versions 1/2 use identity_event_index and
 belief_event_index. Derived publication and its progress commit separately.
 """
@@ -17,10 +18,10 @@ import json
 import re
 import sqlite3
 import warnings
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import hashing, projection, committed, committed_storage, integrity
+from . import hashing, projection, committed, committed_storage, integrity, writer
 from .events import Envelope, Payload
 from .projection import _instant
 from .reducer import EventDelta, RECORD_KINDS, SUPPORTED_EVENTS
@@ -143,15 +144,28 @@ def _schema_statements(script: str):
         yield statement
 
 
-def init_db(db_path: str | Path, create: bool = False) -> sqlite3.Connection:
+def init_db(db_path: str | Path, create: bool = False, *,
+            clock=None, threshold=None) -> sqlite3.Connection:
     """Validate each new connection; initialize only with explicit authorization.
 
     ADR 0011: no migration, repair, auto-stamping, or identity monitoring.
     Existing databases are opened without SQLite's implicit file creation.
+    Holds sole-writer ownership until close. Clock/threshold overrides are test
+    seams only; production uses writer.MAX_CLOCK_SKEW, never runtime settings.
     """
     uri = Path(db_path).resolve().as_uri() + ("?mode=rwc" if create else "?mode=rw")
-    conn = sqlite3.connect(uri, uri=True)
+    owner = writer.acquire(db_path)
     try:
+        conn = sqlite3.connect(uri, uri=True, factory=writer.WriterConnection)
+    except BaseException:
+        owner.close()
+        raise
+    conn.owner_lock = owner
+    conn.clock = writer.clock_now if clock is None else clock
+    conn.threshold = writer.MAX_CLOCK_SKEW if threshold is None else threshold
+    try:
+        if not isinstance(conn.threshold, timedelta) or conn.threshold < timedelta(0):
+            raise ValueError("writer threshold must be a nonnegative timedelta")
         if create:
             emptiness_sql = (
                 "SELECT count(*) FROM sqlite_master "
@@ -299,48 +313,101 @@ def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Pay
     _registered_projector(projector_version)
     if projector_version in ("1", "2"):
         return _append_stage_two(conn, envelope, payload, projector_version)
-    if envelope.event_type not in projection._VALUE_SETTING:
-        raise NotImplementedError(f"append handler for {envelope.event_type!r} not implemented")
     if conn.in_transaction:
         raise RuntimeError("append requires its own transaction")
     with conn:
         conn.execute("BEGIN IMMEDIATE")
-        if _is_recorded_retry(conn, envelope, payload):
-            return False
-        data = integrity.decode_payload(envelope, payload)
-        previous = conn.execute(
-            "SELECT event_hash, recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
-        ).fetchone()
-        recorded_at = _instant(envelope.recorded_at, "recorded_at")
-        if previous and recorded_at < _instant(previous[1], "recorded_at"):
-            raise BackdatedRecordingError(
-                f"recorded_at {envelope.recorded_at!r} precedes previous event {previous[1]!r}"
-            )
-        if envelope.prev_event_hash != (None if previous is None else previous[0]):
-            raise integrity.IntegrityError("event was built against a different append position")
-        conn.execute(
-            f"INSERT INTO events ({','.join(_EVENT_COLUMNS)}) VALUES ({','.join('?' for _ in _EVENT_COLUMNS)})",
-            tuple(getattr(envelope, col) for col in _EVENT_COLUMNS))
-        # Payloads are keyed by event ID, not content hash (ADR 0007). Conflicting
-        # identities have already refused under the same write lock.
-        conn.execute(
-            "INSERT INTO payloads (event_id, payload_hash, canonical_entity_id, ciphertext, redacted) "
-            "VALUES (?,?,?,?,?)",
-            (payload.event_id, payload.payload_hash, payload.canonical_entity_id,
-             payload.ciphertext, int(payload.redacted)),
+        return _append_legacy_locked(conn, envelope, payload)
+
+
+def _append_legacy_locked(conn, envelope, payload, before_insert=None):
+    if envelope.event_type not in projection._VALUE_SETTING:
+        raise NotImplementedError(f"append handler for {envelope.event_type!r} not implemented")
+    if _is_recorded_retry(conn, envelope, payload):
+        return False
+    data = integrity.decode_payload(envelope, payload)
+    previous = conn.execute(
+        "SELECT event_hash, recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
+    ).fetchone()
+    recorded_at = _instant(envelope.recorded_at, "recorded_at")
+    if previous and recorded_at < _instant(previous[1], "recorded_at"):
+        raise BackdatedRecordingError(
+            f"recorded_at {envelope.recorded_at!r} precedes previous event {previous[1]!r}"
         )
-        # Synchronous stale-read index, keyed by the belief's entity (§1/§4). For the
-        # skeleton the belief_id stands in as the entity key (one belief, no graph yet).
-        entity_id = data["belief_id"]
-        conn.execute(
-            "INSERT INTO entity_event_index (entity_id, latest_event_id, latest_event_hash, updated_at) "
-            "VALUES (?,?,?,?) "
-            "ON CONFLICT(entity_id) DO UPDATE SET "
-            "latest_event_id=excluded.latest_event_id, "
-            "latest_event_hash=excluded.latest_event_hash, updated_at=excluded.updated_at",
-            (entity_id, envelope.event_id, envelope.event_hash, _now_iso()),
-        )
+    if envelope.prev_event_hash != (None if previous is None else previous[0]):
+        raise integrity.IntegrityError("event was built against a different append position")
+    if before_insert is not None:
+        before_insert()
+    conn.execute(
+        f"INSERT INTO events ({','.join(_EVENT_COLUMNS)}) VALUES ({','.join('?' for _ in _EVENT_COLUMNS)})",
+        tuple(getattr(envelope, col) for col in _EVENT_COLUMNS))
+    # Payloads are keyed by event ID, not content hash (ADR 0007). Conflicting
+    # identities have already refused under the same write lock.
+    conn.execute(
+        "INSERT INTO payloads (event_id, payload_hash, canonical_entity_id, ciphertext, redacted) "
+        "VALUES (?,?,?,?,?)",
+        (payload.event_id, payload.payload_hash, payload.canonical_entity_id,
+         payload.ciphertext, int(payload.redacted)),
+    )
+    # Synchronous stale-read index, keyed by the belief's entity (§1/§4). For the
+    # skeleton the belief_id stands in as the entity key (one belief, no graph yet).
+    entity_id = data["belief_id"]
+    conn.execute(
+        "INSERT INTO entity_event_index (entity_id, latest_event_id, latest_event_hash, updated_at) "
+        "VALUES (?,?,?,?) "
+        "ON CONFLICT(entity_id) DO UPDATE SET "
+        "latest_event_id=excluded.latest_event_id, "
+        "latest_event_hash=excluded.latest_event_hash, updated_at=excluded.updated_at",
+        (entity_id, envelope.event_id, envelope.event_hash, _now_iso()),
+    )
     return True
+
+
+def append_submission(conn, request, projector_version):
+    """Assign positions only for a new semantic request; return the committed pair.
+
+    Low-level exact-pair appends remain separate integrity boundaries. This is
+    the ordinary writer path, with both clock checks under the append lock.
+    """
+    _registered_projector(projector_version)
+    data = writer.validate_request(request)
+    if not isinstance(conn, writer.WriterConnection) or conn.owner_lock is None:
+        raise RuntimeError("ordinary append requires the owning writer connection")
+    envelope, payload = request
+    key = hashing.idempotency_key(json.loads(envelope.source)["actor_id"], envelope.occurred_at, data)
+    with conn.append_lock:
+        if conn.in_transaction:
+            raise RuntimeError("append requires its own transaction")
+        with conn:
+            conn.execute("BEGIN IMMEDIATE")
+            rows = conn.execute("SELECT event_id FROM events WHERE event_id=? OR idempotency_key=?",
+                                (envelope.event_id, key)).fetchall()
+            if rows:
+                stored = _recorded_pair(conn, rows[0][0])
+                if len(rows) != 1 or writer.semantic_contents(*stored) != writer.semantic_contents(*request):
+                    raise integrity.IntegrityError("retry differs from retained semantic contents")
+                return stored
+            tip = conn.execute(
+                "SELECT event_id,event_hash,recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
+            ).fetchone()
+            stamp, instant = writer.sample(conn.clock)
+            if tip is not None and _instant(tip[2], "recorded_at") - instant > conn.threshold:
+                raise writer.ClockSkewError("tip_ahead_of_clock", tip, stamp, conn.threshold)
+            recorded_at = tip[2] if tip is not None and _instant(tip[2], "recorded_at") > instant else stamp
+            pair = writer.assign(request, recorded_at, None if tip is None else tip[1])
+
+            def validate_assignment():
+                observed, second = writer.sample(conn.clock)
+                if _instant(recorded_at, "recorded_at") - second > conn.threshold:
+                    raise writer.ClockSkewError("assignment_ahead_of_clock", tip, observed, conn.threshold)
+
+            if projector_version == "0":
+                prior = read_belief(conn, data["belief_id"], "0")
+                projection.assert_not_backdated(prior, envelope.event_type, envelope.occurred_at)
+                _append_legacy_locked(conn, *pair, before_insert=validate_assignment)
+            else:
+                _append_stage_two_locked(conn, *pair, projector_version, before_insert=validate_assignment)
+            return pair
 
 
 def _recorded_pair(conn, event_id):
@@ -384,49 +451,55 @@ def _is_recorded_retry(conn, envelope, payload):
 
 def _append_stage_two(conn, envelope, payload, version):
     """Validate at the locked append prefix; exact retained submissions retry."""
-    if envelope.event_type not in SUPPORTED_EVENTS:
-        raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
     if conn.in_transaction:
         raise RuntimeError("append requires its own transaction")
     with conn:
         conn.execute("BEGIN IMMEDIATE")
-        if _is_recorded_retry(conn, envelope, payload):
-            return False
-        if payload.redacted or payload.ciphertext is None or payload.canonical_entity_id is not None:
-            raise NotImplementedError("stage two does not implement redaction or canonical key binding")
-        data = integrity.decode_payload(envelope, payload)
-        tip = conn.execute(
-            "SELECT rowid,event_id,event_hash,recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
-        ).fetchone()
-        if tip and _instant(envelope.recorded_at, "recorded_at") < _instant(tip[3], "recorded_at"):
-            raise BackdatedRecordingError("recorded_at precedes previous event")
-        snapshot = _read_snapshot(conn, version)
-        if (snapshot.log_position, snapshot.event_id) != ((0, None) if tip is None else tip[:2]):
-            raise ProjectionBehindError("derived prefix is behind append position; publish pending events first")
-        if envelope.prev_event_hash != (None if tip is None else tip[2]):
-            raise integrity.IntegrityError("event was built against a different append position")
-        delta = projection.PROJECTORS[version].reduce(snapshot, envelope, data, envelope.recorded_at)
-        conn.execute(
-            f"INSERT INTO events ({','.join(_EVENT_COLUMNS)}) VALUES ({','.join('?' for _ in _EVENT_COLUMNS)})",
-            tuple(getattr(envelope, col) for col in _EVENT_COLUMNS),
-        )
-        conn.execute("INSERT INTO payloads VALUES (?,?,?,?,?)", (
-            payload.event_id, payload.payload_hash, payload.canonical_entity_id,
-            payload.ciphertext, int(payload.redacted)))
-        subjects = set(delta.entities) | {b["subject_id"] for b in delta.beliefs.values()}
-        # Both projectors consume this same event contract. Freshness describes
-        # Layer A, while progress remains separately pinned to each projector.
-        for compatible_version in ("1", "2"):
-            for subject_id in subjects:
-                conn.execute(
-                    "INSERT INTO identity_event_index VALUES (?,?,?) "
-                    "ON CONFLICT(projector_version,subject_id) DO UPDATE SET latest_event_id=excluded.latest_event_id",
-                    (compatible_version, subject_id, envelope.event_id))
-            for belief_id, belief in delta.beliefs.items():
-                conn.execute(
-                    "INSERT INTO belief_event_index VALUES (?,?,?) "
-                    "ON CONFLICT(projector_version,belief_id) DO NOTHING",
-                    (compatible_version, belief_id, belief["subject_id"]))
+        return _append_stage_two_locked(conn, envelope, payload, version)
+
+
+def _append_stage_two_locked(conn, envelope, payload, projector_version, before_insert=None):
+    if envelope.event_type not in SUPPORTED_EVENTS:
+        raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
+    if _is_recorded_retry(conn, envelope, payload):
+        return False
+    if payload.redacted or payload.ciphertext is None or payload.canonical_entity_id is not None:
+        raise NotImplementedError("stage two does not implement redaction or canonical key binding")
+    data = integrity.decode_payload(envelope, payload)
+    tip = conn.execute(
+        "SELECT rowid,event_id,event_hash,recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
+    ).fetchone()
+    if tip and _instant(envelope.recorded_at, "recorded_at") < _instant(tip[3], "recorded_at"):
+        raise BackdatedRecordingError("recorded_at precedes previous event")
+    snapshot = _read_snapshot(conn, projector_version)
+    if (snapshot.log_position, snapshot.event_id) != ((0, None) if tip is None else tip[:2]):
+        raise ProjectionBehindError("derived prefix is behind append position; publish pending events first")
+    if envelope.prev_event_hash != (None if tip is None else tip[2]):
+        raise integrity.IntegrityError("event was built against a different append position")
+    delta = projection.PROJECTORS[projector_version].reduce(snapshot, envelope, data, envelope.recorded_at)
+    if before_insert is not None:
+        before_insert()
+    conn.execute(
+        f"INSERT INTO events ({','.join(_EVENT_COLUMNS)}) VALUES ({','.join('?' for _ in _EVENT_COLUMNS)})",
+        tuple(getattr(envelope, col) for col in _EVENT_COLUMNS),
+    )
+    conn.execute("INSERT INTO payloads VALUES (?,?,?,?,?)", (
+        payload.event_id, payload.payload_hash, payload.canonical_entity_id,
+        payload.ciphertext, int(payload.redacted)))
+    subjects = set(delta.entities) | {b["subject_id"] for b in delta.beliefs.values()}
+    # Both projectors consume this same event contract. Freshness describes
+    # Layer A, while progress remains separately pinned to each projector.
+    for compatible_projector_version in ("1", "2"):
+        for subject_id in subjects:
+            conn.execute(
+                "INSERT INTO identity_event_index VALUES (?,?,?) "
+                "ON CONFLICT(projector_version,subject_id) DO UPDATE SET latest_event_id=excluded.latest_event_id",
+                (compatible_projector_version, subject_id, envelope.event_id))
+        for belief_id, belief in delta.beliefs.items():
+            conn.execute(
+                "INSERT INTO belief_event_index VALUES (?,?,?) "
+                "ON CONFLICT(projector_version,belief_id) DO NOTHING",
+                (compatible_projector_version, belief_id, belief["subject_id"]))
     return True
 
 

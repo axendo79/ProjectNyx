@@ -60,12 +60,14 @@ def test_readonly_schema_refusal_is_unchanged(store, damage):
     with conn:
         conn.execute(damage)
     before = tuple(conn.iterdump())
+    conn.close()
     with pytest.raises(storage.SchemaCompatibilityError) as writable:
         storage.init_db(path)
     with pytest.raises(storage.SchemaCompatibilityError) as readonly:
         storage.open_readonly(path)
     assert (readonly.value.reason, str(readonly.value)) == (writable.value.reason, str(writable.value))
-    assert tuple(conn.iterdump()) == before
+    with closing(sqlite3.connect(path)) as inspect:
+        assert tuple(inspect.iterdump()) == before
 
 
 @pytest.mark.parametrize("version", ["0", "1", "2"])

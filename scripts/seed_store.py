@@ -3,7 +3,8 @@
 Projector 2 has identity/candidates and an unpublished final belief; projector 0
 has legacy corrections. They never share a log. IDs and event inputs are fixed
 unless --seed selects a reproducible randomized fixture. SQLite initialization
-and operational diagnostic timestamps still use the production clock.
+and operational diagnostic timestamps still use the production clock. Event
+assignment uses an injected fixture clock; this is not a historical-import API.
 """
 
 import argparse
@@ -16,7 +17,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from nyx import events, immune, ingestion, projection, storage
+from nyx import events, immune, ingestion, projection, storage, writer
 
 
 MIN_OBSERVATIONS = 8
@@ -70,7 +71,9 @@ def seed_store(db, observations=MIN_OBSERVATIONS, projector="0", *, force=False,
         manifest["event_ids"].append(event_id)
         return {"event_id": event_id, "recorded_at": (START + timedelta(seconds=counter)).isoformat()}
 
-    with closing(storage.init_db(path, create=True)) as conn:
+    with closing(storage.init_db(path, create=True,
+            clock=lambda: (START + timedelta(seconds=counter)).isoformat(),
+            threshold=timedelta(seconds=120))) as conn:
         if projector == "2":
             for name in names:
                 subject, mid = f"{prefix}:s-{name}", f"{prefix}:m-{name}"
@@ -79,7 +82,8 @@ def seed_store(db, observations=MIN_OBSERVATIONS, projector="0", *, force=False,
                 stamp = next_event()
                 pair = ingestion.prepare_mention(conn, subject_id=subject, mention_id=mid,
                     text=f"fixture device {name}", source=source, source_class=source_class,
-                    origin_type=events.ORIGIN_OBSERVED, occurred_at=stamp["recorded_at"], **stamp)
+                    origin_type=events.ORIGIN_OBSERVED, occurred_at=stamp["recorded_at"],
+                    event_id=stamp["event_id"])
                 ingestion.submit(conn, pair, stamp["recorded_at"], "2")
 
         def observe(name, prop, value, *, pending=False, correction=False):
@@ -94,7 +98,8 @@ def seed_store(db, observations=MIN_OBSERVATIONS, projector="0", *, force=False,
                          "claim_candidate_id": cid, "value": value,
                          "verifiability": "externally_checkable"}
                 pair = ingestion.prepare_observation(conn, claims=[claim], source=source,
-                    source_class=source_class, occurred_at=at, projector_version="2", **stamp)
+                    source_class=source_class, occurred_at=at, projector_version="2",
+                    event_id=stamp["event_id"])
             else:
                 raw = {"belief_id": bid, "value": value, "verifiability": "externally_checkable",
                        "occurred_at": at, "source": source, "source_class": source_class}
@@ -103,10 +108,10 @@ def seed_store(db, observations=MIN_OBSERVATIONS, projector="0", *, force=False,
                     raise ValueError(f"immune stage 1 rejected fixture: {checked.reason}")
                 kind = events.CORRECTION_APPENDED if correction else events.OBSERVATION_RECORDED
                 projection.assert_not_backdated(storage.read_belief(conn, bid, "0"), kind, at)
-                pair = events.build_event(event_type=kind, origin_type=events.ORIGIN_OBSERVED,
+                pair = writer.prepare_event(event_type=kind, origin_type=events.ORIGIN_OBSERVED,
                     source=source, source_class=source_class, occurred_at=at,
                     payload={key: raw[key] for key in ("belief_id", "value", "verifiability")},
-                    prev_event_hash=storage.last_event_hash(conn), **stamp)
+                    event_id=stamp["event_id"])
             # The final p2 event commits normally. Its recording time is beyond
             # this explicit evaluation cutoff, so submit leaves it unpublished.
             cutoff = (START + timedelta(seconds=counter - 1)).isoformat() if pending else at
@@ -142,7 +147,11 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.observations < MIN_OBSERVATIONS:
         parser.error(f"--observations must be at least {MIN_OBSERVATIONS}")
-    result = seed_store(args.db, args.observations, args.projector, force=args.force, seed=args.seed)
+    try:
+        result = seed_store(args.db, args.observations, args.projector, force=args.force, seed=args.seed)
+    except writer.ClockSkewError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     print(json.dumps(result, indent=2))
     return 0
 

@@ -47,7 +47,9 @@ def sample(requested_events, projector_version):
     event_count = subjects * 6
     with tempfile.TemporaryDirectory(prefix='nyx-store-probe-') as directory:
         path = Path(directory) / 'store.sqlite'
-        with closing(storage.init_db(path, create=True)) as conn:
+        at = START.isoformat()
+        with closing(storage.init_db(path, create=True, clock=lambda: at,
+                                     threshold=timedelta(seconds=120))) as conn:
             started = perf_counter()
             for subject in range(subjects):
                 sid, mid, bid = (f'{prefix}-{subject:06d}' for prefix in ('s', 'm', 'b'))
@@ -55,7 +57,7 @@ def sample(requested_events, projector_version):
                     position = subject * 6 + offset
                     at = (START + timedelta(seconds=position)).isoformat()
                     common = dict(source=SOURCE, source_class='direct_observation',
-                                  occurred_at=at, recorded_at=at, event_id=f'e-{position:06d}')
+                                  occurred_at=at, event_id=f'e-{position:06d}')
                     if offset == 0:
                         pair = ingestion.prepare_mention(
                             conn, mention_id=mid, subject_id=sid, text=f'fixture {subject:06d}',

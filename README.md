@@ -25,7 +25,9 @@ with idempotency protection, update freshness indexes, publish derived state, an
 read the result. Legacy corrections, late-arriving observations, historical
 recording-time cutoffs, and projector-version dispatch are implemented.
 Database creation requires explicit authorization, and each connection validates
-schema metadata. Append refuses backward recording timestamps.
+schema metadata. Ordinary writers assign recording timestamps under the append
+lock, clamping to the tip within ADR 0030's 120-second tolerance. Low-level
+integrity checks still refuse supplied backward recording timestamps.
 
 The governing invariants are append-only provenance, reconstructible derived
 state, deterministic projection for a fixed log/time/version, and no silent
@@ -75,7 +77,7 @@ defaults follow [ADR 0032](decisions/0032-explicit-stage-two-projector-selection
 stage-two selection is required; the explicitly allowlisted legacy defaults
 remain `"0"`. Use `project_snapshot(log, as_of, "2")` and pass
 `projector_version="2"` to storage operations and to `prepare_observation`,
-`submit`, and skeleton writers. Mention preparation produces the same event pair.
+`submit`, and skeleton writers. Mention preparation produces the same semantic request.
 
 Full belief reads reconstruct the original logical shape; only the lineage hash
 differs between versions. In both versions, `Snapshot.events()` returns a canonical
@@ -96,11 +98,16 @@ Dream references, retrieval exposures, and activation records never enter world
 evidence or belief lineage. Usage recording mechanics remain undecided.
 
 The version `"1"` writer uses `ingestion.prepare_mention` and
-`ingestion.prepare_observation`, then submits the returned `(Envelope, Payload)`
-pair through `ingestion.submit(conn, pair, as_of, "1")` or the skeleton wrappers
-`record_mention(path, pair, "1")` and `record_observation(path, pair, "1")`. Retain the
-complete pair before append and reuse it on retry; preparation is performed once,
-not again on retry. The observation preparer looks up existing belief IDs and
+`ingestion.prepare_observation`, then submits the returned
+`(EventRequest, PayloadRequest)` pair through
+`ingestion.submit(conn, request, as_of, "1")` or the skeleton wrappers
+`record_mention(path, request, "1")` and `record_observation(path, request, "1")`.
+Retain the semantic request, including all IDs and `source.config`, before append
+and reuse it on retry; preparation is performed once. Callers supply neither
+`recorded_at` nor a final predecessor. The owning writer assigns those fields
+under the append lock. `submit` returns the committed `(Envelope, Payload)` pair;
+an equivalent retry of the semantic request returns that original pair unchanged,
+even after later appends. The observation preparer looks up existing belief IDs and
 refuses a conflicting supplied ID. For a new pair, supply a fresh belief ID.
 Every claim supplies its fresh candidate ID, mention, subject, property, value,
 and verifiability. The claim's containing observation is its explicit support.
@@ -298,11 +305,15 @@ sentinel is implemented. Ordinary materialized reads do not replay or certify th
 entire Layer A history. Hash validation establishes consistency with commitments;
 it does not establish the truth of the submitted evidence.
 
-An identical retained `(Envelope, Payload)` pair is a retry even after the log tip
-advances. A reused event ID or idempotency key with different contents refuses.
-The legacy raw-input wrapper retrieves and reuses the original pair for a genuine
-retry. The accepted idempotency-key formula is unchanged, including its omission
-of event type; conflicting types are rejected rather than silently collapsed.
+Under [ADR 0030](decisions/0030-sole-writer-and-positional-fields.md), an uncommitted
+semantic request keeps every caller-owned field while the writer derives its
+position at append. A committed retry compares all envelope and payload fields
+except positional fields and derived hashes, including the complete source.config.
+The accepted idempotency formula is unchanged and does not cover that complete
+config; an equal key alone cannot establish an equivalent retry. Reused IDs or
+keys with different semantics refuse. The legacy raw-input wrapper retains its
+lookup of the original event identity. Low-level `safe_append_event` still requires
+an exact retained `(Envelope, Payload)` pair; it performs no positional repair.
 
 For typed identity freshness in versions `"1"`/`"2"`, use `read_entity_status`,
 `read_mention_status`, or `read_entity_link_status`. Each returns `record`, `stale`,
@@ -345,6 +356,24 @@ For a fresh database, call `nyx.storage.init_db(path, create=True)` and close th
 returned connection. Ordinary `init_db(path)` calls validate an existing database;
 they never create or auto-stamp one. `nyx.skeleton.record_observation` and
 `record_correction` operate on an initialized database.
+
+`init_db` acquires an OS-level writer lock beside the store at `<database>.lock`
+before opening SQLite and holds it until connection close or process death.
+A second writer refuses before a store write. Use `open_readonly` for preparation
+lookups while a path-based skeleton wrapper owns the writer; close any writer
+connection before invoking another writer wrapper. Read-only opens neither create
+nor acquire the lockfile and remain available while a writer is active.
+
+The writer samples its clock twice under the append lock. Sample 1 checks the tip
+and assigns `max(sample_1, tip.recorded_at)`; sample 2 validates that assignment
+without advancing it. Exactly 120 seconds of ahead-of-clock skew is tolerated.
+A larger skew raises `writer.ClockSkewError` with the reason code, tip ID and time,
+observed clock and threshold with units. Every attempt rechecks; recovery has no
+latch or acknowledgment. The production threshold is a named constant requiring
+an ADR amendment to change. `init_db`'s `clock` and `threshold` arguments are test
+seams, not runtime configuration. Fixture/probe clocks are explicitly injected.
+No cross-process submission transport, historical-import override or new-store
+recovery procedure is implemented.
 
 ## Inspect an existing store
 
@@ -481,6 +510,7 @@ merge, split, approval, or authority handlers.
 | [0025](decisions/0025-incremental-result-commitment.md) | [merkle.py](src/nyx/merkle.py) canonical trees/proofs; [committed.py](src/nyx/committed.py) version-2 reducer/snapshot; [committed_storage.py](src/nyx/committed_storage.py) indexed loading/publication; [storage.py] dispatch/recovery and schema version 4; [lineage probe](scripts/probe_lineage_scaling.py) | [test_incremental_commitment.py](tests/test_incremental_commitment.py): `test_all_prefixes_replay_storage_independent_roots_and_version_isolation`, `test_write_path_does_not_enumerate_or_rewrite_accumulated_collections`, tree/proof, crash, corruption, concurrency and frozen-byte tests; [schema tests](tests/test_database_schema_versioning.py) |
 | [0026](decisions/0026-usage-is-not-evidence.md) | Binding usage/evidence boundary; usage recording remains unimplemented. [committed.py](src/nyx/committed.py) rejects unsupported world-event types. | [test_incremental_commitment.py](tests/test_incremental_commitment.py), `test_deferred_and_usage_events_refuse_both_boundaries`; no usage subsystem acceptance suite |
 | [0029](decisions/0029-dream-emission-semantics.md) | Proposed / not implemented. Distinct DreamEmission type, inseparable recall origin, Layer A event-domain reducer inputs and no emission-to-evidence path; recording and operational contracts remain decision-blocked. | No executable Dream acceptance coverage; proposed conformance cases are in ADR 0029. |
+| [0030](decisions/0030-sole-writer-and-positional-fields.md) | [writer.py](src/nyx/writer.py) semantic requests, field-complement comparison, OS lock and typed refusal; [storage.py] `init_db`, `append_submission`; [ingestion.py] preparation and `submit`; [skeleton.py] wrappers. | [test_sole_writer.py](tests/test_sole_writer.py): injected clocks/thresholds, inclusive skew boundaries, clamping, semantic retries, field classification, crash/publication recovery, read-only independence, subprocess kill/reacquisition and refusal reporting. |
 | [0032](decisions/0032-explicit-stage-two-projector-selection.md) | Explicit stage-two selection in [ingestion.py], [projection.py], [reducer.py], [skeleton.py], [storage.py] and the [lineage probe](scripts/probe_lineage_scaling.py); allowlisted legacy defaults remain "0". | [test_explicit_projector_selection.py](tests/test_explicit_projector_selection.py) scans src/scripts AST parameters and class fields, checks enumerated aliases and exact parser options, and checks omission before work; existing stage-two/frozen-byte suites preserve selected versions. |
 
 [projection.py]: src/nyx/projection.py

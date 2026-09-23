@@ -5,6 +5,7 @@ from contextlib import closing
 from dataclasses import asdict
 from datetime import datetime, timezone
 import json
+import sys
 
 from . import integrity, projection, storage
 from .timestamps import validate_timestamp
@@ -141,6 +142,7 @@ def _human(value, indent=0):
 
 
 def main(argv=None):
+    from .writer import ClockSkewError
     args = _parser().parse_args(argv)
     result = {"command": args.command}
     if hasattr(args, "projector"):
@@ -152,6 +154,9 @@ def main(argv=None):
             with conn:
                 conn.execute("BEGIN")
                 result.update(_run(conn, args))
+    except ClockSkewError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
     except NotImplementedError as exc:
         result.update(result="unimplemented", reason=str(exc))
         code = 2

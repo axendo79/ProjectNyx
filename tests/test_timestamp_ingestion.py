@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from nyx import events, immune, ingestion, skeleton, storage
+from nyx import events, immune, ingestion, skeleton, storage, writer as writer_api
 from test_reducer_boundary import SOURCE, T1, T2, claim, event, mention
 
 
@@ -58,13 +58,14 @@ def test_stage_two_preparers_refuse_naive_input(tmp_path, monkeypatch, version, 
 
         monkeypatch.setattr(storage, "last_event_hash", forbidden)
         monkeypatch.setattr(storage, "lookup_current_belief_id", forbidden)
-        common = dict(source=SOURCE, source_class="direct_observation",
-                      occurred_at=T1, recorded_at=T2)
+        common = dict(source=SOURCE, source_class="direct_observation", occurred_at=T1)
         common[field] = "2026-07-13T00:00:00"
-        with pytest.raises(ValueError, match="timezone offset"):
+        error, pattern = ((TypeError, "recorded_at") if field == "recorded_at"
+                          else (ValueError, "timezone offset"))
+        with pytest.raises(error, match=pattern):
             ingestion.prepare_mention(conn, mention_id="m-a", subject_id="s-a",
                                       text="device", origin_type="observed", **common)
-        with pytest.raises(ValueError, match="timezone offset"):
+        with pytest.raises(error, match=pattern):
             ingestion.prepare_observation(conn, claims=[claim()], projector_version=version, **common)
         assert tuple(conn.iterdump()) == before
 
@@ -77,13 +78,17 @@ def test_stage_two_preparers_refuse_naive_input(tmp_path, monkeypatch, version, 
 ])
 def test_stage_two_wrappers_refuse_before_storage(monkeypatch, version, field, event_type, writer, payload):
     envelope, body = event(event_type, payload)
+    if field == "occurred_at":
+        env_data, body_data = writer_api.semantic_contents(envelope, body)
+        envelope, body = writer_api.EventRequest(**env_data), writer_api.PayloadRequest(**body_data)
     malformed = replace(envelope, **{field: "2026-07-13T00:00:00"})
 
     def forbidden(*args, **kwargs):
         pytest.fail("ambiguous retained input reached storage")
 
     monkeypatch.setattr(storage, "init_db", forbidden)
-    with pytest.raises(ValueError, match=f"{field}.*timezone offset"):
+    pattern = f"{field}.*timezone offset" if field == "occurred_at" else "recorded_at.*belong to the writer"
+    with pytest.raises(ValueError, match=pattern):
         writer("unused.db", (malformed, body), version)
 
 
@@ -94,9 +99,13 @@ def test_retained_pair_refuses_before_pending_publication(tmp_path, version, fie
         first = event(events.ENTITY_MENTION_RECORDED, mention())
         storage.safe_append_event(conn, *first, version)  # Deliberately unpublished.
         envelope, payload = event(events.OBSERVATION_RECORDED, {"claims": [claim()]}, 2, first)
+        if field == "occurred_at":
+            env_data, body_data = writer_api.semantic_contents(envelope, payload)
+            envelope, payload = writer_api.EventRequest(**env_data), writer_api.PayloadRequest(**body_data)
         malformed = replace(envelope, **{field: "2026-07-13T00:00:00"})
         before = tuple(conn.iterdump())
-        with pytest.raises(ValueError, match=f"{field}.*timezone offset"):
+        pattern = f"{field}.*timezone offset" if field == "occurred_at" else "recorded_at.*belong to the writer"
+        with pytest.raises(ValueError, match=pattern):
             ingestion.submit(conn, (malformed, payload), T2, version)
         assert tuple(conn.iterdump()) == before
         assert not conn.in_transaction
