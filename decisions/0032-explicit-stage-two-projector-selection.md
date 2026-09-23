@@ -4,7 +4,7 @@ Status: Accepted — maintainer acceptance 2026-09-23
 
 Date: 2026-09-22
 
-Implementation: Pending. Acceptance does not mark implementation complete; the separate implementation change will land explicit stage-two parameters, required lineage-probe selection, the AST regression guard, and caller updates preserving previous versions.
+Implementation: Complete in commit `55b5af0e8fefbf71a55adcf4a89f4e6464094584`: explicit stage-two parameters, required lineage-probe selection, the AST regression guard, and caller updates preserving previous versions.
 
 Supersedes: [ADR 0025 section 1](0025-incremental-result-commitment.md#1-version-and-semantic-scope), only “Existing API defaults remain unchanged” for selectable stage-two defaults under the invariant below. Explicitly allowlisted legacy default-"0" boundaries, frozen projected bytes and semantics remain unchanged.
 
