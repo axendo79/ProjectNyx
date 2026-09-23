@@ -330,7 +330,7 @@ def test_write_path_does_not_enumerate_or_rewrite_accumulated_collections(db, lo
 
 def test_version_one_probe_bytes_remain_frozen():
     from scripts.probe_lineage_scaling import sample
-    size, _, digest = sample(32)
+    size, _, digest = sample(32, projector_version="1")
     assert size == 914109
     assert digest == "aac6b0e626261a46069debe46cf450a755ebec601535fab3e1731ec6742f7c6f"
 

@@ -382,7 +382,7 @@ def _is_recorded_retry(conn, envelope, payload):
     return True
 
 
-def _append_stage_two(conn, envelope, payload, version="1"):
+def _append_stage_two(conn, envelope, payload, version):
     """Validate at the locked append prefix; exact retained submissions retry."""
     if envelope.event_type not in SUPPORTED_EVENTS:
         raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
@@ -580,7 +580,7 @@ def _read_snapshot(conn: sqlite3.Connection, version: str) -> projection.Snapsho
     return projection.Snapshot(beliefs, *progress, projector_version=version, **records)
 
 
-def read_snapshot(conn, projector_version="1"):
+def read_snapshot(conn, projector_version):
     """Read all derived records and progress in one consistent transaction."""
     _snapshot_projector(projector_version)
     if conn.in_transaction:
@@ -592,7 +592,7 @@ def read_snapshot(conn, projector_version="1"):
         return snapshot.detached() if projector_version == "2" else snapshot
 
 
-def _read_record(conn, kind, identifier, projector_version="1"):
+def _read_record(conn, kind, identifier, projector_version):
     _snapshot_projector(projector_version)
     if projector_version == "2":
         if conn.in_transaction:
@@ -615,7 +615,7 @@ class StaleProjectionWarning(UserWarning):
                          "inspect read_identity_status for progress and append freshness")
 
 
-def read_identity_status(conn, kind, identifier, projector_version="1"):
+def read_identity_status(conn, kind, identifier, projector_version):
     """Read identity content and freshness together without replaying pending events.
 
     For an absent mention/link its subject is not known from materialization, so
@@ -659,15 +659,15 @@ def read_identity_status(conn, kind, identifier, projector_version="1"):
             "append_freshness": freshness, "freshness_scope": scope}
 
 
-def read_entity_status(conn, subject_id, projector_version="1"):
+def read_entity_status(conn, subject_id, projector_version):
     return read_identity_status(conn, "entities", subject_id, projector_version)
 
 
-def read_mention_status(conn, mention_id, projector_version="1"):
+def read_mention_status(conn, mention_id, projector_version):
     return read_identity_status(conn, "mentions", mention_id, projector_version)
 
 
-def read_entity_link_status(conn, mention_id, projector_version="1"):
+def read_entity_link_status(conn, mention_id, projector_version):
     return read_identity_status(conn, "entity_links", mention_id, projector_version)
 
 
@@ -678,30 +678,30 @@ def _read_identity(conn, kind, identifier, version):
     return status["record"]
 
 
-def read_entity(conn, subject_id, projector_version="1"):
+def read_entity(conn, subject_id, projector_version):
     return _read_identity(conn, "entities", subject_id, projector_version)
 
 
-def read_mention(conn, mention_id, projector_version="1"):
+def read_mention(conn, mention_id, projector_version):
     return _read_identity(conn, "mentions", mention_id, projector_version)
 
 
-def read_entity_link(conn, mention_id, projector_version="1"):
+def read_entity_link(conn, mention_id, projector_version):
     return _read_identity(conn, "entity_links", mention_id, projector_version)
 
 
-def read_claim_candidate(conn, claim_candidate_id, projector_version="1"):
+def read_claim_candidate(conn, claim_candidate_id, projector_version):
     return _read_record(conn, "claim_candidates", claim_candidate_id, projector_version)
 
 
-def read_claim_candidate_value(conn, claim_candidate_id, projector_version="1"):
+def read_claim_candidate_value(conn, claim_candidate_id, projector_version):
     candidate = read_claim_candidate(conn, claim_candidate_id, projector_version)
     if candidate is None:
         raise KeyError(f"unknown ClaimCandidate: {claim_candidate_id!r}")
     return candidate["value"]
 
 
-def read_belief_scalar(conn, belief_id, projector_version="1"):
+def read_belief_scalar(conn, belief_id, projector_version):
     from .reducer import scalar_belief_value
     belief = read_belief(conn, belief_id, projector_version)
     if belief is None:
@@ -709,7 +709,7 @@ def read_belief_scalar(conn, belief_id, projector_version="1"):
     return scalar_belief_value(belief)
 
 
-def lookup_current_belief_id(conn, subject_id, property_id, projector_version="1"):
+def lookup_current_belief_id(conn, subject_id, property_id, projector_version):
     """Writer lookup uses the recorded pair, with exact string equality."""
     _snapshot_projector(projector_version)
     row = conn.execute(
@@ -796,7 +796,7 @@ def _pending_events(conn: sqlite3.Connection, position: int, *, limit: int = -1)
 
 
 def materialize_pending(conn: sqlite3.Connection, as_of: str,
-                        projector_version: str = "1") -> int:
+                        projector_version: str) -> int:
     """Worker path: publish each next complete event once, in log order.
 
     Append has already committed in a separate transaction. A retry after worker
@@ -832,7 +832,7 @@ def materialize_pending(conn: sqlite3.Connection, as_of: str,
 
 
 def rebuild_projection(conn: sqlite3.Connection, as_of: str,
-                       projector_version: str = "1") -> dict[str, dict]:
+                       projector_version: str) -> dict[str, dict]:
     """Recovery: full replay from Layer A, atomically replace this version's view.
 
     No reads of derived rows or progress authorize reconstruction. On any failure
@@ -863,7 +863,7 @@ def rebuild_projection(conn: sqlite3.Connection, as_of: str,
 
 
 def read_belief_status(conn: sqlite3.Connection, belief_id: str,
-                       projector_version: str = "1") -> dict:
+                       projector_version: str) -> dict:
     """One consistent materialized read with append freshness and derived progress.
 
     No reconstruction or digest comparison. The append-side belief association

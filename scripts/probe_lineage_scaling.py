@@ -83,12 +83,12 @@ def workload(observations):
 
 
 def sample(observations: int, *, profile: dict | None = None,
-           projector_version: str = "1") -> tuple[int, float, str]:
+           projector_version: str) -> tuple[int, float, str]:
     """Return cumulative outer lineage bytes, elapsed seconds and final digest."""
     if projector_version not in ("1", "2"):
         raise ValueError("probe requires projector 1 or 2")
     implementation = reducer if projector_version == "1" else committed
-    snapshot = reducer.Snapshot({}) if projector_version == "1" else committed.Snapshot()
+    snapshot = reducer.Snapshot({}, projector_version="1") if projector_version == "1" else committed.Snapshot()
     cumulative_bytes = 0
     if profile is not None:
         profile["cumulative_components"] = dict.fromkeys((*COMPONENTS, "other"), 0)
@@ -193,7 +193,7 @@ def main() -> None:
     parser.add_argument("--repeat", type=positive_int, default=3,
                         help="independent runs per size; report median time (default: 3)")
     parser.add_argument("--json", type=Path, help="write measurements and every-prefix byte fingerprints")
-    parser.add_argument("--projector-version", choices=("1", "2"), default="1")
+    parser.add_argument("--projector-version", choices=("1", "2"), required=True)
     parser.add_argument("--database", action="store_true", help="also time real SQLite writes in separate runs")
     args = parser.parse_args()
     print(f"Python {platform.python_version()} | {platform.platform()}")

@@ -121,15 +121,17 @@ are in [ADR 0023](decisions/0023-stage-two-contract.md).
 
 ## Schema / operational gaps
 
-### Stage-two projector defaults — E2, pending ADR 0032
-**Open / decision-blocked:** stage-two entry points still default to projector
-"1". The [2026-09-22 review, E2](design/2026-09-22-review-and-next-steps.md)
-supplies whole-store measurements of quadratic ingestion for that version.
-The maintainer proposes required explicit selection (R1), but accepted
-[ADR 0025 section 1](decisions/0025-incremental-result-commitment.md#1-version-and-semantic-scope)
-preserves existing API defaults. Proposed ADR 0032 must supersede that clause
-before implementation. No defaults are changed here; legacy CLI selection
-continues to default to "0".
+### Stage-two projector defaults — E2, resolved by ADR 0032
+**Resolved:** [ADR 0032](decisions/0032-explicit-stage-two-projector-selection.md)
+requires explicit stage-two projector selection and narrowly amends ADR 0025
+section 1. Omission refuses before work; existing callers explicitly retain
+their previous selection. An AST guard covers all Python under src/ and scripts/,
+including private helpers, constant defaults, generated dataclass parameters
+and future functions. Enumerated aliases are checked for existence and their
+required/default-"0" contracts; parser options are matched exactly. Unrelated
+parameter names are outside the guard; review checks for hidden selectors.
+The explicit legacy default-"0" allowlist remains unchanged. This closes accidental selection,
+not projector "1"'s measured whole-store ingestion cost.
 
 ### Writer concurrency and positional retries — E3/O1, pending ADR 0030
 **Open / decision-blocked:** preparation binds `prev_event_hash` and

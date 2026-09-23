@@ -25,8 +25,8 @@ class Snapshot:
     _records: Mapping[str, Mapping[str, str]]
 
     def __init__(self, beliefs: Mapping[str, dict], log_position: int = 0,
-                 event_id: str | None = None, projector_version: str = PROJECTOR_VERSION,
-                 *, entities=None, mentions=None, entity_links=None,
+                 event_id: str | None = None, *, projector_version: str,
+                 entities=None, mentions=None, entity_links=None,
                  claim_candidates=None, events=None):
         object.__setattr__(self, "projector_version", projector_version)
         object.__setattr__(self, "log_position", log_position)

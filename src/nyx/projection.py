@@ -278,7 +278,7 @@ def project(
         if _instant(envelope.recorded_at, "recorded_at") > cutoff:
             continue
         if isinstance(reducer, ReducerProjector):
-            snapshot = Snapshot(view, position, previous_id, projector_version)
+            snapshot = Snapshot(view, position, previous_id, projector_version=projector_version)
             delta = reducer.reduce(snapshot, envelope, payload, as_of)
             view.update(delta.beliefs)
         else:
@@ -292,7 +292,7 @@ def project(
     return view
 
 
-def project_snapshot(events, as_of: str, projector_version: str = "1") -> Snapshot:
+def project_snapshot(events, as_of: str, projector_version: str) -> Snapshot:
     """Replay the complete identity-capable view, including mention-only prefixes."""
     projector = PROJECTORS.get(projector_version)
     if not isinstance(projector, ReducerProjector):

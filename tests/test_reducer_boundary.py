@@ -95,24 +95,24 @@ def test_complete_incremental_replay_every_prefix_and_recovery(db, log):
     _, conn = db
     for index, entry in enumerate(log, 1):
         ingest(conn, [entry])
-        live = storage.read_snapshot(conn)
-        replay = projection.project_snapshot(decoded(log[:index]), T2)
+        live = storage.read_snapshot(conn, projector_version="1")
+        replay = projection.project_snapshot(decoded(log[:index]), T2, projector_version="1")
         assert canonical(live.complete()) == canonical(replay.complete())
         assert (live.log_position, live.event_id) == (index, entry[0].event_id)
         assert storage.evaluate_whole_view(conn, T2, "1") == replay.beliefs()
     before = dump(conn)
-    storage.rebuild_projection(conn, T2)
+    storage.rebuild_projection(conn, T2, projector_version="1")
     assert dump(conn) == before
 
 
 def test_bootstrap_mention_only_and_confidence(db, log):
     _, conn = db
     ingest(conn, log[:1])
-    snap = storage.read_snapshot(conn)
+    snap = storage.read_snapshot(conn, projector_version="1")
     assert snap.beliefs() == {}
     assert snap.records("claim_candidates") == {}
-    assert storage.read_entity(conn, "s-a")["constituting_mention_id"] == "m-a"
-    link = storage.read_entity_link(conn, "m-a")
+    assert storage.read_entity(conn, "s-a", projector_version="1")["constituting_mention_id"] == "m-a"
+    link = storage.read_entity_link(conn, "m-a", projector_version="1")
     assert link["link_state"] == "constitutive"
     assert link["entity_link_confidence"] is None
     assert reducer.identity_confidence_ceiling([link, link]) is None
@@ -132,13 +132,13 @@ def test_no_head_named_candidate_and_event_evidence_scope(db, log):
     assert "current_value" not in belief and "verification_state" not in belief
     assert {c["claim_candidate_id"] for c in belief["claim_candidates"]} == {"c-a", "c-a2", "c-a3"}
     assert {c["verification_state"] for c in belief["claim_candidates"]} == {"verified"}
-    assert storage.read_claim_candidate_value(conn, "c-a") == "64GB"
-    assert storage.read_claim_candidate_value(conn, "c-a2") == "128GB"
+    assert storage.read_claim_candidate_value(conn, "c-a", projector_version="1") == "64GB"
+    assert storage.read_claim_candidate_value(conn, "c-a2", projector_version="1") == "128GB"
     with pytest.raises(ValueError, match="multiple ClaimCandidates"):
-        storage.read_belief_scalar(conn, "b-a")
-    candidates = list(storage.read_snapshot(conn).records("claim_candidates").values())
+        storage.read_belief_scalar(conn, "b-a", projector_version="1")
+    candidates = list(storage.read_snapshot(conn, projector_version="1").records("claim_candidates").values())
     assert reducer.evidence_event_ids(candidates) == ["e-3", "e-4", "e-5"]
-    assert storage.read_claim_candidate(conn, "c-b")["supporting_events"] == ["e-4"]
+    assert storage.read_claim_candidate(conn, "c-b", projector_version="1")["supporting_events"] == ["e-4"]
     assert "e-1" not in reducer.evidence_event_ids(candidates)
     assert all("confidence" not in c for c in candidates)
 
@@ -155,7 +155,7 @@ def test_one_event_same_belief_multiple_claims(db, log, values):
     assert reducer.evidence_event_ids(belief["claim_candidates"]) == ["e-2"]
     assert all(c["source"] == SOURCE and c["verification_state"] == "verified" for c in belief["claim_candidates"])
     with pytest.raises(ValueError):
-        storage.read_belief_scalar(conn, "b-a")
+        storage.read_belief_scalar(conn, "b-a", projector_version="1")
 
 
 def assert_refused(conn, prefix, invalid, error=ValueError):
@@ -164,7 +164,7 @@ def assert_refused(conn, prefix, invalid, error=ValueError):
         storage.safe_append_event(conn, *invalid, "1")
     assert dump(conn) == before
     with pytest.raises(error):
-        projection.project_snapshot(decoded(prefix + [invalid]), T2)
+        projection.project_snapshot(decoded(prefix + [invalid]), T2, projector_version="1")
 
 
 @pytest.mark.parametrize("field,bad", [
@@ -217,25 +217,25 @@ def test_same_spelling_in_distinct_id_scopes_never_aliases(db):
     ingest(conn, [m])
     o = event(events.OBSERVATION_RECORDED, {"claims": [claim("opaque", "opaque", "opaque", "opaque")]}, 2, m)
     ingest(conn, [o])
-    snap = storage.read_snapshot(conn)
+    snap = storage.read_snapshot(conn, projector_version="1")
     assert snap.event("opaque")["envelope"]["event_type"] == events.ENTITY_MENTION_RECORDED
     assert snap.belief("opaque")["property_id"] == "RAM"
-    assert storage.read_claim_candidate_value(conn, "opaque") == "64GB"
-    assert storage.read_entity(conn, "opaque")["constituting_mention_id"] == "opaque"
+    assert storage.read_claim_candidate_value(conn, "opaque", projector_version="1") == "64GB"
+    assert storage.read_entity(conn, "opaque", projector_version="1")["constituting_mention_id"] == "opaque"
 
 
 def test_typed_reads_never_search_other_id_scopes(db, log):
     _, conn = db
     ingest(conn, log)
     readers = {"s-a": storage.read_entity, "m-a": storage.read_mention,
-               "b-a": lambda c, k: storage.read_belief(c, k, "1"), "c-a": storage.read_claim_candidate}
+               "b-a": storage.read_belief, "c-a": storage.read_claim_candidate}
     for own, reader in readers.items():
-        assert reader(conn, own) is not None
+        assert reader(conn, own, "1") is not None
         for other in set(readers) | {"e-3"}:
             if other != own:
-                assert reader(conn, other) is None
+                assert reader(conn, other, "1") is None
     with pytest.raises(KeyError):
-        storage.read_claim_candidate_value(conn, "b-a")
+        storage.read_claim_candidate_value(conn, "b-a", projector_version="1")
 
 
 def test_exact_properties_and_current_only_uniqueness(db, log):
@@ -244,7 +244,7 @@ def test_exact_properties_and_current_only_uniqueness(db, log):
     props = ["RAM", "ram", "é", "e\u0301"]
     claims = [claim(f"c{i}", f"b{i}", prop=p) for i, p in enumerate(props)]
     ingest(conn, [event(events.OBSERVATION_RECORDED, {"claims": claims}, 2, log[0])])
-    assert [storage.lookup_current_belief_id(conn, "s-a", p) for p in props] == [f"b{i}" for i in range(4)]
+    assert [storage.lookup_current_belief_id(conn, "s-a", p, projector_version="1") for p in props] == [f"b{i}" for i in range(4)]
     # Constraint-only post-merge fixture (ADR 0022): no invented merge operation.
     historic = {"subject_id": "s-a", "property_id": "RAM", "lifecycle_status": "historical"}
     with conn:
@@ -275,7 +275,7 @@ def test_unworked_origin_still_refuses(db, log):
 def test_snapshot_detached_pure_and_no_clock_or_allocation(db, log, monkeypatch):
     _, conn = db
     ingest(conn, log[:3])
-    snap = storage.read_snapshot(conn)
+    snap = storage.read_snapshot(conn, projector_version="1")
     before = canonical(snap.complete())
     copied = snap.complete()
     copied["claim_candidates"]["c-a"]["supporting_events"].clear()
@@ -287,8 +287,8 @@ def test_snapshot_detached_pure_and_no_clock_or_allocation(db, log, monkeypatch)
     monkeypatch.setattr(events, "new_event_id", forbidden)
     monkeypatch.setattr(projection, "_now_iso", forbidden)
     monkeypatch.setattr(storage, "read_all_events", forbidden)
-    assert projection.project_snapshot(decoded(log), T2).beliefs()
-    assert storage.read_claim_candidate_value(conn, "c-a") == "64GB"
+    assert projection.project_snapshot(decoded(log), T2, projector_version="1").beliefs()
+    assert storage.read_claim_candidate_value(conn, "c-a", projector_version="1") == "64GB"
     with pytest.raises(ValueError, match="snapshot projector version"):
         reducer.reduce(reducer.Snapshot({}, projector_version="0"), *decoded(log)[0], T2)
 
@@ -332,7 +332,7 @@ def test_snapshot_apply_detached_branches_and_constructor_equivalence(kind):
 
 
 def test_snapshot_apply_only_serializes_delta_records(log, monkeypatch):
-    snapshot = projection.project_snapshot(decoded(log[:3]), T2)
+    snapshot = projection.project_snapshot(decoded(log[:3]), T2, projector_version="1")
     delta = reducer.reduce(snapshot, *decoded(log)[3], T2)
     original = hashing.canonical_json
     serialized = []
@@ -363,19 +363,19 @@ def test_cutoffs_time_only_lineage_and_unrelated_beliefs(db, log):
     before = storage.read_belief(conn, "b-b", "1")
     ingest(conn, log[4:])
     assert storage.read_belief(conn, "b-b", "1") == before
-    assert projection.project_snapshot(decoded(log), T0).complete() == reducer.Snapshot({}).complete()
-    at_mention = projection.project_snapshot(decoded(log), log[0][0].recorded_at)
+    assert projection.project_snapshot(decoded(log), T0, projector_version="1").complete() == reducer.Snapshot({}, projector_version="1").complete()
+    at_mention = projection.project_snapshot(decoded(log), log[0][0].recorded_at, projector_version="1")
     assert at_mention.records("mentions") and not at_mention.beliefs()
     for cutoff_index in range(1, len(log) + 1):
         at = log[cutoff_index - 1][0].recorded_at
-        assert projection.project_snapshot(decoded(log), at).complete() == projection.project_snapshot(decoded(log[:cutoff_index]), at).complete()
+        assert projection.project_snapshot(decoded(log), at, projector_version="1").complete() == projection.project_snapshot(decoded(log[:cutoff_index]), at, projector_version="1").complete()
     early = projection.project(decoded(log), T2, "1")
     later = projection.project(decoded(log), T3, "1")
     assert later == {key: {**value, "projected_as_of": T3} for key, value in early.items()}
 
 
 def test_lineage_complete_result_and_pre_event_dependencies(log):
-    snap = reducer.Snapshot({})
+    snap = reducer.Snapshot({}, projector_version="1")
     for index, (env, payload) in enumerate(decoded(log), 1):
         delta = reducer.reduce(snap, env, payload, T2)
         for key, belief in delta.beliefs.items():
@@ -391,7 +391,7 @@ def test_lineage_complete_result_and_pre_event_dependencies(log):
 
 
 def test_canonical_collections_and_source_coverage(log):
-    snap = projection.project_snapshot(decoded(log[:3]), T2)
+    snap = projection.project_snapshot(decoded(log[:3]), T2, projector_version="1")
     env, payload = decoded(log)[3]
     one = reducer.reduce(snap, env, payload, T2)
     reversed_event = event(events.OBSERVATION_RECORDED,
@@ -402,7 +402,7 @@ def test_canonical_collections_and_source_coverage(log):
     records = snap.complete()
     records["beliefs"]["b-a"]["identity_records"] *= 2
     records["beliefs"]["b-a"]["event_dependencies"].reverse()
-    three = reducer.reduce(reducer.Snapshot(**records), env, payload, T2)
+    three = reducer.reduce(reducer.Snapshot(**records, projector_version="1"), env, payload, T2)
     assert canonical(asdict(one)) == canonical(asdict(three))
     assert {c["claim_candidate_id"] for c in one.beliefs["b-a"]["claim_candidates"]} == {c["claim_candidate_id"] for c in two.beliefs["b-a"]["claim_candidates"]}
     modified = event(events.OBSERVATION_RECORDED, payload, 4, log[2], source_class="different")
@@ -415,16 +415,16 @@ def test_append_progress_freshness_uses_entity_not_belief_spelling(db, log):
     _, conn = db
     ingest(conn, log[:2])
     storage.safe_append_event(conn, *log[2], "1")
-    status = storage.read_belief_status(conn, "b-a")
+    status = storage.read_belief_status(conn, "b-a", projector_version="1")
     assert status["stale"] and status["belief"] is None
     assert status["append_freshness"]["event_id"] == "e-3"
     assert status["derived_progress"]["event_id"] == "e-2"
-    assert storage.read_belief_status(conn, "s-a")["append_freshness"] is None
-    storage.materialize_pending(conn, T2)
-    assert not storage.read_belief_status(conn, "b-a")["stale"]
+    assert storage.read_belief_status(conn, "s-a", projector_version="1")["append_freshness"] is None
+    storage.materialize_pending(conn, T2, projector_version="1")
+    assert not storage.read_belief_status(conn, "b-a", projector_version="1")["stale"]
     storage.safe_append_event(conn, *log[3], "1")
-    assert storage.read_belief_status(conn, "b-a")["stale"]
-    assert storage.read_belief_status(conn, "b-b")["stale"]
+    assert storage.read_belief_status(conn, "b-a", projector_version="1")["stale"]
+    assert storage.read_belief_status(conn, "b-b", projector_version="1")["stale"]
     assert conn.execute("SELECT count(*) FROM entity_event_index").fetchone() == (0,)
 
 
@@ -435,7 +435,7 @@ def test_prefix_and_stale_chain_refuse_without_mutation(db, log):
     with pytest.raises(storage.ProjectionBehindError):
         storage.safe_append_event(conn, *log[1], "1")
     assert dump(conn) == before
-    storage.materialize_pending(conn, T2)
+    storage.materialize_pending(conn, T2, projector_version="1")
     ingest(conn, log[1:2])
     invalid = event(events.OBSERVATION_RECORDED, {"claims": [claim()]}, 3, log[0])
     before = dump(conn)
@@ -455,11 +455,11 @@ def test_atomic_publication_at_every_record_kind(db, log, table):
     before = dump(conn)
     conn.execute(f"CREATE TEMP TRIGGER fail BEFORE INSERT ON {table} BEGIN SELECT RAISE(ABORT,'publication failure'); END")
     with pytest.raises(sqlite3.IntegrityError):
-        storage.materialize_pending(conn, T2)
+        storage.materialize_pending(conn, T2, projector_version="1")
     assert dump(conn) == before
     conn.execute("DROP TRIGGER fail")
-    assert storage.materialize_pending(conn, T2) == 1
-    assert storage.read_snapshot(conn).complete() == projection.project_snapshot(storage.read_all_events(conn), T2).complete()
+    assert storage.materialize_pending(conn, T2, projector_version="1") == 1
+    assert storage.read_snapshot(conn, projector_version="1").complete() == projection.project_snapshot(storage.read_all_events(conn), T2, projector_version="1").complete()
 
 
 def test_append_failure_and_publication_reader_isolation(db, log, monkeypatch):
@@ -480,18 +480,18 @@ def test_append_failure_and_publication_reader_isolation(db, log, monkeypatch):
         publish = storage._publish_delta
         def fail_publish(*args):
             publish(*args)
-            assert storage.read_snapshot(reader).complete() == reducer.Snapshot({}).complete()
+            assert storage.read_snapshot(reader, projector_version="1").complete() == reducer.Snapshot({}, projector_version="1").complete()
             raise RuntimeError("publication failure")
         monkeypatch.setattr(storage, "_publish_delta", fail_publish)
         with pytest.raises(RuntimeError):
-            storage.materialize_pending(conn, T2)
-        assert storage.read_snapshot(conn).complete() == reducer.Snapshot({}).complete()
+            storage.materialize_pending(conn, T2, projector_version="1")
+        assert storage.read_snapshot(conn, projector_version="1").complete() == reducer.Snapshot({}, projector_version="1").complete()
 
 
 def test_recovery_ignores_corrupt_snapshot_and_rolls_back_failure(db, log, monkeypatch):
     _, conn = db
     ingest(conn, log)
-    expected = storage.read_snapshot(conn).complete()
+    expected = storage.read_snapshot(conn, projector_version="1").complete()
     before = dump(conn)
     original = reducer.reduce
     def fail(snap, env, payload, at):
@@ -500,7 +500,7 @@ def test_recovery_ignores_corrupt_snapshot_and_rolls_back_failure(db, log, monke
         return original(snap, env, payload, at)
     monkeypatch.setattr(reducer, "reduce", fail)
     with pytest.raises(RuntimeError):
-        storage.rebuild_projection(conn, T2)
+        storage.rebuild_projection(conn, T2, projector_version="1")
     assert dump(conn) == before
     monkeypatch.setattr(reducer, "reduce", original)
     with conn:
@@ -509,27 +509,27 @@ def test_recovery_ignores_corrupt_snapshot_and_rolls_back_failure(db, log, monke
     def forbidden(*args):
         pytest.fail("recovery must not read derived snapshot")
     monkeypatch.setattr(storage, "_read_snapshot", forbidden)
-    storage.rebuild_projection(conn, T2)
+    storage.rebuild_projection(conn, T2, projector_version="1")
     monkeypatch.undo()
-    assert storage.read_snapshot(conn).complete() == expected
+    assert storage.read_snapshot(conn, projector_version="1").complete() == expected
 
 
 def test_retained_retry_mention_survives_and_no_remint(db, log, monkeypatch):
     _, conn = db
     ingest(conn, log[:1])
-    assert storage.read_mention(conn, "m-a")
-    assert not storage.read_snapshot(conn).beliefs()
+    assert storage.read_mention(conn, "m-a", projector_version="1")
+    assert not storage.read_snapshot(conn, projector_version="1").beliefs()
     entry = ingestion.prepare_observation(conn, claims=[claim()], source=SOURCE,
-              source_class="direct_observation", occurred_at=T1, recorded_at=T2)
+              source_class="direct_observation", occurred_at=T1, recorded_at=T2, projector_version="1")
     storage.safe_append_event(conn, *entry, "1")  # Crash before publication.
-    storage.materialize_pending(conn, T2)
+    storage.materialize_pending(conn, T2, projector_version="1")
     before = dump(conn)
     def forbidden(*args, **kwargs):
         pytest.fail("exact retry must not reduce, allocate, or match")
     monkeypatch.setattr(reducer, "reduce", forbidden)
     monkeypatch.setattr(events, "new_event_id", forbidden)
     assert storage.safe_append_event(conn, *entry, "1") is False
-    assert storage.materialize_pending(conn, T3) == 0
+    assert storage.materialize_pending(conn, T3, projector_version="1") == 0
     assert dump(conn) == before
     with pytest.raises(ValueError, match="retry differs"):
         storage.safe_append_event(conn, replace(entry[0], event_id="reminted"), entry[1], "1")
@@ -539,22 +539,22 @@ def test_writer_lookup_and_skeleton_two_then_one_events(db):
     path, conn = db
     m = ingestion.prepare_mention(conn, mention_id="m", subject_id="s", text="device",
           source=SOURCE, source_class="direct_observation", occurred_at=T1, origin_type="observed")
-    skeleton.record_mention(path, m)
+    skeleton.record_mention(path, m, projector_version="1")
     o = ingestion.prepare_observation(conn, claims=[claim("c1", "b", "s", "m")],
-          source=SOURCE, source_class="direct_observation", occurred_at=T1)
+          source=SOURCE, source_class="direct_observation", occurred_at=T1, projector_version="1")
     first = skeleton.record_observation(path, o, "1")
     assert list(first) == ["b"]
     assert skeleton.record_observation(path, o, "1") == first
     next_claim = claim("c2", "b", "s", "m")
     del next_claim["belief_id"]
     p = ingestion.prepare_observation(conn, claims=[next_claim], source=SOURCE,
-          source_class="direct_observation", occurred_at=T2)
+          source_class="direct_observation", occurred_at=T2, projector_version="1")
     assert json.loads(p[1].ciphertext)["claims"][0]["belief_id"] == "b"
     skeleton.record_observation(path, p, "1")
     assert conn.execute("SELECT count(*) FROM events").fetchone() == (3,)
     with pytest.raises(ValueError):
         ingestion.prepare_observation(conn, claims=[claim("c3", "wrong", "s", "m")],
-            source=SOURCE, source_class="direct_observation", occurred_at=T2)
+            source=SOURCE, source_class="direct_observation", occurred_at=T2, projector_version="1")
     with pytest.raises(NotImplementedError):
         skeleton.record_correction(path, {}, "1")
     with pytest.raises(NotImplementedError):
@@ -564,7 +564,7 @@ def test_writer_lookup_and_skeleton_two_then_one_events(db):
 def test_same_value_different_standing_and_identity_paths_survive(log):
     # ADR 0015/0023 explicitly allow standing/history as fixture preconditions.
     # This is not a production claim_questioned handler or an origin mapping.
-    prefix = projection.project_snapshot(decoded(log[:3]), T2)
+    prefix = projection.project_snapshot(decoded(log[:3]), T2, projector_version="1")
     records = prefix.complete()
     restricted = records["claim_candidates"]["c-a"]
     q = event(events.CLAIM_QUESTIONED, {"claim_candidate_id": "c-a", "reason": "fixture restriction"},
@@ -577,7 +577,7 @@ def test_same_value_different_standing_and_identity_paths_survive(log):
     records["events"][qenv.event_id] = qrecord
     records["beliefs"]["b-a"]["claim_candidates"] = [restricted]
     records["beliefs"]["b-a"]["event_dependencies"].append(qrecord)
-    snap = reducer.Snapshot(**records, log_position=4, event_id=qenv.event_id)
+    snap = reducer.Snapshot(**records, log_position=4, event_id=qenv.event_id, projector_version="1")
     fresh = event(events.OBSERVATION_RECORDED, {"claims": [claim("c-new")]}, 5, q)
     delta = reducer.reduce(snap, *decoded([fresh])[0], T2)
     cs = {c["claim_candidate_id"]: c for c in delta.beliefs["b-a"]["claim_candidates"]}
@@ -606,7 +606,7 @@ def test_freshness_across_event_and_history(db, log, case):
     elif case == "belief-duplicate":
         cs = [claim("new", "b-new1", prop="disk"), claim("new2", "b-new2", prop="disk")]
     else:
-        records = storage.read_snapshot(conn).complete()
+        records = storage.read_snapshot(conn, projector_version="1").complete()
         if case == "historical-belief":
             records["beliefs"]["b-a"]["lifecycle_status"] = "historical"
         else:
@@ -614,7 +614,7 @@ def test_freshness_across_event_and_history(db, log, case):
             cs[0]["claim_candidate_id"] = "c-a"
         invalid = event(events.OBSERVATION_RECORDED, {"claims": cs}, 4, log[2])
         with pytest.raises(ValueError):
-            reducer.reduce(reducer.Snapshot(**records), *decoded([invalid])[0], T2)
+            reducer.reduce(reducer.Snapshot(**records, projector_version="1"), *decoded([invalid])[0], T2)
         return
     assert_refused(conn, log[:3], event(events.OBSERVATION_RECORDED, {"claims": cs}, 4, log[2]))
 
@@ -625,15 +625,15 @@ def test_new_mentions_with_identical_text_and_different_actors_are_isolated(db, 
     b = event(events.ENTITY_MENTION_RECORDED, mention("s-other", "m-other"), 2, log[0],
               source={"actor_id": "another-speaker", "config": {}}, origin_type="user_stated")
     ingest(conn, [b])
-    assert storage.read_mention(conn, "m-a")["text"] == storage.read_mention(conn, "m-other")["text"]
-    assert storage.read_entity_link(conn, "m-a")["subject_id"] == "s-a"
-    assert storage.read_entity_link(conn, "m-other")["subject_id"] == "s-other"
+    assert storage.read_mention(conn, "m-a", projector_version="1")["text"] == storage.read_mention(conn, "m-other", projector_version="1")["text"]
+    assert storage.read_entity_link(conn, "m-a", projector_version="1")["subject_id"] == "s-a"
+    assert storage.read_entity_link(conn, "m-other", projector_version="1")["subject_id"] == "s-other"
 
 
 def test_stale_lookup_duplicate_pair_and_reused_event_id(db, log):
     _, conn = db
     ingest(conn, log[:2])
-    assert storage.lookup_current_belief_id(conn, "s-a", "RAM") is None
+    assert storage.lookup_current_belief_id(conn, "s-a", "RAM", projector_version="1") is None
     ingest(conn, log[2:3])
     # Validate the obsolete lookup against the actual, now-current prefix.
     bad = event(events.OBSERVATION_RECORDED, {"claims": [claim("new", "new-container")]}, 4, log[2])
@@ -693,7 +693,7 @@ def test_incremental_and_replay_receive_same_complete_pre_event_snapshot(db, log
     assert seen[::2] == seen[1::2]
     live = seen[1::2]
     seen.clear()
-    projection.project_snapshot(decoded(log), T2)
+    projection.project_snapshot(decoded(log), T2, projector_version="1")
     assert seen == live
 
 
@@ -713,8 +713,8 @@ def test_unrelated_subject_stays_fresh_while_another_is_pending(db, log):
     _, conn = db
     ingest(conn, log[:4])
     storage.safe_append_event(conn, *log[4], "1")
-    assert storage.read_belief_status(conn, "b-a")["stale"]
-    assert not storage.read_belief_status(conn, "b-b")["stale"]
+    assert storage.read_belief_status(conn, "b-a", projector_version="1")["stale"]
+    assert not storage.read_belief_status(conn, "b-b", projector_version="1")["stale"]
 
 
 @pytest.mark.parametrize("field", ["supporting_events", "verification_state", "verification_basis",

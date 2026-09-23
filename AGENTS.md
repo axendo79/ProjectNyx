@@ -25,6 +25,26 @@ Build the accepted specifications and ADRs; do not redesign them or fill unresol
 spec/ or decisions/. If you believe the spec is wrong, stop and report it;
 do not implement your alternative.
 
+## ADR commit protocol
+For every future ADR, keep authority and implementation changes separate.
+When the maintainer explicitly authorizes authority edits, use this protocol:
+
+- **(A) Authority:** all edits under decisions/ and spec/. Stage only the
+  authorized authority change, show `git status --short` and `git diff --cached`,
+  then stop. The maintainer commits it; wait for their confirmation before
+  continuing with implementation. Never commit authority files yourself.
+- **(B) Implementation:** code, tests, README, GAPS and other non-authority docs.
+  A (B) change never edits decisions/ or spec/. After the maintainer confirms
+  the authority commit, implement, validate and commit only (B) files.
+- After each (B) commit, stage a separate one-line (A) change marking that ADR's
+  Implementation complete and citing the (B) commit hash. Show the status and
+  staged diff, then stop for the maintainer's commit. Never include this marker
+  in the implementation commit.
+- Before every commit, inspect `git status --short` and the staged diff.
+  Never mix different ADRs' work in one commit; finish each ADR in dependency order.
+- Never use `--no-verify` or otherwise bypass a commit hook. If a hook refuses
+  a commit, stop and report its output; do not work around it.
+
 ## Gap protocol
 If the spec is silent on a decision your task requires, STOP and report the gap.
 Do not infer, do not pick a reasonable default, do not leave a placeholder. A

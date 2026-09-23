@@ -54,6 +54,7 @@ corpus/
 keystore/
 
 # Editor / OS
+.claude/
 .idea/
 .vscode/
 *.swp

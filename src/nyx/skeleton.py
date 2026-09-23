@@ -112,7 +112,7 @@ def record_observation(db_path: str | Path, observation: Mapping[str, Any],
     return _record(db_path, OBSERVATION_RECORDED, observation, projector_version)
 
 
-def _record_stage_two(db_path, event_type, recorded_event, projector_version="1"):
+def _record_stage_two(db_path, event_type, recorded_event, projector_version):
     from . import ingestion
     from .events import ENTITY_MENTION_RECORDED, Envelope, Payload
     if event_type not in (OBSERVATION_RECORDED, ENTITY_MENTION_RECORDED):
@@ -137,7 +137,7 @@ def _record_stage_two(db_path, event_type, recorded_event, projector_version="1"
         conn.close()
 
 
-def record_mention(db_path, recorded_event, projector_version="1"):
+def record_mention(db_path, recorded_event, projector_version):
     """Submit one retained entity_mention_recorded event under the selected version."""
     from .events import ENTITY_MENTION_RECORDED
     return _record_stage_two(db_path, ENTITY_MENTION_RECORDED, recorded_event, projector_version)

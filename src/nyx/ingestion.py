@@ -24,7 +24,7 @@ def prepare_mention(conn, *, mention_id, subject_id, text, source, source_class,
 
 
 def prepare_observation(conn, *, claims, source, source_class, occurred_at,
-                        event_id=None, recorded_at=None, projector_version="1"):
+                        event_id=None, recorded_at=None, projector_version):
     """Name the current belief; the caller supplies fresh IDs for new containers.
 
 Every claim supplies a fresh claim_candidate_id, mention_id, subject_id,
@@ -53,7 +53,7 @@ the writer never redirects a submitted association.
         event_id=event_id, recorded_at=recorded_at)
 
 
-def submit(conn, recorded_event, as_of, projector_version="1"):
+def submit(conn, recorded_event, as_of, projector_version):
     """Append the exact retained pair, then separately publish pending records."""
     # Retained/imported pairs can bypass preparation. Refuse ambiguous timestamps
     # before publication or append, while leaving their signed/hashed bytes intact.

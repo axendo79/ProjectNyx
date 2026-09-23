@@ -62,7 +62,7 @@ The new reducer reads a consistent pre-event snapshot and returns one complete
 event delta. Its structured lineage covers predecessor hashes, resulting belief
 content, candidate support and verification, and the observation and identity
 records explaining the result. Set collections use canonical UTF-8 ordering.
-`projection.project_snapshot(log, as_of)` returns the complete version `"1"`
+`projection.project_snapshot(log, as_of, "1")` returns the complete version `"1"`
 snapshot, including mention-only prefixes; `project` and `evaluate_whole_view`
 retain their belief-mapping return shape. `storage.read_snapshot` reads the complete
 materialization without replay.
@@ -71,7 +71,9 @@ materialization without replay.
 stage-two semantics under explicitly selected projector `"2"`. Canonical Merkle
 maps commit to complete accumulated collections while publication writes changed
 members and tree paths. Version `"1"` bytes and semantics remain frozen, and API
-defaults remain unchanged. Use `project_snapshot(log, as_of, "2")` and pass
+defaults follow [ADR 0032](decisions/0032-explicit-stage-two-projector-selection.md):
+stage-two selection is required; the explicitly allowlisted legacy defaults
+remain `"0"`. Use `project_snapshot(log, as_of, "2")` and pass
 `projector_version="2"` to storage operations and to `prepare_observation`,
 `submit`, and skeleton writers. Mention preparation produces the same event pair.
 
@@ -95,8 +97,8 @@ evidence or belief lineage. Usage recording mechanics remain undecided.
 
 The version `"1"` writer uses `ingestion.prepare_mention` and
 `ingestion.prepare_observation`, then submits the returned `(Envelope, Payload)`
-pair through `ingestion.submit(conn, pair, as_of)` or the skeleton wrappers
-`record_mention(path, pair)` and `record_observation(path, pair, "1")`. Retain the
+pair through `ingestion.submit(conn, pair, as_of, "1")` or the skeleton wrappers
+`record_mention(path, pair, "1")` and `record_observation(path, pair, "1")`. Retain the
 complete pair before append and reuse it on retry; preparation is performed once,
 not again on retry. The observation preparer looks up existing belief IDs and
 refuses a conflicting supplied ID. For a new pair, supply a fresh belief ID.
@@ -156,7 +158,7 @@ The [standalone lineage-scaling probe](scripts/probe_lineage_scaling.py) measure
 the ADR 0023 implementation hazard. Run it from the checkout root, outside pytest:
 
 ```powershell
-.\.venv\Scripts\python.exe -B scripts/probe_lineage_scaling.py
+.\.venv\Scripts\python.exe -B scripts/probe_lineage_scaling.py --projector-version 1
 ```
 
 Each sample starts empty, creates one mention, then records N agreeing observations
@@ -479,6 +481,7 @@ merge, split, approval, or authority handlers.
 | [0025](decisions/0025-incremental-result-commitment.md) | [merkle.py](src/nyx/merkle.py) canonical trees/proofs; [committed.py](src/nyx/committed.py) version-2 reducer/snapshot; [committed_storage.py](src/nyx/committed_storage.py) indexed loading/publication; [storage.py] dispatch/recovery and schema version 4; [lineage probe](scripts/probe_lineage_scaling.py) | [test_incremental_commitment.py](tests/test_incremental_commitment.py): `test_all_prefixes_replay_storage_independent_roots_and_version_isolation`, `test_write_path_does_not_enumerate_or_rewrite_accumulated_collections`, tree/proof, crash, corruption, concurrency and frozen-byte tests; [schema tests](tests/test_database_schema_versioning.py) |
 | [0026](decisions/0026-usage-is-not-evidence.md) | Binding usage/evidence boundary; usage recording remains unimplemented. [committed.py](src/nyx/committed.py) rejects unsupported world-event types. | [test_incremental_commitment.py](tests/test_incremental_commitment.py), `test_deferred_and_usage_events_refuse_both_boundaries`; no usage subsystem acceptance suite |
 | [0029](decisions/0029-dream-emission-semantics.md) | Proposed / not implemented. Distinct DreamEmission type, inseparable recall origin, Layer A event-domain reducer inputs and no emission-to-evidence path; recording and operational contracts remain decision-blocked. | No executable Dream acceptance coverage; proposed conformance cases are in ADR 0029. |
+| [0032](decisions/0032-explicit-stage-two-projector-selection.md) | Explicit stage-two selection in [ingestion.py], [projection.py], [reducer.py], [skeleton.py], [storage.py] and the [lineage probe](scripts/probe_lineage_scaling.py); allowlisted legacy defaults remain "0". | [test_explicit_projector_selection.py](tests/test_explicit_projector_selection.py) scans src/scripts AST parameters and class fields, checks enumerated aliases and exact parser options, and checks omission before work; existing stage-two/frozen-byte suites preserve selected versions. |
 
 [projection.py]: src/nyx/projection.py
 [reducer.py]: src/nyx/reducer.py

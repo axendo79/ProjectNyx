@@ -19,7 +19,7 @@ def test_fixture_is_deterministic_and_uses_ingestion(tmp_path, monkeypatch, vers
     submitted = []
     submit = ingestion.submit
 
-    def record_submit(conn, pair, at, projector_version="1"):
+    def record_submit(conn, pair, at, projector_version):
         submitted.append((pair[0].event_id, projector_version))
         return submit(conn, pair, at, projector_version)
 
