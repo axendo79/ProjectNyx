@@ -1,6 +1,6 @@
 # ADR 0025: Incremental Result Commitment
 
-Status: Accepted
+Status: Accepted; section 1's API-default guarantee is superseded in part by [ADR 0032](0032-explicit-stage-two-projector-selection.md). All other guarantees remain in force.
 
 Date: 2026-09-12
 
@@ -31,7 +31,10 @@ Register projector "2" for the stage-two event and read semantics of ADRs
 0019–0024 with the commitment and storage rules below. Event envelopes, payloads,
 Layer A hashes, recorded IDs, candidate verification, refusals, and cutoffs are
 unchanged. Projector "1" bytes and semantics are frozen; "0" is also unchanged.
-Existing API defaults remain unchanged. Selection of "2" is explicit, never an
+Existing API defaults remain unchanged, except that no selectable stage-two
+projector default may exist in src/ or scripts/ outside ADR 0032's explicit
+allowlist of legacy "0" entry points; stage-two selection is required and omission
+refuses without a replacement default. Selection of "2" is explicit, never an
 upgrade or fallback. No merge, split, correction, approval, or support-attachment
 handler is authorized by specifying tree update primitives.
 Because versions "1" and "2" accept the same stage-two world events, an append
