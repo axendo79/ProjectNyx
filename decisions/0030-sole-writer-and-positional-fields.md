@@ -4,7 +4,7 @@ Status: Accepted — maintainer acceptance 2026-09-23
 
 Date: 2026-09-22
 
-Implementation: Pending.
+Implementation: Complete in commit `30a4e5d5ee9ee56c0670ec6e50788e5cc523eda5`: sole-writer exclusion, semantic/positional retry separation, two-sample clock checks with bounded clamping, structured refusal and automatic recovery.
 
 Supersedes: [ADR 0023 section 4](0023-stage-two-contract.md#4-retry-identity), only its undifferentiated submitted-contents retry rule, by defining semantic submissions separately from positional fields. Also supersedes [ADR 0010 section 1a](0010-projection-parameters.md#1a-append-enforces-recorded_at-monotonicity) and its backward-clock refusal acceptance case for ordinary writer timestamp assignment: the writer clamps within a 120-second skew threshold after checking the unadjusted clock, as specified in sections 4 and 5. Committed timestamps remain immutable and monotonically nondecreasing.
 
