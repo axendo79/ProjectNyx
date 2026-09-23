@@ -2,7 +2,7 @@
 
 
 
-Status: Accepted
+Status: Accepted; superseded in part by [ADR 0030](0030-sole-writer-and-positional-fields.md), only section 1a's ordinary writer timestamp assignment and its backward-clock refusal acceptance case.
 
 **Numbering history (2026-09-08):** This ADR was originally committed and referenced as 0009. It was renumbered to 0010 to distinguish it from the Python-target ADR, which retains 0009. Commit history will continue to refer to this projection-parameters decision as 0009.
 
@@ -12,7 +12,7 @@ Supersedes: nothing
 
 Related: Invariant 9; GAPS.md (as_of and projector_version silently ignored)
 
-Implementation: `projection.project` and `project_snapshot` apply inclusive `recorded_at` cutoffs and dispatch the registered projector; "0", "1" and "2" now ship, with "0" still the default. Reducers receive explicit evaluation time, and belief `updated_at` comes from its last included contributing event. `storage.safe_append_event` and its stage-two path refuse backward recording times. Coverage is in `tests/test_projection_parameters.py`, `tests/test_recorded_at_monotonicity.py` and the stage-two suites. Checked 2026-09-13; the ignored-parameter and ADR 0008 blocker descriptions below record the decision-time state.
+Implementation: `projection.project` and `project_snapshot` apply inclusive `recorded_at` cutoffs and dispatch the registered projector; "0", "1" and "2" now ship, with "0" still the default. Reducers receive explicit evaluation time, and belief `updated_at` comes from its last included contributing event. Low-level append integrity checks refuse supplied pairs with backward recording times; ADR 0030's ordinary writer assignment and clock checks are accepted but pending implementation. Coverage of the shipped behavior is in `tests/test_projection_parameters.py`, `tests/test_recorded_at_monotonicity.py` and the stage-two suites. Checked 2026-09-13; the ignored-parameter and ADR 0008 blocker descriptions below record the decision-time state.
 
 
 
@@ -92,7 +92,30 @@ separate parameter, not a redefinition of this one.
 
 ### 1a. Append enforces recorded_at monotonicity.
 
-Append refuses an event whose recorded_at is earlier than the previous event's recorded_at. The refusal fails loudly, consistent with the backdated-correction rule. There is no clamping, reordering, or silent correction.
+As amended by [ADR 0030 sections 4 and 5](0030-sole-writer-and-positional-fields.md#4-write-time-clock-checks-and-bounded-clamping),
+the ordinary writer assigns recorded_at under the append lock. Sample 1 checks
+the unadjusted clock: refuse if `tip.recorded_at - sample_1 > 120 s`. Exactly
+120 seconds is permitted. After that check, assign
+`recorded_at = max(sample_1, tip.recorded_at)`, comparing offset-bearing instants;
+at genesis assign sample 1. There is no increment; equal timestamps remain legal
+and retain insertion/hash-chain order. Sample 2, taken after assignment and before
+insertion, is validation only: refuse if `recorded_at - sample_2 > 120 s`.
+The threshold is a named writer constant, not runtime configuration; changing
+it requires an ADR amendment.
+
+Recorded_at is never earlier than sample 1 or the predecessor's recorded_at.
+During tolerated backward-clock skew it may be ahead of the writer's observed
+wall clock by at most 120 seconds at these checks. This establishes no claim
+about true recording time or trustworthy UTC. Refusal is synchronous and typed,
+carrying the fields and units in ADR 0030 section 5. Recovery is automatic with
+no latch: every attempt, including after restart, rechecks the persisted tip and
+both clock conditions under the append lock.
+
+Assignment occurs only before first commitment. Committed timestamps remain
+immutable and monotonically nondecreasing; no committed event is reordered or
+rewritten. Low-level integrity checks still refuse a supplied pair whose
+recorded_at precedes the committed tip; they do not repair prepared or committed
+envelopes. Recording-time cutoffs and the backdated-correction rule are unchanged.
 
 ### 2. projector_version is a registry; unsupported versions fail loud
 
@@ -164,7 +187,14 @@ adding an evaluation-time parameter.
 
 ## Acceptance tests
 
-- **Backward clock adjustment at append:** after an event has been appended, a backward clock adjustment produces an event whose recorded_at is earlier than the previous event's recorded_at. Append refuses it loudly without changing the log; it does not clamp timestamps, reorder events, or silently correct the event.
+- **Backward clock adjustment at append:** with an injected clock and threshold,
+  a tip exactly 120 seconds ahead of sample 1 is within tolerance; assignment
+  clamps to the tip without an increment. A tip 120 seconds plus epsilon ahead
+  refuses before assignment or append. Equal timestamps preserve hash-chain
+  ordering. A sample-2 backward step beyond the threshold refuses before
+  insertion without changing Layer A. Restart rechecks the persisted tip;
+  appends resume automatically only when both checks pass. Committed timestamps
+  are never rewritten. Low-level checks still refuse supplied backward pairs.
 
 ## Rationale
 

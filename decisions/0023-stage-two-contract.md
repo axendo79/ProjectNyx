@@ -1,6 +1,6 @@
 # ADR 0023: Stage Two Contract
 
-Status: Accepted
+Status: Accepted; section 4's undifferentiated submitted-contents retry rule is superseded in part by [ADR 0030](0030-sole-writer-and-positional-fields.md), which separates caller-owned semantic contents from writer-assigned positional fields.
 
 Date: 2026-09-10
 
@@ -8,7 +8,7 @@ Supersedes: [ADR 0019's consequences](0019-identity-bootstrap.md#consequences), 
 
 Related: [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md); [ADR 0015](0015-candidate-scoped-verification.md); [ADR 0017](0017-schema-version-3.md); [ADR 0018](0018-correction-supersedes-candidates.md); [ADR 0020](0020-multi-user-authority-undecided.md); [ADR 0021](0021-bootstrap-link-treatment.md); [ADR 0022](0022-belief-container-uniqueness.md)
 
-Implementation: Implemented under projector "1" in `src/nyx/ingestion.py`, `src/nyx/reducer.py`, and `src/nyx/storage.py`, with coverage in `tests/test_reducer_boundary.py`. The stated stage refusals remain in force. The lineage-scaling probe is reported in `README.md`; the untested-hazard wording below records the decision-time state. Status updated 2026-09-11; other implementation-status statements below also describe the decision-time state.
+Implementation: The original stage-two contract is implemented under projector "1" in `src/nyx/ingestion.py`, `src/nyx/reducer.py`, and `src/nyx/storage.py`, with coverage in `tests/test_reducer_boundary.py`. ADR 0030's semantic/positional retry amendment is accepted but pending implementation. The stated stage refusals remain in force. The lineage-scaling probe is reported in `README.md`; the untested-hazard wording below records the decision-time state. Status updated 2026-09-11; other implementation-status statements below also describe the decision-time state.
 
 ## Context
 
@@ -75,14 +75,39 @@ their observation event; they do not create another mention or subject.
 
 ### 4. Retry identity
 
-Retries use the writer's retained recorded IDs and submitted contents. There is
-no reminting, no matching, and no new idempotency formula. A retry of a committed
-event does not create another identity, candidate, or item of evidence.
+Under [ADR 0030 sections 2 and 3](0030-sole-writer-and-positional-fields.md#2-semantic-and-positional-contents),
+retries retain the caller-owned semantic IDs and contents. These are event_id;
+the complete payload including every payload ID and association; occurred_at;
+the complete source including actor_id and all source.config; source_class;
+origin_type; event_type; schema_version; and entity_refs. Source.config is
+semantic source metadata. The writer owns recorded_at and prev_event_hash and
+derives the envelope hash; ordinary callers do not supply final positional fields.
+
+For an uncommitted submission, the writer re-derives the positional fields at the
+locked append prefix under ADR 0030's clock checks. The event hash may differ
+from an earlier uncommitted attempt; no Layer A record is changed. There is no
+reminting, no matching, and no new idempotency formula. A conflicting belief ID
+is refused, never redirected to repair a race.
+
+For a committed submission, compare every caller-owned semantic field enumerated
+above with the stored record, including the full source.config. A colliding
+event ID or idempotency key with different semantic contents refuses. The accepted
+idempotency formula covers source actor_id, occurred_at and payload, not the
+complete config or all other semantic fields; equality of that key alone does
+not establish an equivalent retry. In particular, a source.config-only change
+to vocabulary or extractor metadata under [proposed ADR 0031](0031-source-report-claims.md)
+must not silently collide as equivalent committed reuse.
+
+An equivalent committed retry returns and preserves the complete original
+Envelope / Payload pair, including its original recorded_at, predecessor and
+hashes. It does not reassign positions, sample a replacement recording time, or
+create another identity, candidate, or item of evidence. Low-level exact-pair
+replay/integrity checks remain intact.
 
 If the mention committed but the observation did not, the retry uses that recorded
-mention and the retained observation submission. The committed mention remains
-valid without a property claim; failure of the observation does not remove it
-from Layer A.
+mention and the retained semantic observation submission. The committed mention
+remains valid without a property claim; failure of the observation does not
+remove it from Layer A.
 
 ### 5. Corrections are deferred under version "1"
 
