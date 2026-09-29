@@ -2,6 +2,7 @@
 
 from contextlib import closing
 import json
+import os
 from pathlib import Path
 import sqlite3
 import subprocess
@@ -13,6 +14,12 @@ import pytest
 from nyx import cli, events, integrity, projection, storage
 from test_event_integrity import entries
 from test_reducer_boundary import T0, T2, event, mention
+
+
+def cli_env():
+    src = str(Path(__file__).resolve().parents[1] / "src")
+    inherited = os.environ.get("PYTHONPATH")
+    return {**os.environ, "PYTHONPATH": src + (os.pathsep + inherited if inherited else "")}
 
 
 @pytest.fixture(params=["0", "1", "2"])
@@ -179,7 +186,7 @@ def test_console_entry_and_module_invocation(store):
     with (root / "pyproject.toml").open("rb") as file:
         assert tomllib.load(file)["project"]["scripts"]["nyx"] == "nyx.cli:main"
     result = subprocess.run([sys.executable, "-B", "-m", "nyx.cli", "status", "--db", str(path), "--json"],
-                            capture_output=True, text=True, check=True)
+                            capture_output=True, text=True, check=True, env=cli_env())
     assert json.loads(result.stdout)["event_count"] == 2
 
 
@@ -199,7 +206,7 @@ def test_verify_process_exit_preserves_integrity_failure(store):
     with conn:
         conn.execute("DELETE FROM payloads WHERE event_id='e-1'")
     result = subprocess.run([sys.executable, "-B", "-m", "nyx.cli", "verify", "--db", str(path),
-                             "--projector", version], capture_output=True, text=True)
+                             "--projector", version], capture_output=True, text=True, env=cli_env())
     assert result.returncode != 0
     assert "IntegrityError: missing payload row for 'e-1'" in result.stderr
     assert result.stdout == ""
