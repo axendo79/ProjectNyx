@@ -368,6 +368,8 @@ def append_submission(conn, request, projector_version):
 
     Low-level exact-pair appends remain separate integrity boundaries. This is
     the ordinary writer path, with both clock checks under the append lock.
+    New requests require derived progress at the log tip; this path never
+    publishes on behalf of its caller. Committed retries need no publication.
     """
     _registered_projector(projector_version)
     data = writer.validate_request(request)
@@ -388,7 +390,7 @@ def append_submission(conn, request, projector_version):
                     raise integrity.IntegrityError("retry differs from retained semantic contents")
                 return stored
             tip = conn.execute(
-                "SELECT event_id,event_hash,recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
+                "SELECT event_id,event_hash,recorded_at,rowid FROM events ORDER BY rowid DESC LIMIT 1"
             ).fetchone()
             stamp, instant = writer.sample(conn.clock)
             if tip is not None and _instant(tip[2], "recorded_at") - instant > conn.threshold:
@@ -402,6 +404,13 @@ def append_submission(conn, request, projector_version):
                     raise writer.ClockSkewError("assignment_ahead_of_clock", tip, observed, conn.threshold)
 
             if projector_version == "0":
+                progress = conn.execute(
+                    "SELECT log_position,event_id FROM derived_progress WHERE projector_version='0'"
+                ).fetchone()
+                if ((0, None) if progress is None else progress) != (
+                        (0, None) if tip is None else (tip[3], tip[0])):
+                    raise ProjectionBehindError(
+                        "derived prefix is behind append position; publish pending events first")
                 prior = read_belief(conn, data["belief_id"], "0")
                 projection.assert_not_backdated(prior, envelope.event_type, envelope.occurred_at)
                 _append_legacy_locked(conn, *pair, before_insert=validate_assignment)

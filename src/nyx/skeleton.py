@@ -33,7 +33,17 @@ from typing import Any, Mapping
 
 from . import immune, storage, hashing, writer, ingestion
 from .events import CORRECTION_APPENDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED
+from .projection import _instant
 from .timestamps import validate_timestamp
+
+
+def _live_as_of(conn):
+    """Include the committed tip even when the writer clamped a backward clock."""
+    now = datetime.now(timezone.utc)
+    tip = conn.execute("SELECT recorded_at FROM events ORDER BY rowid DESC LIMIT 1").fetchone()
+    if tip is not None and _instant(tip[0], "recorded_at") > now:
+        return tip[0]
+    return now.isoformat()
 
 
 def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any],
@@ -76,7 +86,7 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any],
         # refuse must be refused here, while refusing is still possible. A backdated
         # correction appended and only THEN rejected at fold time would sit in the log
         # permanently, and every future replay would raise on it. See decisions/0005.
-        storage.materialize_pending(conn, datetime.now(timezone.utc).isoformat(), projector_version)
+        storage.materialize_pending(conn, _live_as_of(conn), projector_version)
         retained = storage.find_recorded_event(conn, hashing.idempotency_key(
             submission["source"]["actor_id"], submission["occurred_at"], payload))
         request = writer.prepare_event(
@@ -88,7 +98,7 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any],
         # Separate derived transaction, including retries after an append
         # committed but publication/worker acknowledgement did not finish.
         # Evaluation time belongs to the caller (ADR 0010 section 3b).
-        storage.materialize_pending(conn, datetime.now(timezone.utc).isoformat(), projector_version)
+        storage.materialize_pending(conn, _live_as_of(conn), projector_version)
         return storage.read_belief(conn, payload["belief_id"], projector_version)
     finally:
         conn.close()
