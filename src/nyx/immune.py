@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
+from . import integrity
 from .timestamps import validate_timestamp
 
 # Required keys for a skeleton observation (spec/NYX_V0_IMPLEMENTATION.md §6).
@@ -35,14 +36,18 @@ def stage1_schema_validate(raw: Mapping[str, Any]) -> ImmuneResult:
     structural impossibilities. spec/NYX_ARCHITECTURE.md §3. This is the ONLY stage
     the walking skeleton needs.
 
+    ADR 0033 value/verifiability domain violations raise IntegrityError; other
+    schema rejections retain ImmuneResult(accepted=False).
+
     Deterministic gate: required fields present, occurred_at an offset-bearing
     ISO8601 instant (ADR 0006). Valid timestamp strings are preserved. Rejections
     must ultimately be logged events (§3); the skeleton surfaces the rejection to
     the caller. The reject-and-RECORD path is a later slice (§8), not part of §6.
     """
     for key in _REQUIRED:
-        if key not in raw or raw[key] in (None, ""):
+        if key not in raw or (key != "value" and raw[key] in (None, "")):
             return ImmuneResult(accepted=False, stage_reached=1, reason=f"missing field: {key}")
+    integrity.validate_legacy_submission(raw)
     source = raw.get("source")
     if not isinstance(source, Mapping) or not source.get("actor_id"):
         return ImmuneResult(accepted=False, stage_reached=1, reason="source.actor_id required")

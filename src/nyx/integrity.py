@@ -1,6 +1,7 @@
 """Validate the existing Layer A schema and hash contract without rewriting bytes."""
 
 import json
+from collections.abc import Mapping
 from dataclasses import asdict
 from datetime import datetime
 
@@ -21,6 +22,18 @@ ORIGINS = frozenset((events.ORIGIN_OBSERVED, events.ORIGIN_USER_STATED,
 
 class IntegrityError(ValueError):
     """Stored or submitted data does not satisfy its committed contract."""
+
+
+def validate_legacy_submission(data):
+    """ADR 0033 admission only; never apply this domain to historical replay."""
+    if not isinstance(data, Mapping):
+        raise IntegrityError("event payload must be an object; redaction is unsupported")
+    if not isinstance(data.get("value"), str):
+        raise IntegrityError("value must be a JSON string")
+    if data.get("verifiability") not in (
+            "externally_checkable", "locally_checkable", "subjective",
+            "structurally_unverifiable"):
+        raise IntegrityError("unknown verifiability")
 
 
 def _text(value, name):

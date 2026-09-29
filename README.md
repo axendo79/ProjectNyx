@@ -17,6 +17,12 @@ belief projection and a materialized Resolved View; it does not implement the
 broader synthesis subsystems described in the architecture.
 
 The legacy projector `"0"` writer runs observations through Immune Stage 1.
+Under [ADR 0033](decisions/0033-projector-0-value-and-verifiability-domain.md),
+new legacy observations and corrections require a string `value` (including
+`""`) and one of the four verifiability labels. Stage 1, ordinary submission,
+and the shared legacy append path used by `safe_append_event` independently
+refuse domain violations with `IntegrityError` before append. Historical replay
+and the standalone verifier's numeric TEXT-affinity handling remain unchanged.
 Stage-two writers (`"1"` and `"2"`) instead validate supported events in the reducer
 inside the append transaction; they do not run the Immune Stage 1 pipeline.
 All versions validate envelope schema/taxonomy, offset-bearing timestamps, payload
@@ -514,6 +520,7 @@ merge, split, approval, or authority handlers.
 | [0029](decisions/0029-dream-emission-semantics.md) | Proposed / not implemented. Distinct DreamEmission type, inseparable recall origin, Layer A event-domain reducer inputs and no emission-to-evidence path; recording and operational contracts remain decision-blocked. | No executable Dream acceptance coverage; proposed conformance cases are in ADR 0029. |
 | [0030](decisions/0030-sole-writer-and-positional-fields.md) | [writer.py](src/nyx/writer.py) semantic requests, field-complement comparison, OS lock and typed refusal; [storage.py] `init_db`, `append_submission`; [ingestion.py] preparation and `submit`; [skeleton.py] wrappers. | [test_sole_writer.py](tests/test_sole_writer.py): injected clocks/thresholds, inclusive skew boundaries, clamping, semantic retries, field classification, crash/publication recovery, read-only independence, subprocess kill/reacquisition and refusal reporting. |
 | [0032](decisions/0032-explicit-stage-two-projector-selection.md) | Explicit stage-two selection in [ingestion.py], [projection.py], [reducer.py], [skeleton.py], [storage.py] and the [lineage probe](scripts/probe_lineage_scaling.py); allowlisted legacy defaults remain "0". | [test_explicit_projector_selection.py](tests/test_explicit_projector_selection.py) scans src/scripts AST parameters and class fields, checks enumerated aliases and exact parser options, and checks omission before work; existing stage-two/frozen-byte suites preserve selected versions. |
+| [0033](decisions/0033-projector-0-value-and-verifiability-domain.md) | [integrity.py](src/nyx/integrity.py) `validate_legacy_submission`, called by [immune.py](src/nyx/immune.py) `stage1_schema_validate` and [storage.py] `append_submission`, `_append_legacy_locked`. | [test_legacy_admission_domain.py](tests/test_legacy_admission_domain.py): independent refusal at all three boundaries, unchanged Layer A count/tip, empty strings and all labels, directly inserted numeric history; existing frozen-byte and stage-two suites remain unchanged. |
 
 [projection.py]: src/nyx/projection.py
 [reducer.py]: src/nyx/reducer.py

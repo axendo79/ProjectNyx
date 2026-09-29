@@ -326,6 +326,7 @@ def _append_legacy_locked(conn, envelope, payload, before_insert=None):
     if _is_recorded_retry(conn, envelope, payload):
         return False
     data = integrity.decode_payload(envelope, payload)
+    integrity.validate_legacy_submission(data)
     previous = conn.execute(
         "SELECT event_hash, recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
     ).fetchone()
@@ -392,6 +393,8 @@ def append_submission(conn, request, projector_version):
             tip = conn.execute(
                 "SELECT event_id,event_hash,recorded_at,rowid FROM events ORDER BY rowid DESC LIMIT 1"
             ).fetchone()
+            if projector_version == "0":
+                integrity.validate_legacy_submission(data)
             stamp, instant = writer.sample(conn.clock)
             if tip is not None and _instant(tip[2], "recorded_at") - instant > conn.threshold:
                 raise writer.ClockSkewError("tip_ahead_of_clock", tip, stamp, conn.threshold)
