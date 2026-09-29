@@ -410,8 +410,10 @@ including append indexes for versions with unpublished state, and their freshnes
 `verify` checks the full log's envelope, payload and chain integrity independent
 of the selected projector; it does not certify reducer correctness. Integrity
 failures propagate their specific `IntegrityError` and a failing exit status.
-Unimplemented reads return an explicit explanation with exit status 2. Connections
-use SQLite `mode=ro`, `query_only` and a restrictive authorizer; commands never
+Unimplemented reads return an explicit explanation with exit status 2. SQLite
+operational errors and schema compatibility refusals return exit status 3 with a
+single-line diagnostic on stderr and no stdout, in both plain and JSON modes.
+Connections use SQLite `mode=ro`, `query_only` and a restrictive authorizer; commands never
 publish, rebuild stored projections, initialize or repair the database.
 
 The public storage APIs are `open_readonly` (the same schema validator as

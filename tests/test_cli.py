@@ -210,3 +210,35 @@ def test_verify_process_exit_preserves_integrity_failure(store):
     assert result.returncode != 0
     assert "IntegrityError: missing payload row for 'e-1'" in result.stderr
     assert result.stdout == ""
+
+
+@pytest.mark.parametrize("store", ["0"], indirect=True)
+@pytest.mark.parametrize("json_output", [False, True], ids=["plain", "json"])
+@pytest.mark.parametrize("failure,expected", [
+    ("missing", "OperationalError: unable to open database file"),
+    ("schema", "SchemaCompatibilityError: unsupported_version: unsupported schema version 999"),
+])
+def test_operator_errors_have_one_line_stderr_and_distinct_exit(store, json_output, failure, expected):
+    path, conn, _, _ = store
+    operator_path = path.with_name(f"{failure}.db")
+    if failure == "schema":
+        with closing(storage.init_db(operator_path, create=True)) as incompatible:
+            with incompatible:
+                incompatible.execute("UPDATE schema_meta SET version=999")
+    command = [sys.executable, "-B", "-m", "nyx.cli", "status", "--db", str(operator_path)]
+    if json_output:
+        command.append("--json")
+    result = subprocess.run(command, capture_output=True, text=True, env=cli_env())
+    assert result.stderr.splitlines() == [expected]
+    assert result.stdout == ""
+    assert "Traceback" not in result.stderr
+    assert result.returncode == 3
+
+    # Compare the real process exit against an unhandled integrity failure.
+    with conn:
+        conn.execute("DELETE FROM payloads WHERE event_id='e-1'")
+    corrupt = subprocess.run(
+        [sys.executable, "-B", "-m", "nyx.cli", "verify", "--db", str(path)],
+        capture_output=True, text=True, env=cli_env())
+    assert "IntegrityError: missing payload row for 'e-1'" in corrupt.stderr
+    assert corrupt.returncode != 0 and corrupt.returncode != result.returncode

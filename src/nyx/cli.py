@@ -5,6 +5,7 @@ from contextlib import closing
 from dataclasses import asdict
 from datetime import datetime, timezone
 import json
+import sqlite3
 import sys
 
 from . import integrity, projection, storage
@@ -154,6 +155,10 @@ def main(argv=None):
             with conn:
                 conn.execute("BEGIN")
                 result.update(_run(conn, args))
+    except (sqlite3.OperationalError, storage.SchemaCompatibilityError) as exc:
+        message = " ".join(str(exc).splitlines())
+        print(f"{type(exc).__name__}: {message}", file=sys.stderr)
+        return 3
     except ClockSkewError as exc:
         print(str(exc), file=sys.stderr)
         return 1
