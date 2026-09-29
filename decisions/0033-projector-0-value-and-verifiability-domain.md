@@ -4,7 +4,7 @@ Status: Accepted — ratified by the maintainer, 2026-09-28
 
 Date: 2026-09-28
 
-Implementation: None
+Implementation: Complete in (B) commit `9565f56ffb26434a96b5fcf864762b406af1a3a9`; shared legacy admission checks and acceptance coverage shipped 2026-09-28.
 
 Supersedes on acceptance: No accepted value-type rule. This defines legacy submission admission without changing historical projection semantics, serialization, or stage-two validation.
 
