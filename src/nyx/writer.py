@@ -69,6 +69,12 @@ def validate_request(request):
                          "recorded_at and prev_event_hash belong to the writer")
     envelope, payload = request
     validate_timestamp(envelope.occurred_at)
+    source = integrity._json(envelope.source, "source")
+    if not isinstance(source, dict):
+        raise integrity.IntegrityError("source must be an object")
+    integrity._text(source.get("actor_id"), "source.actor_id")
+    if "config" in source and not isinstance(source["config"], dict):
+        raise integrity.IntegrityError("source.config must be an object")
     if envelope.event_id != payload.event_id:
         raise integrity.IntegrityError("envelope/payload identity mismatch")
     if payload.redacted or payload.ciphertext is None or payload.canonical_entity_id is not None:
