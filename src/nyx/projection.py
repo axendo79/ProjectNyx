@@ -272,23 +272,14 @@ def project(
     if isinstance(reducer, ReducerProjector):
         return project_snapshot(events, as_of, projector_version).beliefs()
     view: dict[str, Any] = {}
-    position = 0
-    previous_id = None
     for envelope, payload in integrity.verified_log(events):
         if _instant(envelope.recorded_at, "recorded_at") > cutoff:
             continue
-        if isinstance(reducer, ReducerProjector):
-            snapshot = Snapshot(view, position, previous_id, projector_version=projector_version)
-            delta = reducer.reduce(snapshot, envelope, payload, as_of)
-            view.update(delta.beliefs)
-        else:
-            # Refuse unsupported identity events before requiring belief_id.
-            if projector_version == "0" and envelope.event_type not in _VALUE_SETTING:
-                raise NotImplementedError(f"fold handler for {envelope.event_type!r} not implemented")
-            belief_id = payload["belief_id"]
-            view[belief_id] = reducer(view.get(belief_id), envelope, payload, as_of)
-        position += 1
-        previous_id = envelope.event_id
+        # Refuse unsupported identity events before requiring belief_id.
+        if projector_version == "0" and envelope.event_type not in _VALUE_SETTING:
+            raise NotImplementedError(f"fold handler for {envelope.event_type!r} not implemented")
+        belief_id = payload["belief_id"]
+        view[belief_id] = reducer(view.get(belief_id), envelope, payload, as_of)
     return view
 
 
