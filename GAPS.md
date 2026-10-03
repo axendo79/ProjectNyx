@@ -351,10 +351,13 @@ demonstrated by this finding, so it is not classified as a correctness fix.
 The [B2 findings](design/0027-b2-private-value-codec-ruling-brief.md#2-complete-call-site-inventory-and-external-payload-reachability)
 record successful synthetic duplicate-key payload appends under projectors
 "0", "1" and "2", with the submitted text retained unchanged and last-wins
-decoded content returned on read. All **31 `json.loads` call sites** across
+decoded content returned on read. All **35 `json.loads` call sites** across
 `src/nyx/` and `scripts/verify_store.py` omit `object_pairs_hook` (and the three
 numeric parsing hooks); duplicate object keys therefore collapse last-wins under
-the shared default decoder. The verifier's log checks accepted the same samples.
+the shared default decoder. The AST recount includes two calls on
+`src/nyx/storage.py:575`; representative payload decoders are
+`src/nyx/integrity.py:54`, `src/nyx/writer.py:82`, and
+`scripts/verify_store.py:113`. The verifier's log checks accepted the same samples.
 
 **Hash distinction:** `{"value":1,"value":2}` and `{"value":2}` have different
 raw UTF-8 SHA-256 digests, respectively
@@ -363,7 +366,7 @@ raw UTF-8 SHA-256 digests, respectively
 Both decode to the same object and produce the **same Nyx canonical payload
 hash**, the second digest above. They do not produce different accepted
 `payload_hash` values. `events.py:114–115` hashes canonical object content;
-`integrity.py:90,93,101,105–106` checks the supplied commitments against that
+`integrity.py:103–107,110–120` checks the supplied commitments against that
 decoded/canonical content. Submitting a raw-text digest that differs from the
 recomputed canonical digest would fail that check. This is parser information
 loss, not a hash collision.
@@ -410,7 +413,8 @@ the existing envelope or lineage hash formula was implemented incorrectly.
 
 **Reachability:** the Python append API accepts caller-supplied
 `Payload.ciphertext` text; it does not require provenance from Nyx's encoder.
-`storage.py:289,310,397,413–415` and `ingestion.py:56–64` expose this path.
+`src/nyx/storage.py:306–328,350–355,370–405,481–503`,
+`src/nyx/ingestion.py:56–65`, and `src/nyx/writer.py:64–96` expose this path.
 The demonstrated caller changed text before its first ordinary append, without
 direct SQL writes or changes to validation code. An external producer can thus
 supply such text through an application using these APIs; this is not restricted
@@ -676,8 +680,9 @@ The implemented candidate records and constitutive links do not supply those dec
 - ~~**Python version.** Runtime is **3.14.2**; `CLAUDE.md` says 3.11/3.12 ("the spec's earlier
   3.14 target was walked back"). Suite is green on 3.14. One of the two is stale.~~ **RESOLVED
   ([ADR 0009](decisions/0009-python-314-re-adopted-as-target.md)):** 3.14 re-adopted as the
-  target. The architecture §402 downgrade P0 was never enforced, 3.14 is the only interpreter
-  installed, and the suite is green on it. `CLAUDE.md` and §402 updated to match.
+  target. The downgrade P0 at `spec/NYX_ARCHITECTURE.md:435` was never enforced,
+  3.14 is the only interpreter installed, and the suite is green on it.
+  `CLAUDE.md` and that architecture P0 note were updated to match.
 - **`gap_events` has no column.** Invariant 6 names four event classes a belief exposes
   (supporting, opposing, superseding, gap); `resolved_beliefs` now carries three. No
   `gap_recorded` handler exists yet, so this is an absence, not a decision.

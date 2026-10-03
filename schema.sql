@@ -43,14 +43,11 @@ CREATE TABLE events (
 );
 CREATE UNIQUE INDEX idx_events_idempotency ON events(idempotency_key);
 
--- Payload: separately destroyable via key destruction (crypto-shredding).
--- Encrypted at write with a per-canonical-entity key from the keystore
--- (NOT per-mention -- a mention's key has no owner once entities merge/split).
--- A redacted payload is deleted here; the envelope row above is untouched,
--- so replay yields a typed REDACTED sentinel, never a broken chain.
--- KEYED BY event_id, NOT payload_hash. §4's DDL says `payload_hash TEXT PRIMARY KEY`;
--- that is the authoritative document's bug, and this deviates from it deliberately
--- (decisions/0007). Content-keying was wrong for two independent reasons:
+-- Payload: plaintext canonical JSON in v0 (decisions/0002), despite the column
+-- name ciphertext. Encryption, key custody, crypto-shredding and a typed REDACTED
+-- reader are unbuilt; current readers refuse redacted or missing payload content.
+-- KEYED BY event_id, NOT payload_hash, under decisions/0007; V0 §4's corrected
+-- DDL agrees. Content-keying was wrong for two independent reasons:
 --
 --   1. It BLOCKS CORROBORATION. Two independent sources reporting the SAME value
 --      produce byte-identical payloads -> the same payload_hash -> a PK collision on

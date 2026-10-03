@@ -163,8 +163,13 @@ header copies remain. Deterministic tests count 2/2 calls on 12/24 mention event
 and 12/22 calls on 12/24 events with five observations per mention. Existing seed
 stores retain identical verifier output. This fixes the repeated full-prefix
 copy, not every source of superlinear verifier work: the measured version-2
-verification time still grows faster than event count. Retained-tree validation
-and historical-header handling remain unchanged. No storage-growth threshold or
+verification time still grows faster than event count. After these measurements,
+retained-tree validation gained immutable-key routing caches (`70ab04a`), subtree
+routing bounds (`a35ae01`), digest-syntax memoization (`9d08ceb`), and reuse of
+canonical node bytes for hash/encoding checks (`cc16173`). Every retained node
+and historical header is still checked, and declared roots are independently
+rebuilt. These optimizations do not establish linear end-to-end verification.
+No storage-growth threshold or
 garbage collection policy is inferred from these measurements.
 
 The [standalone lineage-scaling probe](scripts/probe_lineage_scaling.py) measures
@@ -482,7 +487,7 @@ Pointers use file and symbol names rather than line numbers that shift on edits.
 | [0002](decisions/0002-payload-stored-plaintext-in-v0.md) | [events.py](src/nyx/events.py) `build_event`; [storage.py] `read_all_events` | [test_walking_skeleton.py](tests/test_walking_skeleton.py) exercises payload round trips; no dedicated plaintext-storage assertion |
 | [0003](decisions/0003-genesis-sentinels-and-hash-material-delimiters.md) | [hashing.py] `_SEP`, `idempotency_key`, `event_hash`; [projection.py] `_GENESIS_VIEW_HASH`, `fold` | [test_walking_skeleton.py](tests/test_walking_skeleton.py); stage-two `test_version_zero_golden_bytes_and_no_retrofit` and [version0_ordinary.json](tests/fixtures/version0_ordinary.json) |
 | [0004](decisions/0004-correction-appended-supersedes-via-superseding-events.md) | [projection.py] `fold`; [skeleton.py] `record_correction`; [storage.py] `_upsert_legacy_belief` | [test_correction_appended.py](tests/test_correction_appended.py) |
-| [0005](decisions/0005-backdated-corrections-fail-loud-pending-semantics.md) | [projection.py] `assert_not_backdated`; [skeleton.py] `_record` | [test_correction_appended.py](tests/test_correction_appended.py), `test_backdated_correction_raises`, `test_backdated_correction_does_not_poison_layer_a` |
+| [0005](decisions/0005-backdated-corrections-fail-loud-pending-semantics.md) | [projection.py] `assert_not_backdated`; [storage.py] `append_submission` | [test_correction_appended.py](tests/test_correction_appended.py), `test_backdated_correction_raises`, `test_backdated_correction_does_not_poison_layer_a` |
 | [0006](decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md) | [timestamps.py](src/nyx/timestamps.py) `validate_timestamp`; ingestion-boundary refusal in [events.py](src/nyx/events.py) `build_event`, [immune.py](src/nyx/immune.py) `stage1_schema_validate`, [ingestion.py] preparers and `submit`, and [skeleton.py] `_record_stage_two`; projection-time comparison in [projection.py] `_instant`, `fold`, `assert_not_backdated` | [test_occurred_at_ordering.py](tests/test_occurred_at_ordering.py); [test_timestamp_ingestion.py](tests/test_timestamp_ingestion.py) boundary refusal and accepted/golden-byte preservation |
 | [0007](decisions/0007-payloads-keyed-by-event-id-not-payload-hash.md) | [schema.sql](schema.sql) `payloads`, `idx_payloads_corroboration`; [storage.py] `safe_append_event` | [test_corroboration_payload_identity.py](tests/test_corroboration_payload_identity.py) |
 | [0008](decisions/0008-fold-signature-cannot-express-cross-belief-events.md) | Historical blocker; implementation navigation is in row 0014 | No separate handler or test suite for this superseded blocker |
