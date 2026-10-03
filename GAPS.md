@@ -255,6 +255,23 @@ count fell from 212/540 to 76/179, including repeated malformed-child references
 Complete reports/maps match uncached validation. Non-string digests still
 refuse; this cache changes no ADR 0025 hash, node, routing or root check.
 
+**Verifier node-encoding repeat resolved (2026-10-03):** each retained node is
+canonicalized once and the same canonical bytes supply both its SHA-256 and
+raw-encoding comparison under ADR 0025 section 2. At 16/32 nodes serialization
+calls fell from 32/64 to 16/32. Independent hash corruption and noncanonical
+encoding still fail the named Merkle check. Complete stored content continues
+to be decoded and authenticated; no stored digest replaces recomputation.
+
+The Queue 2 projector-2 probe at 1,200/2,400/4,800 events measured verification
+at 3.06/13.77/27.90 seconds before these three repeats were removed and
+1.75/4.02/10.61 seconds after. Retained node counts (39,181/86,559/188,969),
+content bytes and checkpointed file bytes matched at every size; all stores
+verified. Before cProfile at 4,800 events spent 30.45 seconds in descendant
+predicates, 6.75 in digest syntax and 5.19 in canonical JSON (nested cumulative
+costs, 69.10 seconds total). Single-run timings are machine/load dependent.
+Subtree map copies and intersections remain; this is not a claim of linear
+end-to-end auditing or a new retention policy.
+
 ### Corpus restriction — R4, policy in force; erasure unbuilt
 **Public-corpus policy:** public corpus only until the erasure requirements
 (Gate 3 of proposed ADR 0027 together with proposed ADR 0028 9 and 11) are

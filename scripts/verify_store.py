@@ -150,7 +150,8 @@ class Trees:
             try:
                 node = json.loads(raw)
                 valid = isinstance(node, dict) and node.get('format') == 'nyx-map/1'
-                report.check('merkle', key, valid and digest(node) == key and hashing.canonical_json(node) == raw,
+                canonical = hashing.canonical_json(node) if valid else None
+                report.check('merkle', key, valid and hashing._sha256_hex(canonical) == key and canonical == raw,
                              'stored node hash/encoding differs from canonical content')
                 if valid:
                     self.nodes[key] = node

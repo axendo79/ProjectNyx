@@ -590,6 +590,53 @@ def test_digest_syntax_is_checked_once_per_string(tmp_path, monkeypatch):
     assert counts[1] <= 2.6 * counts[0]
 
 
+def test_node_encoding_is_serialized_once_for_hash_and_bytes(tmp_path, monkeypatch):
+    original = hashing.canonical_json
+    calls = 0
+
+    def counted(value):
+        nonlocal calls
+        if isinstance(value, dict) and value.get('format') == 'nyx-map/1':
+            calls += 1
+        return original(value)
+
+    monkeypatch.setattr(hashing, 'canonical_json', counted)
+    counts = []
+    for size in (16, 32):
+        nodes = {}
+        for index in range(size):
+            merkle.put(None, f'key-{index}', index, nodes)
+        with closing(storage.init_db(tmp_path / f'encodings-{size}.db', create=True)) as conn:
+            with conn:
+                conn.executemany('INSERT INTO committed_nodes VALUES (?,?,?)',
+                                 [('2', key, raw) for key, raw in nodes.items()])
+            calls = 0
+            report = verifier['Report']('encoding-count', '2')
+            verifier['Trees'](conn, report)
+            assert report.result()['ok'], report.result()['failures']
+            counts.append(calls)
+    print(f'nodes=16/32: canonical node serializations={counts}')
+    assert counts == [16, 32]
+
+
+@pytest.mark.parametrize('damage', ['hash', 'encoding'])
+def test_reused_node_encoding_retains_both_checks(tmp_path, damage):
+    nodes = {}
+    merkle.put(None, 'key', {'value': 'unicode λ'}, nodes)
+    key, raw = next(iter(nodes.items()))
+    if damage == 'hash':
+        key = '0' * 64
+    else:
+        raw = json.dumps(json.loads(raw), ensure_ascii=False, indent=2)
+    with closing(storage.init_db(tmp_path / 'bad-encoding.db', create=True)) as conn:
+        with conn:
+            conn.execute('INSERT INTO committed_nodes VALUES (?,?,?)', ('2', key, raw))
+        report = verifier['Report']('encoding-corruption', '2')
+        verifier['Trees'](conn, report)
+        targeted(report.result(), 'merkle')
+        assert any('hash/encoding' in f['message'] for f in report.result()['failures'])
+
+
 def test_cli_json_human_and_failing_exit(database, capsys):
     path, conn, version, _ = database
     main = verifier['main']
