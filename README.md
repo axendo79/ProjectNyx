@@ -478,7 +478,7 @@ Pointers use file and symbol names rather than line numbers that shift on edits.
 
 | ADR | Implementation locations | Executable coverage |
 |---|---|---|
-| [0001](decisions/0001-observation-recorded-resolves-to-verified.md) | [projection.py] `_state_for_origin`, `fold`; [reducer.py] `reduce` | [test_walking_skeleton.py](tests/test_walking_skeleton.py), `test_resolved_belief_fields`; stage-two `test_unworked_origin_still_refuses` |
+| [0001](decisions/0001-observation-recorded-resolves-to-verified.md) | [projection.py] `_state_for_origin`, `fold`; [reducer.py] `reduce`; [storage.py] `_append_legacy_locked` refuses unmapped origins before append | [test_walking_skeleton.py](tests/test_walking_skeleton.py), `test_resolved_belief_fields`; [test_legacy_origin_admission.py](tests/test_legacy_origin_admission.py); stage-two `test_unworked_origin_still_refuses` |
 | [0002](decisions/0002-payload-stored-plaintext-in-v0.md) | [events.py](src/nyx/events.py) `build_event`; [storage.py] `read_all_events` | [test_walking_skeleton.py](tests/test_walking_skeleton.py) exercises payload round trips; no dedicated plaintext-storage assertion |
 | [0003](decisions/0003-genesis-sentinels-and-hash-material-delimiters.md) | [hashing.py] `_SEP`, `idempotency_key`, `event_hash`; [projection.py] `_GENESIS_VIEW_HASH`, `fold` | [test_walking_skeleton.py](tests/test_walking_skeleton.py); stage-two `test_version_zero_golden_bytes_and_no_retrofit` and [version0_ordinary.json](tests/fixtures/version0_ordinary.json) |
 | [0004](decisions/0004-correction-appended-supersedes-via-superseding-events.md) | [projection.py] `fold`; [skeleton.py] `record_correction`; [storage.py] `_upsert_legacy_belief` | [test_correction_appended.py](tests/test_correction_appended.py) |

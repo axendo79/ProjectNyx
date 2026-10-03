@@ -327,6 +327,9 @@ def _append_legacy_locked(conn, envelope, payload, before_insert=None):
         return False
     data = integrity.decode_payload(envelope, payload)
     integrity.validate_legacy_submission(data)
+    # Refuse unworked origin semantics before the append-only commit (ADR 0004).
+    # Both ordinary submissions and safe_append_event share this boundary.
+    projection._state_for_origin(envelope.origin_type)
     previous = conn.execute(
         "SELECT event_hash, recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
     ).fetchone()

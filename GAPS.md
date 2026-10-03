@@ -422,6 +422,15 @@ Only `observed` is mapped (ADR 0001). `user_stated` cannot reuse it: architectur
 user-stated split ("User asserted X" vs "X is true" — the user is a *source*, not ground
 truth, outside preference claims) means it must earn its state differently.
 
+**RV2 admission failure resolved (2026-10-03):** the shared legacy
+`storage._append_legacy_locked` path invokes that existing unmapped-origin refusal
+before inserting an event. Both `append_submission(..., "0")` and
+`safe_append_event(..., "0")` preserve Layer A event count and tip hash on refusal,
+at genesis and with a prior belief. `tests/test_legacy_origin_admission.py` covers
+both value-setting event kinds, every unmapped origin, and subsequent observed
+publication/replay. The origin-mapping decision remains open; no mapping or
+historical replay rule is added.
+
 ### Candidate corrections and target eligibility
 **Deferred:** [ADR 0018](decisions/0018-correction-supersedes-candidates.md) governs
 candidate supersession; [ADR 0023 §5](decisions/0023-stage-two-contract.md#5-corrections-are-deferred-under-version-1)
