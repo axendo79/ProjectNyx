@@ -550,6 +550,46 @@ def test_routing_summary_preserves_complete_audit(tmp_path, monkeypatch, damage)
             assert {f['check'] for f in report.result()['failures']} == {'merkle'}
 
 
+def test_digest_syntax_is_checked_once_per_string(tmp_path, monkeypatch):
+    original = merkle.valid_hash
+    calls = []
+
+    def counted(value):
+        calls.append(value)
+        return original(value)
+
+    monkeypatch.setattr(merkle, 'valid_hash', counted)
+    counts, distinct = [], []
+    for size in (16, 32):
+        nodes, tree = {}, None
+        for index in range(size):
+            tree = merkle.put(tree, f'key-{index}', index, nodes)
+        # The same malformed child is checked at multiple retained locations.
+        for prefix in ('0' * 64, '1' * 64):
+            bad = {**json.loads(nodes[merkle.digest(tree)]), 'left': 'bad', 'prefix': prefix}
+            raw = hashing.canonical_json(bad)
+            nodes[hashing._sha256_hex(raw)] = raw
+        with closing(storage.init_db(tmp_path / f'syntax-{size}.db', create=True)) as conn:
+            with conn:
+                conn.executemany('INSERT INTO committed_nodes VALUES (?,?,?)',
+                                 [('2', key, raw) for key, raw in nodes.items()])
+            calls.clear()
+            report = verifier['Report']('syntax-equivalence', '2')
+            trees = verifier['Trees'](conn, report)
+            counts.append(len(calls))
+            distinct.append(len(set(calls)))
+            with monkeypatch.context() as patch:
+                patch.setattr(verifier['Trees'], '_valid_hash', lambda self, value: original(value), raising=False)
+                reference_report = verifier['Report']('syntax-equivalence', '2')
+                reference = verifier['Trees'](conn, reference_report)
+            assert report.result() == reference_report.result()
+            assert trees.memo == reference.memo
+            assert {f['check'] for f in report.result()['failures']} == {'merkle'}
+    print(f'keys=16/32: digest syntax calls={counts}, distinct strings={distinct}')
+    assert counts == distinct
+    assert counts[1] <= 2.6 * counts[0]
+
+
 def test_cli_json_human_and_failing_exit(database, capsys):
     path, conn, version, _ = database
     main = verifier['main']

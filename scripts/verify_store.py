@@ -142,6 +142,7 @@ class Trees:
         self.report, self.nodes, self.memo, self.root_cache = report, {}, {}, {}
         self.routes = {}
         self.route_bounds = {}
+        self.hash_validity = {}
         report.data['merkle_inventory'] = dict(retained_nodes=0, distinct_roots_rebuilt=0, lineage_headers=0)
         for row in conn.execute("SELECT node_hash,content FROM committed_nodes WHERE projector_version='2'"):
             report.data['merkle_inventory']['retained_nodes'] += 1
@@ -173,10 +174,17 @@ class Trees:
         return all(merkle.prefix(bits, bit) == prefix and merkle.direction(bits, bit) == side
                    for bits in self.route_bounds[root])
 
+    def _valid_hash(self, value):
+        if not isinstance(value, str):
+            return False
+        if value not in self.hash_validity:
+            self.hash_validity[value] = merkle.valid_hash(value)
+        return self.hash_validity[value]
+
     def members(self, root, active):
         if root == merkle.EMPTY:
             return {}
-        if not isinstance(root, str) or not merkle.valid_hash(root):
+        if not self._valid_hash(root):
             self.report.check('merkle', repr(root), False, 'invalid root/child digest')
             return None
         if root in self.memo:
@@ -200,7 +208,7 @@ class Trees:
         elif node.get('kind') == 'branch':
             valid = (set(node) == {'format', 'kind', 'bit', 'prefix', 'left', 'right'}
                      and type(node.get('bit')) is int and 0 <= node['bit'] < 256
-                     and merkle.valid_hash(node.get('prefix')))
+                     and self._valid_hash(node.get('prefix')))
             if self.report.check('merkle', root, valid, 'invalid branch fields'):
                 left = self.members(node['left'], active)
                 right = self.members(node['right'], active)

@@ -248,6 +248,13 @@ reconstructed maps match exhaustive routing for valid content and rehashed
 retained branches with wrong prefix, wrong side or duplicate children. This
 removes repeated predicate evaluation, not subtree map copies or retention.
 
+**Verifier digest-syntax repeat resolved (2026-10-03):** within one immutable
+node audit, digest syntax is validated once per distinct string, while each
+invalid reference still reports its own existing failure. For 16/32 keys the
+count fell from 212/540 to 76/179, including repeated malformed-child references.
+Complete reports/maps match uncached validation. Non-string digests still
+refuse; this cache changes no ADR 0025 hash, node, routing or root check.
+
 ### Corpus restriction — R4, policy in force; erasure unbuilt
 **Public-corpus policy:** public corpus only until the erasure requirements
 (Gate 3 of proposed ADR 0027 together with proposed ADR 0028 9 and 11) are
