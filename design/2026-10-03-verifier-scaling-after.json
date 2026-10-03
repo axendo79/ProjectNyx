@@ -1,0 +1,71 @@
+{
+  "python": "3.14.2",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "workload": "one mention + five observations per subject; one property; 200-byte values",
+  "content_bytes": "UTF-8 committed_nodes.content only; retained nodes included; zero for 1",
+  "file_bytes": "main SQLite file after TRUNCATE checkpoint and writer close",
+  "samples": [
+    {
+      "projector_version": "2",
+      "requested_events": 1200,
+      "events": 1200,
+      "subjects": 200,
+      "ingestion_seconds": 12.060089100035839,
+      "verifier_seconds": 1.7485317999962717,
+      "committed_nodes": 39181,
+      "node_content_bytes": 13002942,
+      "content_bytes_per_event": 10835.785,
+      "file_bytes": 22523904,
+      "file_bytes_per_event": 18769.92,
+      "verified": true
+    },
+    {
+      "projector_version": "2",
+      "requested_events": 2400,
+      "events": 2400,
+      "subjects": 400,
+      "ingestion_seconds": 23.53574399999343,
+      "verifier_seconds": 4.015925300016534,
+      "committed_nodes": 86559,
+      "node_content_bytes": 28229551,
+      "content_bytes_per_event": 11762.312916666666,
+      "file_bytes": 48660480,
+      "file_bytes_per_event": 20275.2,
+      "verified": true
+    },
+    {
+      "projector_version": "2",
+      "requested_events": 4800,
+      "events": 4800,
+      "subjects": 800,
+      "ingestion_seconds": 53.73156320000999,
+      "verifier_seconds": 10.60838709998643,
+      "committed_nodes": 188969,
+      "node_content_bytes": 60761119,
+      "content_bytes_per_event": 12658.566458333333,
+      "file_bytes": 104648704,
+      "file_bytes_per_event": 21801.81333333333,
+      "verified": true
+    }
+  ],
+  "skipped": [
+    {
+      "projector_version": "1",
+      "requested_events": 1200,
+      "events": 1200,
+      "reason": "explicit projector-1 skip/cap"
+    },
+    {
+      "projector_version": "1",
+      "requested_events": 2400,
+      "events": 2400,
+      "reason": "explicit projector-1 skip/cap"
+    },
+    {
+      "projector_version": "1",
+      "requested_events": 4800,
+      "events": 4800,
+      "reason": "explicit projector-1 skip/cap"
+    }
+  ]
+}

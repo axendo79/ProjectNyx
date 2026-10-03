@@ -264,17 +264,53 @@ to be decoded and authenticated; no stored digest replaces recomputation.
 
 The Queue 2 projector-2 probe at 1,200/2,400/4,800 events measured verification
 at 3.06/13.77/27.90 seconds before these three repeats were removed and
-1.75/4.02/10.61 seconds after. Retained node counts (39,181/86,559/188,969),
+1.75/4.02/10.61 seconds after. Both runs used Python 3.14.2 / Windows 11
+(`Windows-11-10.0.26200-SP0`). Before measured revision
+`70ab04aaa57b5b69d158fc52db418a4b4907a55f`; after measured an uncommitted
+working tree at HEAD `9d08ceb4eca60d41f574dbb6fd04f47d72c4ad12`, with the final
+verifier change subsequently committed as
+`cc16173f2d7ebc4fb444b7ae0c2a3445b7f8600c`. Exact commands from the repository
+root were `.venv\Scripts\python -B scripts/probe_store_scaling.py --skip-projector-1 --sizes 1200 2400 4800 --json scratch/sol-c-scaling-before.json`
+and `.venv\Scripts\python -B scripts/probe_store_scaling.py --skip-projector-1 --sizes 1200 2400 4800 --json scratch/sol-c-scaling-after.json`.
+The unchanged raw results are retained as
+[before](design/2026-10-03-verifier-scaling-before.json) and
+[after](design/2026-10-03-verifier-scaling-after.json).
+Retained node counts (39,181/86,559/188,969),
 content bytes and checkpointed file bytes matched at every size; all stores
 verified. Before cProfile at 4,800 events spent 30.45 seconds in descendant
 predicates, 6.75 in digest syntax and 5.19 in canonical JSON (nested cumulative
-costs, 69.10 seconds total). Single-run timings are machine/load dependent.
+costs, 69.10 seconds total), via
+`.venv\Scripts\python -B scratch/sol-c-profile-verifier.py`, which profiled
+verification only using the same sizes and projector selection. That process
+loaded the before revision once, before source edits. Single-run timings are
+machine/load dependent.
 Subtree map copies and intersections remain; this is not a claim of linear
 end-to-end auditing or a new retention policy.
 
 **Projector-2 ingestion profile (2026-10-03):** the same 1,200/2,400/4,800-event
 probe measured ordinary ingestion at 10.39/26.67/53.17 seconds (a second run:
-12.06/23.54/53.73). Isolated production preparation/submission cProfile call
+12.06/23.54/53.73). Both runs used Python 3.14.2 / Windows 11
+(`Windows-11-10.0.26200-SP0`): the first measured revision
+`70ab04aaa57b5b69d158fc52db418a4b4907a55f`; the second measured an uncommitted
+working tree at HEAD `9d08ceb4eca60d41f574dbb6fd04f47d72c4ad12`, whose verifier
+code was subsequently committed as
+`cc16173f2d7ebc4fb444b7ae0c2a3445b7f8600c` (ingestion code was unchanged).
+Exact commands from the repository root were
+`.venv\Scripts\python -B scripts/probe_store_scaling.py --skip-projector-1 --sizes 1200 2400 4800 --json scratch/sol-c-scaling-before.json`
+and `.venv\Scripts\python -B scripts/probe_store_scaling.py --skip-projector-1 --sizes 1200 2400 4800 --json scratch/sol-c-scaling-after.json`;
+raw results are retained as
+[first run](design/2026-10-03-verifier-scaling-before.json) and
+[second run](design/2026-10-03-verifier-scaling-after.json).
+The isolated profile measured committed revision
+`cc16173f2d7ebc4fb444b7ae0c2a3445b7f8600c` on the same Python/OS, using
+`.venv\Scripts\python -B scratch/sol-c-profile-ingestion.py`. That wrapper
+invoked `probe_store_scaling.main` with
+`--skip-projector-1 --sizes 1200 2400 4800 --json D:\ProjectNyx\scratch\sol-c-ingestion-profile.json`
+and profiled only production `prepare_mention`, `prepare_observation` and
+`submit` call trees for ingestion, separately profiling verification. The raw
+[ingestion profile costs](design/2026-10-03-ingestion-profile.json) retain the
+selected operation counts and timings extracted from those cProfile results.
+Isolated production preparation/submission cProfile call
 trees took 17.15/39.98/84.73 seconds; node decodes counted
 146,498/328,510/727,396, while transaction exits stayed at four per event.
 At 4,800 events, indexed node loads took 37.20 profiled seconds, including
@@ -333,6 +369,15 @@ covers the corrupted fixture, clean stores for all projectors and independence
 from the production idempotency helper; legacy numeric-history fixtures retain
 their accepted TEXT-affinity verification behavior.
 
+### Stage 1 verifiability null/empty refusal — resolved
+**Resolved under [ADR 0033 §3](decisions/0033-projector-0-value-and-verifiability-domain.md#3-verifiability-domain):**
+Stage 1 now treats present null and empty-string verifiability as domain
+violations and raises `IntegrityError`, matching ordinary and low-level legacy
+append boundaries. Only an absent verifiability retains the missing-field
+`ImmuneResult`; other required fields keep their existing missing-field behavior.
+The all-boundary tests in `tests/test_legacy_admission_domain.py` cover both
+observation and correction submissions and preserve event count and tip hash.
+
 ### Duplicate-key payload text is accepted outside canonical writer preparation
 **Open hardening / decision-blocked:** `src/nyx/integrity.py`, `storage.py`;
 original-text authentication and cross-decoder interpretation are not established
@@ -342,10 +387,13 @@ demonstrated by this finding, so it is not classified as a correctness fix.
 The [B2 findings](design/0027-b2-private-value-codec-ruling-brief.md#2-complete-call-site-inventory-and-external-payload-reachability)
 record successful synthetic duplicate-key payload appends under projectors
 "0", "1" and "2", with the submitted text retained unchanged and last-wins
-decoded content returned on read. All **31 `json.loads` call sites** across
+decoded content returned on read. All **35 `json.loads` call sites** across
 `src/nyx/` and `scripts/verify_store.py` omit `object_pairs_hook` (and the three
 numeric parsing hooks); duplicate object keys therefore collapse last-wins under
-the shared default decoder. The verifier's log checks accepted the same samples.
+the shared default decoder. The AST recount includes two calls on
+`src/nyx/storage.py:575`; representative payload decoders are
+`src/nyx/integrity.py:54`, `src/nyx/writer.py:82`, and
+`scripts/verify_store.py:113`. The verifier's log checks accepted the same samples.
 
 **Hash distinction:** `{"value":1,"value":2}` and `{"value":2}` have different
 raw UTF-8 SHA-256 digests, respectively
@@ -354,7 +402,7 @@ raw UTF-8 SHA-256 digests, respectively
 Both decode to the same object and produce the **same Nyx canonical payload
 hash**, the second digest above. They do not produce different accepted
 `payload_hash` values. `events.py:114–115` hashes canonical object content;
-`integrity.py:90,93,101,105–106` checks the supplied commitments against that
+`integrity.py:103–107,110–120` checks the supplied commitments against that
 decoded/canonical content. Submitting a raw-text digest that differs from the
 recomputed canonical digest would fail that check. This is parser information
 loss, not a hash collision.
@@ -401,7 +449,8 @@ the existing envelope or lineage hash formula was implemented incorrectly.
 
 **Reachability:** the Python append API accepts caller-supplied
 `Payload.ciphertext` text; it does not require provenance from Nyx's encoder.
-`storage.py:289,310,397,413–415` and `ingestion.py:56–64` expose this path.
+`src/nyx/storage.py:306–328,350–355,370–405,481–503`,
+`src/nyx/ingestion.py:56–65`, and `src/nyx/writer.py:64–96` expose this path.
 The demonstrated caller changed text before its first ordinary append, without
 direct SQL writes or changes to validation code. An external producer can thus
 supply such text through an application using these APIs; this is not restricted
@@ -667,8 +716,9 @@ The implemented candidate records and constitutive links do not supply those dec
 - ~~**Python version.** Runtime is **3.14.2**; `CLAUDE.md` says 3.11/3.12 ("the spec's earlier
   3.14 target was walked back"). Suite is green on 3.14. One of the two is stale.~~ **RESOLVED
   ([ADR 0009](decisions/0009-python-314-re-adopted-as-target.md)):** 3.14 re-adopted as the
-  target. The architecture §402 downgrade P0 was never enforced, 3.14 is the only interpreter
-  installed, and the suite is green on it. `CLAUDE.md` and §402 updated to match.
+  target. The downgrade P0 at `spec/NYX_ARCHITECTURE.md:435` was never enforced,
+  3.14 is the only interpreter installed, and the suite is green on it.
+  `CLAUDE.md` and that architecture P0 note were updated to match.
 - **`gap_events` has no column.** Invariant 6 names four event classes a belief exposes
   (supporting, opposing, superseding, gap); `resolved_beliefs` now carries three. No
   `gap_recorded` handler exists yet, so this is an absence, not a decision.
