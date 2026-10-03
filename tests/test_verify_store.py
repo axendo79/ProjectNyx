@@ -481,6 +481,75 @@ def test_retained_tree_routes_are_hashed_once_per_key(tmp_path, monkeypatch):
     assert counts == [16, 32]
 
 
+def test_retained_routing_predicate_work_scales_with_nodes(tmp_path, monkeypatch):
+    original = merkle.prefix
+    operations = 0
+
+    def counted(bits, bit):
+        nonlocal operations
+        operations += 1
+        return original(bits, bit)
+
+    monkeypatch.setattr(merkle, 'prefix', counted)
+    counts, branch_counts = [], []
+    for size in (64, 128):
+        nodes, tree = {}, None
+        for index in range(size):
+            tree = merkle.put(tree, f'key-{index}', index, nodes)
+        with closing(storage.init_db(tmp_path / f'predicates-{size}.db', create=True)) as conn:
+            with conn:
+                conn.executemany('INSERT INTO committed_nodes VALUES (?,?,?)',
+                                 [('2', key, raw) for key, raw in nodes.items()])
+            operations = 0
+            report = verifier['Report']('predicate-count', '2')
+            verifier['Trees'](conn, report)
+            assert report.result()['ok'], report.result()['failures']
+            counts.append(operations)
+            branch_counts.append(sum(json.loads(raw)['kind'] == 'branch' for raw in nodes.values()))
+    print(f'keys=64/128: predicate operations={counts}; retained branches={branch_counts}')
+    assert all(count <= 4 * branches for count, branches in zip(counts, branch_counts))
+    assert counts[1] <= 2.6 * counts[0]
+
+
+@pytest.mark.parametrize('damage', ['none', 'prefix', 'side', 'duplicate'])
+def test_routing_summary_preserves_complete_audit(tmp_path, monkeypatch, damage):
+    nodes, tree = {}, None
+    for index in range(24):
+        tree = merkle.put(tree, f'key-{index}', {'value': index}, nodes)
+    if damage != 'none':
+        # Add a self-consistently hashed, unreachable corrupted branch. Retained
+        # content remains audited even when no current root references this node.
+        bad = json.loads(nodes[merkle.digest(tree)])
+        if damage == 'prefix':
+            bad['prefix'] = 'f' * 64
+        elif damage == 'side':
+            bad['left'], bad['right'] = bad['right'], bad['left']
+        else:
+            bad['right'] = bad['left']
+        raw = hashing.canonical_json(bad)
+        nodes[hashing._sha256_hex(raw)] = raw
+    with closing(storage.init_db(tmp_path / 'summary.db', create=True)) as conn:
+        with conn:
+            conn.executemany('INSERT INTO committed_nodes VALUES (?,?,?)',
+                             [('2', key, raw) for key, raw in nodes.items()])
+        report = verifier['Report']('summary-equivalence', '2')
+        trees = verifier['Trees'](conn, report)
+
+        def exhaustive(self, root, members, bit, prefix, side):
+            return all(merkle.prefix(self._route(key), bit) == prefix
+                       and merkle.direction(self._route(key), bit) == side for key in members)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(verifier['Trees'], '_matches_route', exhaustive, raising=False)
+            reference_report = verifier['Report']('summary-equivalence', '2')
+            reference = verifier['Trees'](conn, reference_report)
+        assert report.result() == reference_report.result()
+        assert trees.memo == reference.memo
+        assert report.result()['ok'] is (damage == 'none')
+        if damage != 'none':
+            assert {f['check'] for f in report.result()['failures']} == {'merkle'}
+
+
 def test_cli_json_human_and_failing_exit(database, capsys):
     path, conn, version, _ = database
     main = verifier['main']

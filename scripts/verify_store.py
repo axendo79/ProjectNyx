@@ -141,6 +141,7 @@ class Trees:
     def __init__(self, conn, report):
         self.report, self.nodes, self.memo, self.root_cache = report, {}, {}, {}
         self.routes = {}
+        self.route_bounds = {}
         report.data['merkle_inventory'] = dict(retained_nodes=0, distinct_roots_rebuilt=0, lineage_headers=0)
         for row in conn.execute("SELECT node_hash,content FROM committed_nodes WHERE projector_version='2'"):
             report.data['merkle_inventory']['retained_nodes'] += 1
@@ -164,6 +165,14 @@ class Trees:
             self.routes[key] = merkle.route(key)
         return self.routes[key]
 
+    def _matches_route(self, root, members, bit, prefix, side):
+        if not members:
+            return True
+        # A prefix plus side denotes one contiguous routing interval. Every
+        # descendant is in it iff both extrema are in it (ADR 0025 section 2).
+        return all(merkle.prefix(bits, bit) == prefix and merkle.direction(bits, bit) == side
+                   for bits in self.route_bounds[root])
+
     def members(self, root, active):
         if root == merkle.EMPTY:
             return {}
@@ -186,6 +195,8 @@ class Trees:
             valid = set(node) == {'format', 'kind', 'key', 'value'} and isinstance(node.get('key'), str) and bool(node['key'])
             if self.report.check('merkle', root, valid, 'invalid leaf fields/key'):
                 result = {node['key']: node['value']}
+                bits = self._route(node['key'])
+                self.route_bounds[root] = (bits, bits)
         elif node.get('kind') == 'branch':
             valid = (set(node) == {'format', 'kind', 'bit', 'prefix', 'left', 'right'}
                      and type(node.get('bit')) is int and 0 <= node['bit'] < 256
@@ -195,11 +206,13 @@ class Trees:
                 right = self.members(node['right'], active)
                 if left is not None and right is not None:
                     valid = bool(left) and bool(right) and not (left.keys() & right.keys())
-                    routes = [(self._route(k), side) for side, group in enumerate((left, right)) for k in group]
-                    valid = valid and all(merkle.prefix(bits, node['bit']) == int(node['prefix'], 16)
-                                          and merkle.direction(bits, node['bit']) == side for bits, side in routes)
+                    valid = valid and all(self._matches_route(child, group, node['bit'], int(node['prefix'], 16), side)
+                                          for side, (child, group) in enumerate(((node['left'], left), (node['right'], right))))
                     if self.report.check('merkle', root, valid, 'noncanonical branching, duplicate key or wrong child routing'):
                         result = {**left, **right}
+                        left_bounds, right_bounds = self.route_bounds[node['left']], self.route_bounds[node['right']]
+                        self.route_bounds[root] = (min(left_bounds[0], right_bounds[0]),
+                                                   max(left_bounds[1], right_bounds[1]))
         else:
             self.report.check('merkle', root, False, 'invalid stored node kind (empty roots are implicit)')
         self.memo[root] = result

@@ -237,6 +237,17 @@ they do not establish linear end-to-end work. Historical subtree enumeration,
 branch membership checks and map copies still grow with retained content. No
 retention policy, weaker check or new semantic rule is introduced.
 
+**Verifier descendant predicate repeat resolved (2026-10-03):** retained-tree
+audits cache routing extrema for each immutable node. ADR 0025 section 2's
+prefix/side constraint is a contiguous interval, so testing both extrema is
+equivalent to testing every descendant. Node visits, duplicate-key checks,
+branch acceptance checks and independent root reconstruction remain in place.
+At 64/128 keys, prefix-predicate operations fell from 4,223/16,713 to 1,264/3,020
+for 316/755 retained branches: four operations per branch. Complete reports and
+reconstructed maps match exhaustive routing for valid content and rehashed
+retained branches with wrong prefix, wrong side or duplicate children. This
+removes repeated predicate evaluation, not subtree map copies or retention.
+
 ### Corpus restriction — R4, policy in force; erasure unbuilt
 **Public-corpus policy:** public corpus only until the erasure requirements
 (Gate 3 of proposed ADR 0027 together with proposed ADR 0028 9 and 11) are
