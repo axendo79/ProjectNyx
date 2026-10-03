@@ -1,0 +1,62 @@
+[
+  {
+    "events": 1200,
+    "costs": {
+      "decode": {
+        "calls": 146498,
+        "own_s": 0.7155318,
+        "cumulative_s": 6.415594700000001
+      },
+      "load": {
+        "calls": 277578,
+        "own_s": 0.21505760000000002,
+        "cumulative_s": 7.278255400000001
+      },
+      "<method '__exit__' of 'sqlite3.Connection' objects>": {
+        "calls": 4800,
+        "own_s": 4.5078771,
+        "cumulative_s": 4.5078771
+      }
+    }
+  },
+  {
+    "events": 2400,
+    "costs": {
+      "decode": {
+        "calls": 328510,
+        "own_s": 1.6375422000000002,
+        "cumulative_s": 14.7215112
+      },
+      "load": {
+        "calls": 621262,
+        "own_s": 0.48468360000000005,
+        "cumulative_s": 16.7408383
+      },
+      "<method '__exit__' of 'sqlite3.Connection' objects>": {
+        "calls": 9600,
+        "own_s": 11.7972105,
+        "cumulative_s": 11.7972105
+      }
+    }
+  },
+  {
+    "events": 4800,
+    "costs": {
+      "decode": {
+        "calls": 727396,
+        "own_s": 3.6287731,
+        "cumulative_s": 32.6204155
+      },
+      "load": {
+        "calls": 1371462,
+        "own_s": 1.0636043000000002,
+        "cumulative_s": 37.2022594
+      },
+      "<method '__exit__' of 'sqlite3.Connection' objects>": {
+        "calls": 19200,
+        "own_s": 23.5132535,
+        "cumulative_s": 23.5132535
+      }
+    }
+  }
+]

@@ -264,17 +264,53 @@ to be decoded and authenticated; no stored digest replaces recomputation.
 
 The Queue 2 projector-2 probe at 1,200/2,400/4,800 events measured verification
 at 3.06/13.77/27.90 seconds before these three repeats were removed and
-1.75/4.02/10.61 seconds after. Retained node counts (39,181/86,559/188,969),
+1.75/4.02/10.61 seconds after. Both runs used Python 3.14.2 / Windows 11
+(`Windows-11-10.0.26200-SP0`). Before measured revision
+`70ab04aaa57b5b69d158fc52db418a4b4907a55f`; after measured an uncommitted
+working tree at HEAD `9d08ceb4eca60d41f574dbb6fd04f47d72c4ad12`, with the final
+verifier change subsequently committed as
+`cc16173f2d7ebc4fb444b7ae0c2a3445b7f8600c`. Exact commands from the repository
+root were `.venv\Scripts\python -B scripts/probe_store_scaling.py --skip-projector-1 --sizes 1200 2400 4800 --json scratch/sol-c-scaling-before.json`
+and `.venv\Scripts\python -B scripts/probe_store_scaling.py --skip-projector-1 --sizes 1200 2400 4800 --json scratch/sol-c-scaling-after.json`.
+The unchanged raw results are retained as
+[before](design/2026-10-03-verifier-scaling-before.json) and
+[after](design/2026-10-03-verifier-scaling-after.json).
+Retained node counts (39,181/86,559/188,969),
 content bytes and checkpointed file bytes matched at every size; all stores
 verified. Before cProfile at 4,800 events spent 30.45 seconds in descendant
 predicates, 6.75 in digest syntax and 5.19 in canonical JSON (nested cumulative
-costs, 69.10 seconds total). Single-run timings are machine/load dependent.
+costs, 69.10 seconds total), via
+`.venv\Scripts\python -B scratch/sol-c-profile-verifier.py`, which profiled
+verification only using the same sizes and projector selection. That process
+loaded the before revision once, before source edits. Single-run timings are
+machine/load dependent.
 Subtree map copies and intersections remain; this is not a claim of linear
 end-to-end auditing or a new retention policy.
 
 **Projector-2 ingestion profile (2026-10-03):** the same 1,200/2,400/4,800-event
 probe measured ordinary ingestion at 10.39/26.67/53.17 seconds (a second run:
-12.06/23.54/53.73). Isolated production preparation/submission cProfile call
+12.06/23.54/53.73). Both runs used Python 3.14.2 / Windows 11
+(`Windows-11-10.0.26200-SP0`): the first measured revision
+`70ab04aaa57b5b69d158fc52db418a4b4907a55f`; the second measured an uncommitted
+working tree at HEAD `9d08ceb4eca60d41f574dbb6fd04f47d72c4ad12`, whose verifier
+code was subsequently committed as
+`cc16173f2d7ebc4fb444b7ae0c2a3445b7f8600c` (ingestion code was unchanged).
+Exact commands from the repository root were
+`.venv\Scripts\python -B scripts/probe_store_scaling.py --skip-projector-1 --sizes 1200 2400 4800 --json scratch/sol-c-scaling-before.json`
+and `.venv\Scripts\python -B scripts/probe_store_scaling.py --skip-projector-1 --sizes 1200 2400 4800 --json scratch/sol-c-scaling-after.json`;
+raw results are retained as
+[first run](design/2026-10-03-verifier-scaling-before.json) and
+[second run](design/2026-10-03-verifier-scaling-after.json).
+The isolated profile measured committed revision
+`cc16173f2d7ebc4fb444b7ae0c2a3445b7f8600c` on the same Python/OS, using
+`.venv\Scripts\python -B scratch/sol-c-profile-ingestion.py`. That wrapper
+invoked `probe_store_scaling.main` with
+`--skip-projector-1 --sizes 1200 2400 4800 --json D:\ProjectNyx\scratch\sol-c-ingestion-profile.json`
+and profiled only production `prepare_mention`, `prepare_observation` and
+`submit` call trees for ingestion, separately profiling verification. The raw
+[ingestion profile costs](design/2026-10-03-ingestion-profile.json) retain the
+selected operation counts and timings extracted from those cProfile results.
+Isolated production preparation/submission cProfile call
 trees took 17.15/39.98/84.73 seconds; node decodes counted
 146,498/328,510/727,396, while transaction exits stayed at four per event.
 At 4,800 events, indexed node loads took 37.20 profiled seconds, including
