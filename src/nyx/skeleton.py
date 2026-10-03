@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
-from . import immune, storage, hashing, writer, ingestion
+from . import immune, storage, hashing, writer
 from .events import CORRECTION_APPENDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED
 from .projection import _instant
 from .timestamps import validate_timestamp
@@ -120,7 +120,12 @@ def _record_stage_two(db_path, event_type, recorded_event, projector_version):
     validate_timestamp(recorded_event[0].occurred_at)
     conn = storage.init_db(db_path)
     try:
-        ingestion.submit(conn, recorded_event, datetime.now(timezone.utc).isoformat(), projector_version)
+        with conn.append_lock:
+            storage.materialize_pending(conn, _live_as_of(conn), projector_version)
+            storage.append_submission(conn, recorded_event, projector_version)
+            # This live caller samples after append and includes a clamped tip.
+            # Explicit-cutoff ingestion.submit retains its caller's as_of.
+            storage.materialize_pending(conn, _live_as_of(conn), projector_version)
         import json
         payload = json.loads(recorded_event[1].ciphertext)
         if event_type == ENTITY_MENTION_RECORDED:

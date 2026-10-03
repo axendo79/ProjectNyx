@@ -45,6 +45,17 @@ Proposed stage-three draft: [ADR 0027](decisions/0027-stage-three-authority-and-
 
 ## Correctness gaps
 
+### Live stage-two publication cutoff — RV1, resolved
+**RESOLVED (2026-10-03):** `skeleton._record_stage_two` samples live evaluation
+time after append using `_live_as_of`, including a tip clamped ahead of the clock
+under [ADR 0030](decisions/0030-sole-writer-and-positional-fields.md).
+It publishes the committed prefix before returning mention or belief results.
+`ingestion.submit` preserves its caller's explicit recording-time cutoff under
+[ADR 0010 §3b](decisions/0010-projection-parameters.md#3b-fold-takes-an-explicit-evaluation-time).
+`tests/test_live_stage_two_publication.py` covers advancing real writer clocks,
+tolerated clamping, both stage-two projectors, and complete returned-result
+equality with replay at the publication time. Historical cutoffs remain intact.
+
 ### Redaction breaks the write path and replay
 `src/nyx/storage.py` · Invariant 14 · unbuilt, **will fail loudly if reached**
 
