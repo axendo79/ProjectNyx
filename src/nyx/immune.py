@@ -45,7 +45,8 @@ def stage1_schema_validate(raw: Mapping[str, Any]) -> ImmuneResult:
     the caller. The reject-and-RECORD path is a later slice (§8), not part of §6.
     """
     for key in _REQUIRED:
-        if key not in raw or (key != "value" and raw[key] in (None, "")):
+        # ADR 0033 sections 2-3 distinguish absent fields from invalid domains.
+        if key not in raw or (key not in ("value", "verifiability") and raw[key] in (None, "")):
             return ImmuneResult(accepted=False, stage_reached=1, reason=f"missing field: {key}")
     integrity.validate_legacy_submission(raw)
     source = raw.get("source")

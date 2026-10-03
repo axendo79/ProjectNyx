@@ -70,6 +70,8 @@ def retained(conn, data, kind):
     pytest.param("value", {}, id="object"),
     pytest.param("verifiability", "bogus", id="unknown-label"),
     pytest.param("verifiability", 42, id="non-string-label"),
+    pytest.param("verifiability", None, id="null-label"),
+    pytest.param("verifiability", "", id="empty-label"),
 ])
 def test_domain_refusal_preserves_layer_a(published, monkeypatch, kind, boundary, field, bad):
     _, conn = published
@@ -129,8 +131,14 @@ def test_stage1_missing_value_still_returns_missing_field(published):
     assert layer_a(conn) == before
 
 
-@pytest.mark.parametrize("field", ["belief_id", "verifiability", "occurred_at", "source", "source_class"])
-@pytest.mark.parametrize("missing", ["absent", "null", "empty"])
+# ADR 0033 section 3: present null/empty verifiability are domain refusals above;
+# only an absent verifiability retains the missing-field ImmuneResult contract.
+@pytest.mark.parametrize("field,missing", [
+    (field, missing)
+    for field in ("belief_id", "verifiability", "occurred_at", "source", "source_class")
+    for missing in ("absent", "null", "empty")
+    if field != "verifiability" or missing == "absent"
+])
 def test_other_stage1_missing_field_behavior_unchanged(published, field, missing):
     _, conn = published
     data = raw()

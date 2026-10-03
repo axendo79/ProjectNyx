@@ -333,6 +333,15 @@ covers the corrupted fixture, clean stores for all projectors and independence
 from the production idempotency helper; legacy numeric-history fixtures retain
 their accepted TEXT-affinity verification behavior.
 
+### Stage 1 verifiability null/empty refusal — resolved
+**Resolved under [ADR 0033 §3](decisions/0033-projector-0-value-and-verifiability-domain.md#3-verifiability-domain):**
+Stage 1 now treats present null and empty-string verifiability as domain
+violations and raises `IntegrityError`, matching ordinary and low-level legacy
+append boundaries. Only an absent verifiability retains the missing-field
+`ImmuneResult`; other required fields keep their existing missing-field behavior.
+The all-boundary tests in `tests/test_legacy_admission_domain.py` cover both
+observation and correction submissions and preserve event count and tip hash.
+
 ### Duplicate-key payload text is accepted outside canonical writer preparation
 **Open hardening / decision-blocked:** `src/nyx/integrity.py`, `storage.py`;
 original-text authentication and cross-decoder interpretation are not established
