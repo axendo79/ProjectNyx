@@ -272,6 +272,19 @@ costs, 69.10 seconds total). Single-run timings are machine/load dependent.
 Subtree map copies and intersections remain; this is not a claim of linear
 end-to-end auditing or a new retention policy.
 
+**Projector-2 ingestion profile (2026-10-03):** the same 1,200/2,400/4,800-event
+probe measured ordinary ingestion at 10.39/26.67/53.17 seconds (a second run:
+12.06/23.54/53.73). Isolated production preparation/submission cProfile call
+trees took 17.15/39.98/84.73 seconds; node decodes counted
+146,498/328,510/727,396, while transaction exits stayed at four per event.
+At 4,800 events, indexed node loads took 37.20 profiled seconds, including
+32.62 in decoding; transaction exits took 23.51 (nested costs). No mechanical
+quadratic was established. Indexed changed-path work, authenticated loads and
+retained-node publication are consistent with ADR 0025 sections 5/7, including
+actual-height and database-index costs. Ingestion, publication boundaries,
+retention, roots and bytes are unchanged; no policy or replacement algorithm
+is inferred from these single-workload measurements.
+
 ### Corpus restriction — R4, policy in force; erasure unbuilt
 **Public-corpus policy:** public corpus only until the erasure requirements
 (Gate 3 of proposed ADR 0027 together with proposed ADR 0028 9 and 11) are
