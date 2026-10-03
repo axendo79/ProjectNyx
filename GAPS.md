@@ -460,6 +460,25 @@ absence in the inspected persisted corpus, not a universal "no float ever
 committed" claim. Float exclusion would not change those seed values, but is not
 a no-op across the existing encoder/replay domain and helper fixtures.
 
+**Bounded independent evidence (Queue 3):**
+`tests/test_canonical_independence.py` implements a test-only Python encoder
+without the shared canonical utility or Python JSON encoder. Known byte vectors
+and 609 deterministic payloads (seeds 0, 1729, 20261003) match the accepted
+serializer. A fault-injection test fails with the previous shared test helper
+and passes with the independent encoder. The optional Node oracle in
+`tests/fixtures/canonical_subset.js` independently orders object keys by Unicode
+code point and reproduces the same UTF-8 bytes and SHA-256 digests; it passed on
+Node v24.11.1. This covers null, booleans, safe integers within ±(2**53-1), Unicode
+scalar strings (including controls, astral characters and distinct NFC/NFD
+spellings), ordered lists and string-keyed objects. Integer-like object keys
+also exercise lexical ordering rather than JavaScript enumeration order.
+This is an evidence subset, not a new production admission restriction. Floats,
+nonfinite numbers, larger integers, surrogate-containing strings, ambiguous
+parser inputs, cross-runtime-version stability and the private/wire codec are
+not covered by this comparison. The standalone verifier still uses its shared
+primitives; no independent protocol review or Proposed Gate 2/3 closure is
+claimed. The broader gap remains open and decision-blocked.
+
 **Classification rationale:** closing the cross-language private codec and its
 evidence requires unresolved B2 rulings under the Proposed contract, rather than
 an already specified correctness fix. Questions 1–3/6–7/9–11 and the measurement
