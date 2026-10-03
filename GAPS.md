@@ -237,6 +237,54 @@ they do not establish linear end-to-end work. Historical subtree enumeration,
 branch membership checks and map copies still grow with retained content. No
 retention policy, weaker check or new semantic rule is introduced.
 
+**Verifier descendant predicate repeat resolved (2026-10-03):** retained-tree
+audits cache routing extrema for each immutable node. ADR 0025 section 2's
+prefix/side constraint is a contiguous interval, so testing both extrema is
+equivalent to testing every descendant. Node visits, duplicate-key checks,
+branch acceptance checks and independent root reconstruction remain in place.
+At 64/128 keys, prefix-predicate operations fell from 4,223/16,713 to 1,264/3,020
+for 316/755 retained branches: four operations per branch. Complete reports and
+reconstructed maps match exhaustive routing for valid content and rehashed
+retained branches with wrong prefix, wrong side or duplicate children. This
+removes repeated predicate evaluation, not subtree map copies or retention.
+
+**Verifier digest-syntax repeat resolved (2026-10-03):** within one immutable
+node audit, digest syntax is validated once per distinct string, while each
+invalid reference still reports its own existing failure. For 16/32 keys the
+count fell from 212/540 to 76/179, including repeated malformed-child references.
+Complete reports/maps match uncached validation. Non-string digests still
+refuse; this cache changes no ADR 0025 hash, node, routing or root check.
+
+**Verifier node-encoding repeat resolved (2026-10-03):** each retained node is
+canonicalized once and the same canonical bytes supply both its SHA-256 and
+raw-encoding comparison under ADR 0025 section 2. At 16/32 nodes serialization
+calls fell from 32/64 to 16/32. Independent hash corruption and noncanonical
+encoding still fail the named Merkle check. Complete stored content continues
+to be decoded and authenticated; no stored digest replaces recomputation.
+
+The Queue 2 projector-2 probe at 1,200/2,400/4,800 events measured verification
+at 3.06/13.77/27.90 seconds before these three repeats were removed and
+1.75/4.02/10.61 seconds after. Retained node counts (39,181/86,559/188,969),
+content bytes and checkpointed file bytes matched at every size; all stores
+verified. Before cProfile at 4,800 events spent 30.45 seconds in descendant
+predicates, 6.75 in digest syntax and 5.19 in canonical JSON (nested cumulative
+costs, 69.10 seconds total). Single-run timings are machine/load dependent.
+Subtree map copies and intersections remain; this is not a claim of linear
+end-to-end auditing or a new retention policy.
+
+**Projector-2 ingestion profile (2026-10-03):** the same 1,200/2,400/4,800-event
+probe measured ordinary ingestion at 10.39/26.67/53.17 seconds (a second run:
+12.06/23.54/53.73). Isolated production preparation/submission cProfile call
+trees took 17.15/39.98/84.73 seconds; node decodes counted
+146,498/328,510/727,396, while transaction exits stayed at four per event.
+At 4,800 events, indexed node loads took 37.20 profiled seconds, including
+32.62 in decoding; transaction exits took 23.51 (nested costs). No mechanical
+quadratic was established. Indexed changed-path work, authenticated loads and
+retained-node publication are consistent with ADR 0025 sections 5/7, including
+actual-height and database-index costs. Ingestion, publication boundaries,
+retention, roots and bytes are unchanged; no policy or replacement algorithm
+is inferred from these single-workload measurements.
+
 ### Corpus restriction — R4, policy in force; erasure unbuilt
 **Public-corpus policy:** public corpus only until the erasure requirements
 (Gate 3 of proposed ADR 0027 together with proposed ADR 0028 9 and 11) are
@@ -411,6 +459,25 @@ do contain floats: `test_reducer_boundary.py:297–305` canonicalizes snapshot v
 absence in the inspected persisted corpus, not a universal "no float ever
 committed" claim. Float exclusion would not change those seed values, but is not
 a no-op across the existing encoder/replay domain and helper fixtures.
+
+**Bounded independent evidence (Queue 3):**
+`tests/test_canonical_independence.py` implements a test-only Python encoder
+without the shared canonical utility or Python JSON encoder. Known byte vectors
+and 609 deterministic payloads (seeds 0, 1729, 20261003) match the accepted
+serializer. A fault-injection test fails with the previous shared test helper
+and passes with the independent encoder. The optional Node oracle in
+`tests/fixtures/canonical_subset.js` independently orders object keys by Unicode
+code point and reproduces the same UTF-8 bytes and SHA-256 digests; it passed on
+Node v24.11.1. This covers null, booleans, safe integers within ±(2**53-1), Unicode
+scalar strings (including controls, astral characters and distinct NFC/NFD
+spellings), ordered lists and string-keyed objects. Integer-like object keys
+also exercise lexical ordering rather than JavaScript enumeration order.
+This is an evidence subset, not a new production admission restriction. Floats,
+nonfinite numbers, larger integers, surrogate-containing strings, ambiguous
+parser inputs, cross-runtime-version stability and the private/wire codec are
+not covered by this comparison. The standalone verifier still uses its shared
+primitives; no independent protocol review or Proposed Gate 2/3 closure is
+claimed. The broader gap remains open and decision-blocked.
 
 **Classification rationale:** closing the cross-language private codec and its
 evidence requires unresolved B2 rulings under the Proposed contract, rather than
