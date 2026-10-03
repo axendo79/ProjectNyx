@@ -210,6 +210,18 @@ projectors, replacing 120/496 comparisons. Malformed unhashable properties retai
 the prior comparison path. This removes this quadratic scan, not all verifier
 scaling costs; retained-node validation and lineage reconstruction remain.
 
+**RV4 legacy publication loads resolved (2026-10-03):** projector "0" validates
+publication progress in the existing transaction and reads only the target
+belief consumed by its frozen one-belief fold. Ordinary submissions at 16/32
+distinct beliefs now call `read_belief` 32/64 times instead of 392/1,552.
+`tests/test_legacy_publication_scaling.py` compares complete SQL dumps, event
+deltas and publication order against the former full-snapshot algorithm, for
+individual and batch publication including corrections. Faults in belief or
+progress writes roll back completely; retries agree with full replay. Unproven
+progress still refuses. The legacy fold, serialization, hashes, cutoffs and
+transaction boundaries remain under ADRs 0010, 0014 and 0032; golden fixtures
+are unchanged. Other loading paths and stage-two publication are unchanged.
+
 ### Corpus restriction — R4, policy in force; erasure unbuilt
 **Public-corpus policy:** public corpus only until the erasure requirements
 (Gate 3 of proposed ADR 0027 together with proposed ADR 0028 9 and 11) are

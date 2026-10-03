@@ -883,6 +883,23 @@ def _pending_events(conn: sqlite3.Connection, position: int, *, limit: int = -1)
     return [(row[0], envelope, data) for row, (envelope, data) in zip(rows, verified)]
 
 
+def _legacy_publication_position(conn: sqlite3.Connection) -> int:
+    """Validate the legacy prefix without loading beliefs unrelated to its fold."""
+    if not conn.in_transaction:
+        raise RuntimeError("snapshot reads require a transaction")
+    progress = conn.execute(
+        "SELECT log_position, event_id FROM derived_progress WHERE projector_version='0'"
+    ).fetchone()
+    if progress is None:
+        if conn.execute("SELECT 1 FROM resolved_beliefs LIMIT 1").fetchone() is not None:
+            raise RuntimeError("unproven derived rows; recover by full replay")
+        return 0
+    applied = conn.execute("SELECT event_id FROM events WHERE rowid = ?", (progress[0],)).fetchone()
+    if applied != (progress[1],):
+        raise RuntimeError("derived progress does not identify a log prefix; recover by full replay")
+    return progress[0]
+
+
 def materialize_pending(conn: sqlite3.Connection, as_of: str,
                         projector_version: str) -> int:
     """Worker path: publish each next complete event once, in log order.
@@ -899,8 +916,12 @@ def materialize_pending(conn: sqlite3.Connection, as_of: str,
     while True:
         with conn:
             conn.execute("BEGIN IMMEDIATE")
-            snapshot = _read_snapshot(conn, projector_version)
-            pending = _pending_events(conn, snapshot.log_position, limit=1)
+            if projector_version == "0":
+                log_position = _legacy_publication_position(conn)
+            else:
+                snapshot = _read_snapshot(conn, projector_version)
+                log_position = snapshot.log_position
+            pending = _pending_events(conn, log_position, limit=1)
             if not pending or _instant(pending[0][1].recorded_at, "recorded_at") > cutoff:
                 return applied
             position, envelope, payload = pending[0]
@@ -913,7 +934,7 @@ def materialize_pending(conn: sqlite3.Connection, as_of: str,
                     raise NotImplementedError(f"fold handler for {envelope.event_type!r} not implemented")
                 key = payload["belief_id"]
                 delta = EventDelta(envelope.event_id, {
-                    key: projector(snapshot.belief(key), envelope, payload, as_of),
+                    key: projector(read_belief(conn, key), envelope, payload, as_of),
                 })
             _publish_delta(conn, projector_version, position, delta)
         applied += 1
