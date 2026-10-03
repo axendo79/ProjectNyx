@@ -238,6 +238,16 @@ redaction, merge/split or other deferred semantics. Architecture section 13's
 unbuilt-verifier wording predates this implementation; the protected spec has
 not been edited in this pass.
 
+**RV3 idempotency commitment omission resolved (2026-10-03):** the verifier
+independently assembles the V0 §1 / ADR 0003 formula from source actor ID,
+occurred_at, unit separators and canonical payload bytes, using its existing
+hashing primitives. The named `idempotency_key` check rejects a zeroed key even
+when envelope and projection hashes have been recomputed consistently. Unavailable
+payload content is explicitly unchecked for this formula. `tests/test_verify_store.py`
+covers the corrupted fixture, clean stores for all projectors and independence
+from the production idempotency helper; legacy numeric-history fixtures retain
+their accepted TEXT-affinity verification behavior.
+
 ### Duplicate-key payload text is accepted outside canonical writer preparation
 **Open hardening / decision-blocked:** `src/nyx/integrity.py`, `storage.py`;
 original-text authentication and cross-decoder interpretation are not established

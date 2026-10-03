@@ -35,7 +35,7 @@ FIELDS = ('event_id', 'idempotency_key', 'schema_version', 'event_type',
           'payload_hash', 'entity_refs', 'prev_event_hash', 'event_hash')
 KINDS = ('beliefs', 'entities', 'mentions', 'entity_links', 'claim_candidates', 'events')
 COLLECTIONS = ('claim_candidates', 'event_dependencies', 'identity_records')
-CHECKS = ('envelope_hash', 'chain', 'payload_hash', 'recorded_at', 'coverage', 'merkle', 'lineage')
+CHECKS = ('envelope_hash', 'chain', 'payload_hash', 'idempotency_key', 'recorded_at', 'coverage', 'merkle', 'lineage')
 OBSERVATION = 'observation_recorded'
 MENTION = 'entity_mention_recorded'
 CORRECTION = 'correction_appended'
@@ -102,6 +102,7 @@ def read_log(conn, report):
             report.check('recorded_at', eid, False, f'invalid recorded_at: {error}')
             previous_time = None
         data = None
+        payload_available = False
         matching = payloads.pop(eid, [])
         if report.check('payload_hash', eid, len(matching) == 1, f'expected one payload row; found {len(matching)}'):
             payload = matching[0]
@@ -110,11 +111,25 @@ def read_log(conn, report):
                     report.skip('payload_hash', eid, 'redacted payload: no shipped redacted replay contract')
                 else:
                     data = json.loads(payload['ciphertext'])
+                    payload_available = True
                     report.check('payload_hash', eid,
                                  digest(data) == envelope['payload_hash'] == payload['payload_hash'],
                                  'payload hash differs from envelope commitment or payload-row hash')
             except (TypeError, ValueError) as error:
                 report.check('payload_hash', eid, False, f'missing or invalid payload content: {error}')
+        if payload_available:
+            try:
+                source = json.loads(envelope['source'])
+                # V0 section 1 / ADR 0003: independently assemble the formula
+                # using only the verifier's shared serialization/hash primitives.
+                actual_key = hashing._sha256_hex('\x1f'.join([
+                    source['actor_id'], envelope['occurred_at'], hashing.canonical_json(data)]))
+                report.check('idempotency_key', eid, actual_key == envelope['idempotency_key'],
+                             'idempotency key does not match submitted contents')
+            except (TypeError, ValueError, KeyError) as error:
+                report.check('idempotency_key', eid, False, f'cannot compute idempotency key: {error}')
+        else:
+            report.skip('idempotency_key', eid, 'payload content unavailable; idempotency formula cannot be checked')
         entries.append((row['log_position'], envelope, data))
     for eid in payloads:
         report.check('payload_hash', eid, False, 'orphan payload has no event in the log')

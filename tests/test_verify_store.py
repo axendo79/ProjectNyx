@@ -46,7 +46,7 @@ def test_clean_store_counts_and_no_mutation(database):
     assert report['ok'], report['failures']
     assert tuple(conn.iterdump()) == before
     assert report['event_count'] == len(log)
-    for check in ('envelope_hash', 'chain', 'recorded_at'):
+    for check in ('envelope_hash', 'chain', 'recorded_at', 'idempotency_key'):
         assert report['checked'][check] == len(log)
     assert report['checked']['coverage'] >= len(log)
     if version == '2':
@@ -176,6 +176,7 @@ def test_normal_read_and_projector_bugs_cannot_make_verifier_pass(database, monk
         raise AssertionError('normal read/replay validation called')
 
     for module, functions in [
+        (hashing, ('idempotency_key',)),
         (integrity, ('verified_log', 'validate_event', 'validate_envelope', 'decode_payload')),
         (projection, ('fold', 'project', 'project_snapshot', '_state_for_origin', '_instant')),
         (reducer, ('reduce',)), (committed, ('reduce', 'lineage', 'full_result_roots')),
@@ -188,6 +189,31 @@ def test_normal_read_and_projector_bugs_cannot_make_verifier_pass(database, monk
     with database[1]:
         database[1].execute("UPDATE payloads SET ciphertext='{}'")
     targeted(verify(database), 'payload_hash')
+
+
+def test_self_consistent_invalid_idempotency_commitment_fails(tmp_path):
+    """RV3 review fixture: the envelope and derived hashes conceal no other defect."""
+    path = tmp_path / 'idempotency.sqlite'
+    with closing(storage.init_db(path, create=True)) as conn:
+        env, payload = entries('0')[0]
+        storage.safe_append_event(conn, env, payload, '0')
+        storage.materialize_pending(conn, T2, '0')
+        changed = rehash(env, idempotency_key='0' * 64)
+        with conn:
+            conn.execute('DROP TRIGGER no_update_events')
+            conn.execute('UPDATE events SET idempotency_key=?,event_hash=?',
+                         (changed.idempotency_key, changed.event_hash))
+            conn.execute('UPDATE resolved_beliefs SET view_version_hash=?',
+                         (hashing._sha256_hex(changed.event_hash),))
+            conn.execute('UPDATE entity_event_index SET latest_event_hash=?', (changed.event_hash,))
+        with pytest.raises(integrity.IntegrityError, match='idempotency key'):
+            storage.read_all_events(conn)
+        before = tuple(conn.iterdump())
+        report = verifier['verify_store'](path, '0')
+        assert tuple(conn.iterdump()) == before
+        targeted(report, 'idempotency_key')
+        assert {failure['check'] for failure in report['failures']} == {'idempotency_key'}
+        assert report['checked']['idempotency_key'] == 1
 
 
 def test_projected_references_to_absent_events_are_caught(database):
