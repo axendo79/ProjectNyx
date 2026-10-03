@@ -140,6 +140,7 @@ class Trees:
     """Traverse raw node rows, then independently rebuild declared roots."""
     def __init__(self, conn, report):
         self.report, self.nodes, self.memo, self.root_cache = report, {}, {}, {}
+        self.routes = {}
         report.data['merkle_inventory'] = dict(retained_nodes=0, distinct_roots_rebuilt=0, lineage_headers=0)
         for row in conn.execute("SELECT node_hash,content FROM committed_nodes WHERE projector_version='2'"):
             report.data['merkle_inventory']['retained_nodes'] += 1
@@ -156,6 +157,12 @@ class Trees:
         # Retained historical and unreachable nodes are part of the audit too.
         for key in self.nodes:
             self.members(key, set())
+
+    def _route(self, key):
+        # Routing depends only on the immutable key, across all retained nodes.
+        if key not in self.routes:
+            self.routes[key] = merkle.route(key)
+        return self.routes[key]
 
     def members(self, root, active):
         if root == merkle.EMPTY:
@@ -188,7 +195,7 @@ class Trees:
                 right = self.members(node['right'], active)
                 if left is not None and right is not None:
                     valid = bool(left) and bool(right) and not (left.keys() & right.keys())
-                    routes = [(merkle.route(k), side) for side, group in enumerate((left, right)) for k in group]
+                    routes = [(self._route(k), side) for side, group in enumerate((left, right)) for k in group]
                     valid = valid and all(merkle.prefix(bits, node['bit']) == int(node['prefix'], 16)
                                           and merkle.direction(bits, node['bit']) == side for bits, side in routes)
                     if self.report.check('merkle', root, valid, 'noncanonical branching, duplicate key or wrong child routing'):

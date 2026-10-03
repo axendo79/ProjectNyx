@@ -444,6 +444,43 @@ def test_belief_uniqueness_work_scales_linearly(version):
     assert 1.8 * small <= large <= 2.2 * small
 
 
+def test_retained_tree_routes_are_hashed_once_per_key(tmp_path, monkeypatch):
+    original = merkle.route
+    calls = []
+
+    def counted(key):
+        calls.append(key)
+        return original(key)
+
+    monkeypatch.setattr(merkle, 'route', counted)
+    counts = []
+    for size in (16, 32):
+        path = tmp_path / f'routes-{size}.sqlite'
+        nodes, tree = {}, None
+        for index in range(size):
+            tree = merkle.put(tree, f'key-{index}', {'value': index}, nodes)
+        with closing(storage.init_db(path, create=True)) as conn:
+            with conn:
+                conn.executemany('INSERT INTO committed_nodes VALUES (?,?,?)',
+                                 [('2', key, raw) for key, raw in nodes.items()])
+            calls.clear()
+            report = verifier['Report'](path, '2')
+            trees = verifier['Trees'](conn, report)
+            counts.append(len(calls))
+            assert report.result()['ok'], report.result()['failures']
+            assert len(set(calls)) == size
+            # Compare every check, inventory count and reconstructed node map
+            # with uncached routing, not merely final success or timing.
+            with monkeypatch.context() as patch:
+                patch.setattr(verifier['Trees'], '_route', lambda self, key: original(key), raising=False)
+                reference_report = verifier['Report'](path, '2')
+                reference = verifier['Trees'](conn, reference_report)
+            assert report.result() == reference_report.result()
+            assert trees.memo == reference.memo
+    print(f'keys=16/32, retained-tree routing hashes={counts[0]}/{counts[1]}')
+    assert counts == [16, 32]
+
+
 def test_cli_json_human_and_failing_exit(database, capsys):
     path, conn, version, _ = database
     main = verifier['main']

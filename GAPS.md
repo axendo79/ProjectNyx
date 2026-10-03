@@ -197,7 +197,7 @@ the latter store is 48,660,480 bytes (20,275.20 bytes/event). These fixed fixtur
 IDs differ from the review's, so node counts are not asserted to match it.
 The verifier's repeated publication-prefix copy is fixed and deterministically
 tested, but total version-2 verification still scales superlinearly in this run
-(14.84/48.10 seconds at 1,200/2,400 events). Other verifier work remains unchanged;
+(14.84/48.10 seconds at 1,200/2,400 events). Those timings predate the verifier changes below;
 the copy-count regression is not a claim of linear end-to-end verification.
 
 **RV5 uniqueness scan resolved (2026-10-03):** independent replay maintains a
@@ -221,6 +221,21 @@ progress writes roll back completely; retries agree with full replay. Unproven
 progress still refuses. The legacy fold, serialization, hashes, cutoffs and
 transaction boundaries remain under ADRs 0010, 0014 and 0032; golden fixtures
 are unchanged. Other loading paths and stage-two publication are unchanged.
+
+**Verifier routing repeat resolved (2026-10-03):** a 2,400-event cProfile run
+spent 39.29 of 59.56 profiled seconds in 11,385,321 `merkle.route` calls, within
+53.97 seconds of retained-tree membership validation. Routing bits depend only
+on the exact immutable string key under
+[ADR 0025](decisions/0025-incremental-result-commitment.md); the verifier now
+caches them within each `Trees` audit. Every node, branch, root and lineage
+check still runs. Deterministic retained-tree tests count 16/32 hashes at 16/32
+keys instead of 263/1,058, and compare complete audit reports and reconstructed
+maps against uncached routing. A fresh-store projector-2 probe at 600/1,200/2,400
+events measured verification at 1.95/6.25/21.74 seconds before this cache and
+2.18/6.12/17.89 seconds after it. These single-run timings vary with machine load;
+they do not establish linear end-to-end work. Historical subtree enumeration,
+branch membership checks and map copies still grow with retained content. No
+retention policy, weaker check or new semantic rule is introduced.
 
 ### Corpus restriction — R4, policy in force; erasure unbuilt
 **Public-corpus policy:** public corpus only until the erasure requirements
