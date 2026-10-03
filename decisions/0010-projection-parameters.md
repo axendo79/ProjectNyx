@@ -12,7 +12,7 @@ Supersedes: nothing
 
 Related: Invariant 9; GAPS.md (as_of and projector_version silently ignored)
 
-Implementation: `projection.project` and `project_snapshot` apply inclusive `recorded_at` cutoffs and dispatch the registered projector; "0", "1" and "2" now ship, with "0" still the default. Reducers receive explicit evaluation time, and belief `updated_at` comes from its last included contributing event. Low-level append integrity checks refuse supplied pairs with backward recording times; ADR 0030's ordinary writer assignment and clock checks are accepted but pending implementation. Coverage of the shipped behavior is in `tests/test_projection_parameters.py`, `tests/test_recorded_at_monotonicity.py` and the stage-two suites. Checked 2026-09-13; the ignored-parameter and ADR 0008 blocker descriptions below record the decision-time state.
+Implementation: `projection.project` and `project_snapshot` apply inclusive `recorded_at` cutoffs and dispatch the registered projector; "0", "1" and "2" now ship, with "0" still the default. Reducers receive explicit evaluation time, and belief `updated_at` comes from its last included contributing event. Low-level append integrity checks refuse supplied pairs with backward recording times; ADR 0030's ordinary writer assignment and clock checks are implemented in commit `30a4e5d5ee9ee56c0670ec6e50788e5cc523eda5` (as recorded in ADR 0030's Implementation line). Coverage of the shipped behavior is in `tests/test_projection_parameters.py`, `tests/test_recorded_at_monotonicity.py` and the stage-two suites. Checked 2026-09-13; the ignored-parameter and ADR 0008 blocker descriptions below record the decision-time state.
 
 
 

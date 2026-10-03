@@ -8,7 +8,7 @@ Supersedes: [ADR 0019's consequences](0019-identity-bootstrap.md#consequences), 
 
 Related: [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md); [ADR 0015](0015-candidate-scoped-verification.md); [ADR 0017](0017-schema-version-3.md); [ADR 0018](0018-correction-supersedes-candidates.md); [ADR 0020](0020-multi-user-authority-undecided.md); [ADR 0021](0021-bootstrap-link-treatment.md); [ADR 0022](0022-belief-container-uniqueness.md)
 
-Implementation: The original stage-two contract is implemented under projector "1" in `src/nyx/ingestion.py`, `src/nyx/reducer.py`, and `src/nyx/storage.py`, with coverage in `tests/test_reducer_boundary.py`. ADR 0030's semantic/positional retry amendment is accepted but pending implementation. The stated stage refusals remain in force. The lineage-scaling probe is reported in `README.md`; the untested-hazard wording below records the decision-time state. Status updated 2026-09-11; other implementation-status statements below also describe the decision-time state.
+Implementation: The original stage-two contract is implemented under projector "1" in `src/nyx/ingestion.py`, `src/nyx/reducer.py`, and `src/nyx/storage.py`, with coverage in `tests/test_reducer_boundary.py`. ADR 0030's semantic/positional retry amendment is implemented in commit `30a4e5d5ee9ee56c0670ec6e50788e5cc523eda5` (as recorded in ADR 0030's Implementation line). The stated stage refusals remain in force. The lineage-scaling probe is reported in `README.md`; the untested-hazard wording below records the decision-time state. Status updated 2026-09-11; other implementation-status statements below also describe the decision-time state.
 
 ## Context
 
