@@ -309,6 +309,7 @@ class Replay:
         self.records = {kind: {} for kind in KINDS}
         self.collections = {}
         self.history = {}
+        self.belief_pairs = {}
 
     def append(self, envelope, payload):
         if not isinstance(payload, dict):
@@ -348,9 +349,16 @@ class Replay:
             if cid in records['claim_candidates'] or records['mentions'][mid]['subject_id'] != sid:
                 raise ValueError('candidate reused or mention/subject mismatch')
             entity, mention, link = records['entities'][sid], records['mentions'][mid], records['entity_links'][mid]
-            for other_id, other in records['beliefs'].items():
-                if (other['subject_id'], other['property_id']) == (sid, claim['property_id']) and other_id != bid:
-                    raise ValueError('duplicate subject/property belief')
+            pair = (sid, claim['property_id'])
+            try:
+                other_id = self.belief_pairs.get(pair)
+            except TypeError:
+                # Preserve the old comparison behavior for malformed, unhashable
+                # properties; accepted properties are exact opaque strings.
+                other_id = next((key for key, other in records['beliefs'].items()
+                                 if (other['subject_id'], other['property_id']) == pair), None)
+            if other_id is not None and other_id != bid:
+                raise ValueError('duplicate subject/property belief')
             if bid in records['beliefs'] and (records['beliefs'][bid]['subject_id'], records['beliefs'][bid]['property_id']) != (sid, claim['property_id']):
                 raise ValueError('belief changes subject/property')
             candidate = dict(claim, verification_state='verified',
@@ -369,6 +377,10 @@ class Replay:
             groups['event_dependencies'][link['event_id']] = records['events'][link['event_id']]
             records['beliefs'].setdefault(bid, dict(belief_id=bid, subject_id=sid, property_id=claim['property_id'],
                                                    lifecycle_status='current', predecessors=[], resolution_status='no_authoritative_head'))
+            try:
+                self.belief_pairs[pair] = bid
+            except TypeError:
+                pass  # Unhashable malformed properties use the comparison path.
             touched.add(bid)
         for bid in sorted(touched):
             belief = records['beliefs'][bid]

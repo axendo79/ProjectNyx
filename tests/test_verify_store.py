@@ -386,6 +386,64 @@ def test_replay_copy_count_scales_without_recopying_prefix(tmp_path, monkeypatch
         assert large <= 2 * small + 2
 
 
+@pytest.mark.parametrize('version', ['1', '2'])
+@pytest.mark.parametrize('property_id', ['P', ['P']])
+@pytest.mark.parametrize('conflict', ['duplicate', 'changed'])
+def test_uniqueness_index_preserves_refusals(version, property_id, conflict):
+    replay = verifier['Replay'](version, None)
+    first = event(events.ENTITY_MENTION_RECORDED, mention())
+    replay.append(first[0].__dict__, json.loads(first[1].ciphertext))
+    data = claim()
+    data['property_id'] = property_id
+    second = event(events.OBSERVATION_RECORDED, {'claims': [data]}, 2, first)
+    replay.append(second[0].__dict__, {'claims': [data]})
+    changed = {**data, 'claim_candidate_id': 'c-new'}
+    if conflict == 'duplicate':
+        changed['belief_id'] = 'b-new'
+        message = 'duplicate subject/property belief'
+    else:
+        changed['property_id'] = 'different'
+        message = 'belief changes subject/property'
+    third = event(events.OBSERVATION_RECORDED, {'claims': [changed]}, 3, second)
+    with pytest.raises(ValueError, match=message):
+        replay.append(third[0].__dict__, {'claims': [changed]})
+
+
+@pytest.mark.parametrize('version', ['1', '2'])
+def test_belief_uniqueness_work_scales_linearly(version):
+    # Count pair equality/hash work, independent of elapsed time and index layout.
+    operations = 0
+
+    class Property(str):
+        def __eq__(self, other):
+            nonlocal operations
+            operations += 1
+            return super().__eq__(other)
+
+        def __hash__(self):
+            nonlocal operations
+            operations += 1
+            return super().__hash__()
+
+    counts = []
+    for size in (16, 32):
+        replay = verifier['Replay'](version, None)
+        first = event(events.ENTITY_MENTION_RECORDED, mention())
+        replay.append(first[0].__dict__, json.loads(first[1].ciphertext))
+        operations = 0
+        previous = first
+        for index in range(size):
+            data = claim(f'c-{index}', f'b-{index}')
+            data['property_id'] = Property(f'P-{index}')
+            previous = event(events.OBSERVATION_RECORDED, {'claims': [data]}, index + 2, previous)
+            replay.append(previous[0].__dict__, {'claims': [data]})
+        counts.append(operations)
+    small, large = counts
+    print(f'{version}: beliefs=16/32, pair operations={small}/{large}')
+    assert small > 0
+    assert 1.8 * small <= large <= 2.2 * small
+
+
 def test_cli_json_human_and_failing_exit(database, capsys):
     path, conn, version, _ = database
     main = verifier['main']

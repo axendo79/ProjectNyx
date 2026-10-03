@@ -200,6 +200,16 @@ tested, but total version-2 verification still scales superlinearly in this run
 (14.84/48.10 seconds at 1,200/2,400 events). Other verifier work remains unchanged;
 the copy-count regression is not a claim of linear end-to-end verification.
 
+**RV5 uniqueness scan resolved (2026-10-03):** independent replay maintains a
+subject/property-to-belief index as beliefs are created, preserving the existing
+duplicate-container and changed-association refusals under
+[ADR 0022](decisions/0022-belief-container-uniqueness.md) and
+[ADR 0023](decisions/0023-stage-two-contract.md). For 16/32 distinct pairs,
+`tests/test_verify_store.py` counts 16/32 pair operations for both stage-two
+projectors, replacing 120/496 comparisons. Malformed unhashable properties retain
+the prior comparison path. This removes this quadratic scan, not all verifier
+scaling costs; retained-node validation and lineage reconstruction remain.
+
 ### Corpus restriction — R4, policy in force; erasure unbuilt
 **Public-corpus policy:** public corpus only until the erasure requirements
 (Gate 3 of proposed ADR 0027 together with proposed ADR 0028 9 and 11) are
