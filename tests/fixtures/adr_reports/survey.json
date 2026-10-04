@@ -1,0 +1,374 @@
+{
+  "baseline": "a30e94acf0ef86f881a7d68b9d950aa3a6740656",
+  "reference": "scratch/ratify_adr0031_survey.py; scratch/adr0031-ratify-survey.json",
+  "revisions": [
+    {
+      "path": "decisions/0001-observation-recorded-resolves-to-verified.md",
+      "blob": "2251b1c215906111506c4d122f1ba01c1fe3e6d0"
+    },
+    {
+      "path": "decisions/0001-observation-recorded-resolves-to-verified.md",
+      "blob": "4a6ec96f0793b596c35d089e073e1495a360d96e"
+    },
+    {
+      "path": "decisions/0002-payload-stored-plaintext-in-v0.md",
+      "blob": "206098415e54913a2ccc711e63eda293e97c35f3"
+    },
+    {
+      "path": "decisions/0002-payload-stored-plaintext-in-v0.md",
+      "blob": "a2b50997c36c49b7e2831e240046b4aeb12abe11"
+    },
+    {
+      "path": "decisions/0003-genesis-sentinels-and-hash-material-delimiters.md",
+      "blob": "764350d26513a16da4290d3425a720d06cebe8ec"
+    },
+    {
+      "path": "decisions/0003-genesis-sentinels-and-hash-material-delimiters.md",
+      "blob": "d08834387cb913a6d91a45fe38a2d540e15618dd"
+    },
+    {
+      "path": "decisions/0004-correction-appended-supersedes-via-superseding-events.md",
+      "blob": "125b6dffb17b38f99525efe3bcce3f818621fc59"
+    },
+    {
+      "path": "decisions/0004-correction-appended-supersedes-via-superseding-events.md",
+      "blob": "88d9e13e7f3b6d5cf0c4255e4764228ac0f816d8"
+    },
+    {
+      "path": "decisions/0004-correction-appended-supersedes-via-superseding-events.md",
+      "blob": "a7fd28550b6458a1da380bd45f376f0add1e3acf"
+    },
+    {
+      "path": "decisions/0005-backdated-corrections-fail-loud-pending-semantics.md",
+      "blob": "4e98758190cc4b3423ebfcf15895fdfa1e93b7ff"
+    },
+    {
+      "path": "decisions/0005-backdated-corrections-fail-loud-pending-semantics.md",
+      "blob": "8c1ca5d3bb45a943333a90d7e77e9b4f4ea1bf9e"
+    },
+    {
+      "path": "decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md",
+      "blob": "47127ed7d93368582b951d9f728f2fab12fc4cdf"
+    },
+    {
+      "path": "decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md",
+      "blob": "8b13952d5065749f2858a764607bfab4404b0f50"
+    },
+    {
+      "path": "decisions/0007-payloads-keyed-by-event-id-not-payload-hash.md",
+      "blob": "54a683a9697892cf88a53df5f09eb86ae86460ac"
+    },
+    {
+      "path": "decisions/0007-payloads-keyed-by-event-id-not-payload-hash.md",
+      "blob": "e19cbb36f4cd4718cc7348b1b17d8168ccc85c36"
+    },
+    {
+      "path": "decisions/0008-fold-signature-cannot-express-cross-belief-events.md",
+      "blob": "4c578ceb4b11725b11f1b32985808f139a70e5fa"
+    },
+    {
+      "path": "decisions/0008-fold-signature-cannot-express-cross-belief-events.md",
+      "blob": "58c02463ac4501dc032ef50309699baa9f2408c8"
+    },
+    {
+      "path": "decisions/0008-fold-signature-cannot-express-cross-belief-events.md",
+      "blob": "66e40fb36ffa9fcb2659805191d06d520ad55563"
+    },
+    {
+      "path": "decisions/0008-fold-signature-cannot-express-cross-belief-events.md",
+      "blob": "bfcffd1557919caf527d256c6033a4f3d9ba3c12"
+    },
+    {
+      "path": "decisions/0008-fold-signature-cannot-express-cross-belief-events.md",
+      "blob": "c72c5c308065ca9145cc0f0f753c783bf0c10aba"
+    },
+    {
+      "path": "decisions/0009-projection-parameters.md",
+      "blob": "2760d7ecce00656182dbbc6536d06552781e1c77"
+    },
+    {
+      "path": "decisions/0009-projection-parameters.md",
+      "blob": "3f316655beaea7dd2586a943546df713630f9f1c"
+    },
+    {
+      "path": "decisions/0009-projection-parameters.md",
+      "blob": "67e7f46e0cd558b64cebfea6af4ffda4fbb4cb81"
+    },
+    {
+      "path": "decisions/0009-python-314-re-adopted-as-target.md",
+      "blob": "16c7f8e1d154872af94bc35a1befb045c8f0c01f"
+    },
+    {
+      "path": "decisions/0009-python-314-re-adopted-as-target.md",
+      "blob": "a495d359f6f7fff2b1edcba09b9a32044aab27b6"
+    },
+    {
+      "path": "decisions/0010-projection-parameters.md",
+      "blob": "3f26f3a08fb6922a761d9193f1f732b63b197304"
+    },
+    {
+      "path": "decisions/0010-projection-parameters.md",
+      "blob": "41074a922131e2acae611a2bf6521c7efd9fc5a2"
+    },
+    {
+      "path": "decisions/0010-projection-parameters.md",
+      "blob": "4c936eaa117d7ec7d8138b83efc4d435e0e57d6f"
+    },
+    {
+      "path": "decisions/0010-projection-parameters.md",
+      "blob": "a2813be15f09f989c055544a58f8ea79e86582cd"
+    },
+    {
+      "path": "decisions/0010-projection-parameters.md",
+      "blob": "fe8f2699577a910206e558dfb8607a362db841a3"
+    },
+    {
+      "path": "decisions/0011-database-schema-versioning.md",
+      "blob": "1174d80559a9bcec3c15ad5b9635652acf40020b"
+    },
+    {
+      "path": "decisions/0011-database-schema-versioning.md",
+      "blob": "18ea46ca321d574f1ee9929cae63dade062d7f92"
+    },
+    {
+      "path": "decisions/0011-database-schema-versioning.md",
+      "blob": "654fa4f3305a9ebdc396a560c2adb63be745f4f7"
+    },
+    {
+      "path": "decisions/0011-database-schema-versioning.md",
+      "blob": "7184fe44e33310cf51425c301b50398427a8fd53"
+    },
+    {
+      "path": "decisions/0011-database-schema-versioning.md",
+      "blob": "d82342d2d120f5bdbf3e6f9cd7bebacf8a0fc196"
+    },
+    {
+      "path": "decisions/0012-whole-view-equality.md",
+      "blob": "1a91667f8b823893b88604ac50c083823829842c"
+    },
+    {
+      "path": "decisions/0012-whole-view-equality.md",
+      "blob": "6fa4765e90e92b79a87f67d0a93812b6795e97db"
+    },
+    {
+      "path": "decisions/0012-whole-view-equality.md",
+      "blob": "95653c306f3c8ebf6de412c54f16eeb7bb5cc932"
+    },
+    {
+      "path": "decisions/0013-cross-belief-identity-semantics.md",
+      "blob": "67d2b88c06f33ca22fe798a430312c50c1d3d935"
+    },
+    {
+      "path": "decisions/0013-cross-belief-identity-semantics.md",
+      "blob": "fc3f0012ad52239c4126503f951c3e3a11f3d800"
+    },
+    {
+      "path": "decisions/0014-cross-belief-reducer-and-hash-lineage.md",
+      "blob": "11db8437e99d8ecb080daae3976ae401a496149e"
+    },
+    {
+      "path": "decisions/0014-cross-belief-reducer-and-hash-lineage.md",
+      "blob": "43949070bf18410997b5103279fd056278b0d2b2"
+    },
+    {
+      "path": "decisions/0014-cross-belief-reducer-and-hash-lineage.md",
+      "blob": "63986469ece16231f6f8db63a12356fda7181424"
+    },
+    {
+      "path": "decisions/0014-cross-belief-reducer-and-hash-lineage.md",
+      "blob": "9926bc7491ee7f4912d26095cbdd981a7e4a7506"
+    },
+    {
+      "path": "decisions/0014-cross-belief-reducer-and-hash-lineage.md",
+      "blob": "c45fedc6e5e3c3c72761df99707320c9dd8944d7"
+    },
+    {
+      "path": "decisions/0015-candidate-scoped-verification.md",
+      "blob": "c8580a6c834c2243c17c9581675d963d9f26b08c"
+    },
+    {
+      "path": "decisions/0015-candidate-scoped-verification.md",
+      "blob": "cfa81953d21103f411fcda637a46fc004e167441"
+    },
+    {
+      "path": "decisions/0016-schema-version-2.md",
+      "blob": "575f19fda8e0da86ca4c6e9a44048f0e75d9d9ca"
+    },
+    {
+      "path": "decisions/0016-schema-version-2.md",
+      "blob": "aeb81b5be95aacdda793da642fa1ecd45cc4c33e"
+    },
+    {
+      "path": "decisions/0017-schema-version-3.md",
+      "blob": "4ca6794dd9924647e8958be854afbc7fd48ffa3c"
+    },
+    {
+      "path": "decisions/0017-schema-version-3.md",
+      "blob": "dceb3a7336d122310fc401c88113cbe29db09137"
+    },
+    {
+      "path": "decisions/0018-correction-supersedes-candidates.md",
+      "blob": "a6b752b350e14498acc37565064aff0b5503301e"
+    },
+    {
+      "path": "decisions/0018-correction-supersedes-candidates.md",
+      "blob": "e50e6cffc5520d9507a056df1c81cb709193610f"
+    },
+    {
+      "path": "decisions/0019-identity-bootstrap.md",
+      "blob": "87562aa7b6b3ef9886ca67faa26307b0cbd40a9a"
+    },
+    {
+      "path": "decisions/0019-identity-bootstrap.md",
+      "blob": "e778f16ac5c25d89cadf21fe8ed01a04bf2be6ca"
+    },
+    {
+      "path": "decisions/0019-identity-bootstrap.md",
+      "blob": "f92a308807a8573ee687cb32ccbc240cb20fd690"
+    },
+    {
+      "path": "decisions/0020-multi-user-authority-undecided.md",
+      "blob": "74d2082b0aa246de3b3eb4863f12524c3f8fb4d0"
+    },
+    {
+      "path": "decisions/0021-bootstrap-link-treatment.md",
+      "blob": "95c15253026baa8a04c0827e18a7e46cc9b6d3ff"
+    },
+    {
+      "path": "decisions/0021-bootstrap-link-treatment.md",
+      "blob": "d36fcb06f40e1bdfa00924e0c6ebe9cbd9b80c28"
+    },
+    {
+      "path": "decisions/0022-belief-container-uniqueness.md",
+      "blob": "3a8c24d6f835f6a50ef455a80772359d7ddd7120"
+    },
+    {
+      "path": "decisions/0022-belief-container-uniqueness.md",
+      "blob": "7d2e6364d7d12c5496ade16bf5fa576391026199"
+    },
+    {
+      "path": "decisions/0023-stage-two-contract.md",
+      "blob": "1de0837c96767ecad374d86c3e4932292fd32a38"
+    },
+    {
+      "path": "decisions/0023-stage-two-contract.md",
+      "blob": "4323261e89bdfdfc2fa39369aedb06c0f06231cc"
+    },
+    {
+      "path": "decisions/0023-stage-two-contract.md",
+      "blob": "4f2eaac54ed8309f82507cf458039c813ab7f5f1"
+    },
+    {
+      "path": "decisions/0023-stage-two-contract.md",
+      "blob": "734af65806ad374865b5a3c27678306b36d3f7e1"
+    },
+    {
+      "path": "decisions/0024-no-authoritative-head.md",
+      "blob": "5cf5497f2adb163b2e96c300602be6f7f1c9b00c"
+    },
+    {
+      "path": "decisions/0024-no-authoritative-head.md",
+      "blob": "f4ec509275e0c65be57bb3dbb6e743867605d32f"
+    },
+    {
+      "path": "decisions/0025-incremental-result-commitment.md",
+      "blob": "626e7aa42e817eab08d1834ddec2cc31dd6948d5"
+    },
+    {
+      "path": "decisions/0025-incremental-result-commitment.md",
+      "blob": "8fd20d43c22b03f348aa0c0046297b2a51c6b5e5"
+    },
+    {
+      "path": "decisions/0026-usage-is-not-evidence.md",
+      "blob": "8b501705a76c533885d9917943121bed15ef9205"
+    },
+    {
+      "path": "decisions/0027-stage-three-authority-and-acceptance.md",
+      "blob": "06ffd344f386d0d9e194e26a7236c3e8d2c8346d"
+    },
+    {
+      "path": "decisions/0027-stage-three-authority-and-acceptance.md",
+      "blob": "1fa1e82c8853d59a1f37cf3a81abfa70783495d6"
+    },
+    {
+      "path": "decisions/0027-stage-three-authority-and-acceptance.md",
+      "blob": "44326d53d19caecfb26bdce6aac62d2d989f3981"
+    },
+    {
+      "path": "decisions/0027-stage-three-authority-and-acceptance.md",
+      "blob": "9226039d4443370390c56396824c8c914c8502af"
+    },
+    {
+      "path": "decisions/0027-stage-three-authority-and-acceptance.md",
+      "blob": "e01668bd0869763ea8fb364d3c42352c03e7f787"
+    },
+    {
+      "path": "decisions/0027-stage-three-authority-and-acceptance.md",
+      "blob": "e36cfbd828f9f91abe8b354a69b7fb6754ddc602"
+    },
+    {
+      "path": "decisions/0028-redaction-and-crypto-shredding.md",
+      "blob": "2c4a68b1e44c587615fbe20aecd0db49a1f1a58d"
+    },
+    {
+      "path": "decisions/0028-redaction-and-crypto-shredding.md",
+      "blob": "448002226b575a8ae519a1ad8fb9a44056105dff"
+    },
+    {
+      "path": "decisions/0028-redaction-and-crypto-shredding.md",
+      "blob": "6527f9eba526cfdec7b4da51e7297a7ee6f3a7f7"
+    },
+    {
+      "path": "decisions/0028-redaction-and-crypto-shredding.md",
+      "blob": "6e1fb28284e262d284ec47d54eab40ce9b258236"
+    },
+    {
+      "path": "decisions/0028-redaction-and-crypto-shredding.md",
+      "blob": "6f62e77a1df6fd2f41ffd4fc7f7313344a5758f9"
+    },
+    {
+      "path": "decisions/0028-redaction-and-crypto-shredding.md",
+      "blob": "e677e33304f522c5a64fa5418aa7108fbfdc4a0b"
+    },
+    {
+      "path": "decisions/0029-dream-emission-semantics.md",
+      "blob": "e204543773ce8d6626f992625d3e3813905278fd"
+    },
+    {
+      "path": "decisions/0030-sole-writer-and-positional-fields.md",
+      "blob": "2a137efb5a3cff06c8746c33431c56599793d023"
+    },
+    {
+      "path": "decisions/0030-sole-writer-and-positional-fields.md",
+      "blob": "90a345a23ff51a553c6b3941e9e1d4e5b7c4e898"
+    },
+    {
+      "path": "decisions/0031-source-report-claims.md",
+      "blob": "076ffa114c43496554a9f41d8e7310d85bc4ddcf"
+    },
+    {
+      "path": "decisions/0031-source-report-claims.md",
+      "blob": "21998236821c9c1e49436e9fe199700111452b73"
+    },
+    {
+      "path": "decisions/0031-source-report-claims.md",
+      "blob": "73b0a65dd85a28c3483b68ed6625e9d736ac372c"
+    },
+    {
+      "path": "decisions/0032-explicit-stage-two-projector-selection.md",
+      "blob": "1a27b3bc0b79bcf7d95ac444e3b5e18058df5fe0"
+    },
+    {
+      "path": "decisions/0032-explicit-stage-two-projector-selection.md",
+      "blob": "8bcb51e6531ddc66259d18084c21ae55b11213b5"
+    },
+    {
+      "path": "decisions/0033-projector-0-value-and-verifiability-domain.md",
+      "blob": "0283daa15e13c8ce277c35cfdc286328016cd448"
+    },
+    {
+      "path": "decisions/0033-projector-0-value-and-verifiability-domain.md",
+      "blob": "4077d041419fe88354d7e737bc145b695bb4d3dc"
+    }
+  ]
+}
