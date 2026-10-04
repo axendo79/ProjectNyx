@@ -28,6 +28,7 @@ do not implement your alternative.
 ## ADR commit protocol
 For every future ADR, keep authority and implementation changes separate.
 When the maintainer explicitly authorizes authority edits, use this protocol:
+The maintainer commits authority changes with NYX_AUTHORITY_COMMIT=1; agents must never set it.
 
 - **(A) Authority:** all edits under decisions/ and spec/. Stage only the
   authorized authority change, show `git status --short` and `git diff --cached`,
