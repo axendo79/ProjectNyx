@@ -18,6 +18,7 @@ import json
 import re
 import sqlite3
 import warnings
+from functools import partial
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -145,7 +146,7 @@ def _schema_statements(script: str):
 
 
 def init_db(db_path: str | Path, create: bool = False, *,
-            clock=None, threshold=None) -> sqlite3.Connection:
+            clock=None, threshold=None, report_policy=None) -> sqlite3.Connection:
     """Validate each new connection; initialize only with explicit authorization.
 
     ADR 0011: no migration, repair, auto-stamping, or identity monitoring.
@@ -153,10 +154,16 @@ def init_db(db_path: str | Path, create: bool = False, *,
     Holds sole-writer ownership until close. Clock/threshold overrides are test
     seams only; production uses writer.MAX_CLOCK_SKEW, never runtime settings.
     """
+    from .report_policy import ReportDeployment, PolicySnapshot, ReportPolicyError
+    if isinstance(db_path, ReportDeployment):
+        return db_path.open_writer(create=create, clock=clock, threshold=threshold)
+    if report_policy is not None and not isinstance(report_policy, PolicySnapshot):
+        raise ReportPolicyError('deployment: expected validated immutable policy snapshot')
     uri = Path(db_path).resolve().as_uri() + ("?mode=rwc" if create else "?mode=rw")
     owner = writer.acquire(db_path)
     try:
-        conn = sqlite3.connect(uri, uri=True, factory=writer.WriterConnection)
+        conn = sqlite3.connect(uri, uri=True,
+                               factory=partial(writer.WriterConnection, report_policy=report_policy))
     except BaseException:
         owner.close()
         raise
@@ -321,11 +328,13 @@ def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Pay
 
 
 def _append_legacy_locked(conn, envelope, payload, before_insert=None):
-    if envelope.event_type not in projection._VALUE_SETTING:
-        raise NotImplementedError(f"append handler for {envelope.event_type!r} not implemented")
     if _is_recorded_retry(conn, envelope, payload):
         return False
     data = integrity.decode_payload(envelope, payload)
+    from .report_policy import guard
+    guard(conn, envelope, data)
+    if envelope.event_type not in projection._VALUE_SETTING:
+        raise NotImplementedError(f"append handler for {envelope.event_type!r} not implemented")
     integrity.validate_legacy_submission(data)
     # Refuse unworked origin semantics before the append-only commit (ADR 0004).
     # Both ordinary submissions and safe_append_event share this boundary.
@@ -393,6 +402,8 @@ def append_submission(conn, request, projector_version):
                 if len(rows) != 1 or writer.semantic_contents(*stored) != writer.semantic_contents(*request):
                     raise integrity.IntegrityError("retry differs from retained semantic contents")
                 return stored
+            from .report_policy import guard
+            guard(conn, envelope, data)
             tip = conn.execute(
                 "SELECT event_id,event_hash,recorded_at,rowid FROM events ORDER BY rowid DESC LIMIT 1"
             ).fetchone()
@@ -474,13 +485,15 @@ def _append_stage_two(conn, envelope, payload, version):
 
 
 def _append_stage_two_locked(conn, envelope, payload, projector_version, before_insert=None):
-    if envelope.event_type not in SUPPORTED_EVENTS:
-        raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
     if _is_recorded_retry(conn, envelope, payload):
         return False
     if payload.redacted or payload.ciphertext is None or payload.canonical_entity_id is not None:
         raise NotImplementedError("stage two does not implement redaction or canonical key binding")
     data = integrity.decode_payload(envelope, payload)
+    from .report_policy import guard
+    guard(conn, envelope, data)
+    if envelope.event_type not in SUPPORTED_EVENTS:
+        raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
     tip = conn.execute(
         "SELECT rowid,event_id,event_hash,recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
     ).fetchone()

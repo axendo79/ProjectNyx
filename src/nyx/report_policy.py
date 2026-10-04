@@ -130,6 +130,100 @@ class PolicySnapshot:
         if len(matches) != 1: refuse('nyx.adr-reports/1', 'not admitted')
         return dict(zip(DECLARATION_FIELDS, matches[0]))
 
+    def authorize(self, envelope, data):
+        context = f'event {envelope.event_id} report declaration'
+        source = strict_json(envelope.source.encode('utf-8'), context)
+        config = source.get('config') if isinstance(source, dict) else None
+        if not isinstance(config, dict): refuse(context, 'missing report config')
+        key = declaration(config.get('report_vocabulary'), context)
+        if key not in self.admitted: refuse(context, 'vocabulary not admitted by startup snapshot')
+        artifact = config.get('report_artifact')
+        fields(artifact, ('kind', 'repository', 'revision', 'path', 'blob', 'subject_scope'), context)
+        if artifact['kind'] != 'adr-path': refuse(context, 'incompatible artifact scope')
+        binding = tuple(artifact[k] for k in ('repository', 'revision', 'path', 'blob'))
+        for part in binding: text(part, context)
+        if binding not in self.artifacts: refuse(context, 'artifact outside reviewed public inputs')
+        if artifact['subject_scope'] != subject_scope(artifact['repository'], artifact['path']):
+            refuse(context, 'artifact path scope mismatch')
+        if config.get('extractor') != 'nyx.adr-literal/1': refuse(context, 'unsupported extractor')
+        locations = config.get('report_locations')
+        if not isinstance(locations, dict): refuse(context, 'report_locations must be an object')
+        if envelope.origin_type != 'observed': refuse(context, 'unsupported report origin')
+        if envelope.event_type == 'entity_mention_recorded':
+            if locations or data.get('text') != artifact['subject_scope']:
+                refuse(context, 'mention requires recorded path scope and empty locations')
+        elif envelope.event_type == 'observation_recorded':
+            claims = data.get('claims')
+            if not isinstance(claims, list) or not claims: refuse(context, 'report requires literal claims')
+            entries = {e['property']: e for e in self.definitions[key]['entries']}
+            names = []
+            for claim in claims:
+                if not isinstance(claim, dict): refuse(context, 'claim must be an object')
+                prop = claim.get('property_id')
+                if not isinstance(prop, str) or prop not in entries: refuse(context, 'undeclared property')
+                text(claim.get('value'), context)
+                name = claim.get('claim_candidate_id')
+                text(name, context)
+                names.append(name)
+                location = locations.get(name)
+                fields(location, ('start_line', 'end_line', 'start_byte', 'end_byte'), context)
+                if any(type(v) is not int for v in location.values()): refuse(context, 'span must use integers')
+                if (location['start_line'] < 1 or location['end_line'] < location['start_line']
+                        or location['start_byte'] < 0 or location['end_byte'] <= location['start_byte']):
+                    refuse(context, 'invalid literal span')
+            if len(names) != len(set(names)) or set(names) != set(locations):
+                refuse(context, 'candidate/location mismatch')
+        else:
+            refuse(context, 'unsupported external report event')
+
+
+def subject_scope(repository, path):
+    text(repository, 'repository'); text(path, 'Git path')
+    return 'repo-path:' + hashing.canonical_json([repository, path])
+
+
+@dataclass(frozen=True, init=False)
+class ReportDeployment:
+    """Trusted construction; give producers this bound deployment, never an open factory.
+
+    Raw SQL, unbound connections and arbitrary Python privileges remain outside
+    the controlled in-process boundary. No actor/source field can configure it.
+    """
+    store: Path
+    policy: PolicySnapshot
+
+    def __init__(self, store, config_dir, *, repositories):
+        object.__setattr__(self, 'store', Path(store).resolve())
+        object.__setattr__(self, 'policy', load_policy(config_dir, repositories=repositories))
+        self._inspect_history()
+
+    def _inspect_history(self):
+        from . import storage
+        if not self.store.exists(): return
+        conn = storage.open_readonly(self.store)
+        try:
+            for event_id, raw in conn.execute('SELECT event_id,source FROM events'):
+                source = strict_json(raw.encode('utf-8'), f'historical event {event_id}')
+                config = source.get('config', {})
+                if 'report_vocabulary' in config:
+                    key = declaration(config['report_vocabulary'], f'historical event {event_id}')
+                    if key not in self.policy.definitions:
+                        refuse(f'historical event {event_id}', 'missing retained definition/binding')
+        finally:
+            conn.close()
+
+    def open_writer(self, *, create=False, clock=None, threshold=None):
+        from . import storage
+        self._inspect_history()
+        return storage.init_db(self.store, create=create, clock=clock, threshold=threshold,
+                               report_policy=self.policy)
+
+
+def guard(conn, envelope, data):
+    policy = getattr(conn, 'report_policy', None)
+    if policy is not None:
+        policy.authorize(envelope, data)
+
 
 def load_policy(config_dir, *, repositories):
     try:
