@@ -332,7 +332,7 @@ def _append_legacy_locked(conn, envelope, payload, before_insert=None):
         return False
     data = integrity.decode_payload(envelope, payload)
     from .report_policy import guard
-    guard(conn, envelope, data)
+    guard(conn, envelope, data, projector_version='0')
     if envelope.event_type not in projection._VALUE_SETTING:
         raise NotImplementedError(f"append handler for {envelope.event_type!r} not implemented")
     integrity.validate_legacy_submission(data)
@@ -403,7 +403,7 @@ def append_submission(conn, request, projector_version):
                     raise integrity.IntegrityError("retry differs from retained semantic contents")
                 return stored
             from .report_policy import guard
-            guard(conn, envelope, data)
+            guard(conn, envelope, data, projector_version=projector_version)
             tip = conn.execute(
                 "SELECT event_id,event_hash,recorded_at,rowid FROM events ORDER BY rowid DESC LIMIT 1"
             ).fetchone()
@@ -491,7 +491,7 @@ def _append_stage_two_locked(conn, envelope, payload, projector_version, before_
         raise NotImplementedError("stage two does not implement redaction or canonical key binding")
     data = integrity.decode_payload(envelope, payload)
     from .report_policy import guard
-    guard(conn, envelope, data)
+    guard(conn, envelope, data, projector_version=projector_version)
     if envelope.event_type not in SUPPORTED_EVENTS:
         raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
     tip = conn.execute(

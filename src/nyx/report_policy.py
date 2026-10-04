@@ -1,8 +1,10 @@
 """ADR 0031 immutable local report admission. Replay never imports this module."""
 from dataclasses import dataclass
+from collections.abc import Mapping
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -104,7 +106,8 @@ def definition_digest(value):
 def git(checkout, *args, input=None):
     try:
         return subprocess.run(['git', '-C', str(checkout), *args], check=True,
-                              capture_output=True, input=input).stdout
+                              capture_output=True, input=input,
+                              env={**os.environ, 'GIT_NO_LAZY_FETCH': '1', 'GIT_TERMINAL_PROMPT': '0'}).stdout
     except (OSError, subprocess.CalledProcessError) as exc:
         refuse(checkout, f'pinned Git object read failed: {exc}')
 
@@ -130,7 +133,7 @@ class PolicySnapshot:
         if len(matches) != 1: refuse('nyx.adr-reports/1', 'not admitted')
         return dict(zip(DECLARATION_FIELDS, matches[0]))
 
-    def authorize(self, envelope, data):
+    def authorize(self, conn, envelope, data, *, projector_version):
         context = f'event {envelope.event_id} report declaration'
         source = strict_json(envelope.source.encode('utf-8'), context)
         config = source.get('config') if isinstance(source, dict) else None
@@ -165,6 +168,11 @@ class PolicySnapshot:
                 name = claim.get('claim_candidate_id')
                 text(name, context)
                 names.append(name)
+                from . import storage
+                mention = storage._read_record(conn, 'mentions', claim.get('mention_id'), projector_version)
+                if (mention is None or mention['text'] != artifact['subject_scope']
+                        or mention['subject_id'] != claim.get('subject_id')):
+                    refuse(context, 'claim mention/subject does not identify the recorded artifact scope')
                 location = locations.get(name)
                 fields(location, ('start_line', 'end_line', 'start_byte', 'end_byte'), context)
                 if any(type(v) is not int for v in location.values()): refuse(context, 'span must use integers')
@@ -219,16 +227,16 @@ class ReportDeployment:
                                report_policy=self.policy)
 
 
-def guard(conn, envelope, data):
+def guard(conn, envelope, data, *, projector_version):
     policy = getattr(conn, 'report_policy', None)
     if policy is not None:
-        policy.authorize(envelope, data)
+        policy.authorize(conn, envelope, data, projector_version=projector_version)
 
 
 def load_policy(config_dir, *, repositories):
     try:
         return _load_policy(config_dir, repositories=repositories)
-    except (OSError, UnicodeError, ValueError) as exc:
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError) as exc:
         if isinstance(exc, ReportPolicyError): raise
         refuse(config_dir, str(exc))
 
@@ -236,6 +244,13 @@ def load_policy(config_dir, *, repositories):
 def _load_policy(config_dir, *, repositories):
     """Resolve every reviewed object before returning a complete frozen bundle."""
     root = Path(config_dir)
+    if not isinstance(repositories, Mapping) or not repositories:
+        refuse(root, 'trusted repository bindings must be a nonempty mapping')
+    for repository, checkout in repositories.items():
+        text(repository, 'trusted repository identity')
+        if not isinstance(checkout, (str, os.PathLike)) or not Path(checkout).is_dir():
+            refuse(root, f'invalid trusted checkout binding for {repository}')
+        git(checkout, 'rev-parse', '--git-dir')
     original, definitions, bindings = {}, {}, {}
     def read(path):
         try: data = path.read_bytes()
