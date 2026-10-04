@@ -1,0 +1,30 @@
+{
+  "format": "nyx.public-report-inputs/1",
+  "artifacts": [
+    {
+      "repository": "https://github.com/axendo79/ProjectNyx.git",
+      "revision": "34ec397e7eaa5daf10ffbff4c4f5b5021d4fed40",
+      "path_prefix": "decisions/"
+    },
+    {
+      "repository": "https://github.com/axendo79/ProjectNyx.git",
+      "revision": "98dc48d395a0945cf0c3d728c706e429db3ada97",
+      "path_prefix": "decisions/"
+    },
+    {
+      "repository": "https://github.com/axendo79/ProjectNyx.git",
+      "revision": "823b3ab776faf2635f37c8c3bcdd645c3850f784",
+      "path_prefix": "decisions/"
+    },
+    {
+      "repository": "https://github.com/axendo79/ProjectNyx.git",
+      "revision": "902467afa54887de0d15ab9f1a9d23403e9628cc",
+      "path_prefix": "decisions/"
+    },
+    {
+      "repository": "https://github.com/axendo79/ProjectNyx.git",
+      "revision": "531a679598dfbcce45a6a0a239c85be958ec55fd",
+      "path_prefix": "decisions/"
+    }
+  ]
+}

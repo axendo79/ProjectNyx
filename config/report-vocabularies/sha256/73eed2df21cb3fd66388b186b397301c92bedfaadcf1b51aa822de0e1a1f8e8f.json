@@ -1,0 +1,33 @@
+{
+  "format": "nyx.adr-report-vocabulary/1",
+  "identity": "nyx.adr-reports",
+  "version": "1",
+  "label": "Literal ADR reports",
+  "description": "Statements observed in pinned public artifacts, not world-truth assertions.",
+  "entries": [
+    {
+      "property": "adr.title.literal",
+      "value_shape": "literal-string",
+      "artifact_scope": "adr-path",
+      "report_meaning": "The ADR artifact at the recorded revision stated this literal title.",
+      "label": "Title declaration",
+      "description": "Preserves the observed heading text."
+    },
+    {
+      "property": "adr.status.literal",
+      "value_shape": "literal-string",
+      "artifact_scope": "adr-path",
+      "report_meaning": "The ADR artifact at the recorded revision stated this literal Status declaration.",
+      "label": "Status declaration",
+      "description": "Does not interpret acceptance or supersession authority."
+    },
+    {
+      "property": "adr.implementation.literal",
+      "value_shape": "literal-string",
+      "artifact_scope": "adr-path",
+      "report_meaning": "The ADR artifact at the recorded revision stated this literal Implementation declaration.",
+      "label": "Implementation declaration",
+      "description": "Does not infer implementation completion from prose."
+    }
+  ]
+}
