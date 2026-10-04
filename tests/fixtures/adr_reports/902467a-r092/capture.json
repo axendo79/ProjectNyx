@@ -1,0 +1,112 @@
+{
+  "format": "nyx.adr-rename-test/1",
+  "repository": "https://github.com/axendo79/ProjectNyx.git",
+  "parent": "823b3ab776faf2635f37c8c3bcdd645c3850f784",
+  "commit": "902467afa54887de0d15ab9f1a9d23403e9628cc",
+  "git_version": "2.53.0.windows.2",
+  "command": [
+    "git",
+    "-c",
+    "diff.renames=true",
+    "-c",
+    "diff.renameLimit=0",
+    "-c",
+    "core.quotePath=false",
+    "diff-tree",
+    "--no-commit-id",
+    "--name-status",
+    "-r",
+    "-z",
+    "-M50%",
+    "902467afa54887de0d15ab9f1a9d23403e9628cc^",
+    "902467afa54887de0d15ab9f1a9d23403e9628cc",
+    "--",
+    "decisions/0009-projection-parameters.md",
+    "decisions/0010-projection-parameters.md"
+  ],
+  "artifacts": {
+    "before.md": {
+      "revision": "823b3ab776faf2635f37c8c3bcdd645c3850f784",
+      "path": "decisions/0009-projection-parameters.md",
+      "blob": "67e7f46e0cd558b64cebfea6af4ffda4fbb4cb81"
+    },
+    "after.md": {
+      "revision": "902467afa54887de0d15ab9f1a9d23403e9628cc",
+      "path": "decisions/0010-projection-parameters.md",
+      "blob": "fe8f2699577a910206e558dfb8607a362db841a3"
+    },
+    "later-python-0009.md": {
+      "revision": "531a679598dfbcce45a6a0a239c85be958ec55fd",
+      "path": "decisions/0009-python-314-re-adopted-as-target.md",
+      "blob": "a495d359f6f7fff2b1edcba09b9a32044aab27b6"
+    }
+  },
+  "transcript_sha256": "a125c3c1933820f805d1676edc0ba90a4ba0a424b21c2c308b9aeec3eecaecdb",
+  "effective_configuration": {
+    "command_overrides": {
+      "diff.renames": "true",
+      "diff.renameLimit": "0",
+      "core.quotePath": "false"
+    },
+    "environment": {
+      "GIT_CONFIG_NOSYSTEM": "1",
+      "GIT_CONFIG_GLOBAL": "OS null device",
+      "GIT_ATTR_NOSYSTEM": "1",
+      "XDG_CONFIG_HOME": "empty checkout-local directory",
+      "GIT_NO_LAZY_FETCH": "1",
+      "GIT_TERMINAL_PROMPT": "0"
+    },
+    "repository_config": {
+      "core.autocrlf": "false",
+      "core.filemode": "false",
+      "core.ignorecase": "true",
+      "core.symlinks": "false"
+    },
+    "other_diff_settings": "Git 2.53.0.windows.2 defaults; no local diff settings",
+    "attributes_at_pinned_trees": {
+      "823b3ab776faf2635f37c8c3bcdd645c3850f784": [
+        "decisions/0009-projection-parameters.md",
+        "text",
+        "set",
+        "decisions/0009-projection-parameters.md",
+        "eol",
+        "lf",
+        "decisions/0010-projection-parameters.md",
+        "text",
+        "set",
+        "decisions/0010-projection-parameters.md",
+        "eol",
+        "lf",
+        ""
+      ],
+      "902467afa54887de0d15ab9f1a9d23403e9628cc": [
+        "decisions/0009-projection-parameters.md",
+        "text",
+        "set",
+        "decisions/0009-projection-parameters.md",
+        "eol",
+        "lf",
+        "decisions/0010-projection-parameters.md",
+        "text",
+        "set",
+        "decisions/0010-projection-parameters.md",
+        "eol",
+        "lf",
+        ""
+      ]
+    },
+    "info_attributes_present": false
+  },
+  "independent_tree_checks": {
+    "passed": true,
+    "before_tree_blob": "67e7f46e0cd558b64cebfea6af4ffda4fbb4cb81",
+    "after_tree_blob": "fe8f2699577a910206e558dfb8607a362db841a3",
+    "old_path_absent_after": true,
+    "new_path_absent_before": true,
+    "native_git_blob_hashes": {
+      "before.md": "67e7f46e0cd558b64cebfea6af4ffda4fbb4cb81",
+      "after.md": "fe8f2699577a910206e558dfb8607a362db841a3",
+      "later-python-0009.md": "a495d359f6f7fff2b1edcba09b9a32044aab27b6"
+    }
+  }
+}
