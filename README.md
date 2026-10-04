@@ -343,6 +343,53 @@ there is no migration, and recreation is an operator action. Versions `"1"` and
 event through either updates freshness for both, so an unadvanced materialization
 is labeled stale. Rebuild and publication select one projector explicitly.
 
+## Public ADR source reports
+
+[ADR 0031](decisions/0031-source-report-claims.md) slice 1 records what a pinned
+public ADR artifact stated: its literal title, Status and Implementation. These
+reports retain exact repository, path, revision, blob, source spans and vocabulary
+declaration. Observed-origin verification applies to that report; it does not
+verify the embedded proposition as world truth. Contradictory and agreeing
+reports retain separate candidates, without a winner or scalar head.
+
+[config/README.md](config/README.md) explains the reviewed public revisions and
+the retained vocabulary digest. `nyx.report_policy.ReportDeployment` validates
+and freezes the complete bundle before exposing a writer. Policy changes require
+restart. Admission belongs to the trusted writer, not caller-controlled
+`source.config`; equivalent committed retries return their original pair after
+retirement. Replay and publication do not consult current policy.
+
+[scripts/import_adr_reports.py](scripts/import_adr_reports.py) requires
+`--store`, `--config`, `--repository`, `--checkout`, `--run-id` and explicit
+`--projector-version 1` or `2`. First import also requires `--revision`, one or
+more `--path` arguments and explicit `--create` for a new store. `--resume` uses
+the same saved run instead of preparing new requests. Complete semantic requests
+are flushed and atomically saved at `<store>.imports/<run-id>/requests.json`
+before submission. Completion checks publication at the exact log tip and the
+expected identities, claims and support; verifier success alone is insufficient.
+Re-running a saved run appends nothing. Use a fresh directory under `$env:TEMP`
+for a trial store and retain its beside-store manifests for recovery.
+
+`nyx.reports.read_report_details(conn, claim_candidate_ids, *, projector_version)`
+preserves input order and returns `publication = {log_position, stale}` plus
+reports with each belief's `projected_as_of`, recorded provenance and literal
+source location. It reads published state without importing, replaying or
+choosing a current winner.
+
+[scripts/backup_report_store.py](scripts/backup_report_store.py) provides `backup`
+and `restore` commands with required `--projector-version`. Backup uses the
+owning connection's SQLite backup API and includes saved requests, frozen policy,
+retained definitions, caller-supplied software/policy revision labels and exact
+file digests. Restore validates the bundle and historical vocabulary bindings
+before creating a fresh destination; the restored policy is beside the store
+at `<store>.policy`. Keep the bundle with the corresponding software release.
+
+[tests/test_report_acceptance.py](tests/test_report_acceptance.py) exercises the
+finish line for both projectors. The frozen R092 fixture proves renamed paths
+remain distinct subjects and ADR numbers never supply identity. Git-report
+ingestion/capture (slice 1b), option (b), listing/indexing, and protected storage
+under proposed ADRs 0027/0028 remain deferred.
+
 ## Install and run the suite
 
 Use Python 3.14, the accepted target in
@@ -464,7 +511,8 @@ are explicitly unchecked; this is not an audit of world truth. Coverage is in
 | [src/nyx/timestamps.py](src/nyx/timestamps.py) | Pure ingestion-time timestamp validation; preserves accepted spellings and is independent of the writer clock. |
 | [src/nyx/cli.py](src/nyx/cli.py) | Read-only belief, identity, log, replay, integrity and store-status inspection. |
 | `tests/` | Storage, event, projection, correction, and invariant regression tests. |
-| `scripts/` | Standalone diagnostic probes, outside pytest discovery. |
+| `scripts/` | Diagnostic probes, verifier/docs checks, and public ADR import/backup/restore launchers. |
+| `config/` | Retained report vocabularies, admitted bindings and reviewed pinned public inputs. |
 | `schema.sql` | SQLite schema and append-only triggers. |
 | `spec/` | Architecture and implementation specifications, plus supporting documents. |
 | `decisions/` | Numbered ADRs; status distinguishes accepted decisions from recorded blockers. |
@@ -524,6 +572,7 @@ merge, split, approval, or authority handlers.
 | [0026](decisions/0026-usage-is-not-evidence.md) | Binding usage/evidence boundary; usage recording remains unimplemented. [committed.py](src/nyx/committed.py) rejects unsupported world-event types. | [test_incremental_commitment.py](tests/test_incremental_commitment.py), `test_deferred_and_usage_events_refuse_both_boundaries`; no usage subsystem acceptance suite |
 | [0029](decisions/0029-dream-emission-semantics.md) | Proposed / not implemented. Distinct DreamEmission type, inseparable recall origin, Layer A event-domain reducer inputs and no emission-to-evidence path; recording and operational contracts remain decision-blocked. | No executable Dream acceptance coverage; proposed conformance cases are in ADR 0029. |
 | [0030](decisions/0030-sole-writer-and-positional-fields.md) | [writer.py](src/nyx/writer.py) semantic requests, field-complement comparison, OS lock and typed refusal; [storage.py] `init_db`, `append_submission`; [ingestion.py] preparation and `submit`; [skeleton.py] wrappers. | [test_sole_writer.py](tests/test_sole_writer.py): injected clocks/thresholds, inclusive skew boundaries, clamping, semantic retries, field classification, crash/publication recovery, read-only independence, subprocess kill/reacquisition and refusal reporting. |
+| [0031](decisions/0031-source-report-claims.md) | [report_policy.py](src/nyx/report_policy.py) frozen deployment/admission; [storage.py] guarded producer routes; [adr_literals.py](src/nyx/adr_literals.py) exact extraction; [report_importer.py](src/nyx/report_importer.py) durable requests/completion; [reports.py](src/nyx/reports.py) named report details; [report_backup.py](src/nyx/report_backup.py) SQLite bundle/restore. Slice 1b remains deferred. | [test_report_policy.py](tests/test_report_policy.py), [test_report_admission.py](tests/test_report_admission.py), [test_adr_literals.py](tests/test_adr_literals.py), [test_report_importer.py](tests/test_report_importer.py), [test_report_reader.py](tests/test_report_reader.py), [test_report_rename.py](tests/test_report_rename.py), [test_report_backup.py](tests/test_report_backup.py), [test_report_acceptance.py](tests/test_report_acceptance.py): complete first-slice matrix and both-projector finish line. |
 | [0032](decisions/0032-explicit-stage-two-projector-selection.md) | Explicit stage-two selection in [ingestion.py], [projection.py], [reducer.py], [skeleton.py], [storage.py] and the [lineage probe](scripts/probe_lineage_scaling.py); allowlisted legacy defaults remain "0". | [test_explicit_projector_selection.py](tests/test_explicit_projector_selection.py) scans src/scripts AST parameters and class fields, checks enumerated aliases and exact parser options, and checks omission before work; existing stage-two/frozen-byte suites preserve selected versions. |
 | [0033](decisions/0033-projector-0-value-and-verifiability-domain.md) | [integrity.py](src/nyx/integrity.py) `validate_legacy_submission`, called by [immune.py](src/nyx/immune.py) `stage1_schema_validate` and [storage.py] `append_submission`, `_append_legacy_locked`. | [test_legacy_admission_domain.py](tests/test_legacy_admission_domain.py): independent refusal at all three boundaries, unchanged Layer A count/tip, empty strings and all labels, directly inserted numeric history; existing frozen-byte and stage-two suites remain unchanged. |
 

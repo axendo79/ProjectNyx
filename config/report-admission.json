@@ -1,0 +1,12 @@
+{
+  "format": "nyx.report-admission/1",
+  "admitted": [
+    {
+      "identity": "nyx.adr-reports",
+      "version": "1",
+      "digest_algorithm": "sha256",
+      "canonicalization_profile": "nyx.canonical-json/1",
+      "definition_digest": "73eed2df21cb3fd66388b186b397301c92bedfaadcf1b51aa822de0e1a1f8e8f"
+    }
+  ]
+}

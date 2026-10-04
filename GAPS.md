@@ -160,17 +160,23 @@ semantic conflicts, read-only access, restart, publication failure and lock rele
 after killing the owning subprocess. Cross-process transport and historical-import
 and new-store recovery procedures remain unbuilt and are not authorized here.
 
-### External source-report scope — O2, pending ADR 0031
-**Open / decision-blocked:** every supported observed-origin ClaimCandidate is
-verified under ADR 0001. The writer does not enforce that external-content
-claims describe what an artifact stated instead of asserting its contents as
-world truth. `source_class` alone provides no such boundary.
-The [review, O2 and R3](design/2026-09-22-review-and-next-steps.md) selects
-report-scoped claims as the immediate direction and a separate origin mapping
-as the target. Proposed ADR 0031 must define ingestion-only vocabulary
-enforcement and immutable per-event vocabulary identity/version/hash. Property
-IDs remain exact opaque strings under ADR 0023; no registry or replay-time
-vocabulary check is introduced. None of this enforcement ships in Step 0.
+### External source-report scope — O2, slice 1 resolved
+**Resolved for ADR 0031 slice 1:** the accepted
+[source-report contract](decisions/0031-source-report-claims.md) now ships a
+startup-frozen vocabulary/public-input policy, writer-owned admission across
+controlled producer routes, exact literal ADR extraction, durable import requests,
+named report-detail reads and tested SQLite backup/restore. Every report retains
+its closed vocabulary declaration and exact artifact/revision/source spans.
+Observed-origin verification concerns what the artifact stated, never the
+embedded proposition as world truth. Replay does not consult current policy;
+property IDs remain exact opaque strings under ADR 0023. Coverage is in
+[tests/test_report_acceptance.py](tests/test_report_acceptance.py) and the
+ADR 0031 row of [README's decision-to-code map](README.md#decision-to-code-map).
+Privileged database insertion and faithful acquisition/extraction remain outside
+the writer's enforceable policy boundary, with separate tests documenting it.
+**Open / deferred:** option (b)'s separate origin/state/projector contract,
+slice-1b Git-report vocabulary/ingestion/capture, listing/indexing and protected
+storage under proposed ADRs 0027/0028. Slice 1 supplies none of those decisions.
 
 ### Listing and search surface — O3, unbuilt
 **Open:** typed ID lookups and explicit replay are available, but no public
@@ -329,16 +335,23 @@ accepted, implemented and passed. This is the maintainer's
 not a claim that those Proposed ADRs are ratified or their gates passed.
 ADR 0002's plaintext storage remains in force. The restriction does not provide
 encryption, deletion, private-data migration or a source-classification checker.
+ADR 0031 slice 1 enforces reviewed public repository/full-commit/literal-prefix
+inputs at startup and report admission; it does not implement those erasure gates.
 
 ### Rename identity — scoped subjects retained
-**Boundary recorded; ingester unbuilt:** under ADR 0019's scoped bootstrap and
+**Implemented for literal ADR reports:** under ADR 0019's scoped bootstrap and
 ADR 0023's stage limits, a renamed file remains a separate subject. Git's
 rename/similarity result is only a report-scoped claim; it supplies no accepted
 identity association or merge authority. ADR numbers are metadata/searchable
 text, never identity. The [review's rename ruling](design/2026-09-22-review-and-next-steps.md#rulings-2026-09-22)
 requires the `902467a` R092 rename from `0009-projection-parameters.md` to
-`0010-projection-parameters.md` as a future regression fixture in proposed ADR
-0031. No rename handler or file-history ingester is implemented here.
+`0010-projection-parameters.md`. The checked-in exact before/after/later-Python
+blobs and frozen Git transcript are exercised by
+[tests/test_report_rename.py](tests/test_report_rename.py), without Git access in
+routine fixture tests. The importer reuses retained associations only for the
+same repo-path scope; new paths bootstrap separate subjects and retain old
+candidates. **Open / deferred:** Git-report ingestion/capture is slice 1b;
+rename/similarity supplies no identity merge or association authority.
 
 ### Standalone replay verifier — implemented for shipped contracts
 

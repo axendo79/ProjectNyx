@@ -45,3 +45,6 @@ tests/**        text eol=lf
 *.db    binary
 *.sqlite binary
 *.sqlite3 binary
+
+# ADR 0031 frozen NUL-delimited rename transcript is TEST evidence.
+tests/fixtures/adr_reports/902467a-r092/rename-report.bin -text

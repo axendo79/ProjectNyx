@@ -151,7 +151,8 @@ def acquire(db_path):
 
 
 class WriterConnection(sqlite3.Connection):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, report_policy=None, **kwargs):
+        self._report_policy = report_policy
         self.owner_lock = None
         self.append_lock = RLock()
         self._opened = False
@@ -159,6 +160,11 @@ class WriterConnection(sqlite3.Connection):
         self._opened = True
         self.clock = clock_now
         self.threshold = MAX_CLOCK_SKEW
+
+    @property
+    def report_policy(self):
+        """Bound before exposure by deployment construction; no request setter."""
+        return self._report_policy
 
     def close(self):
         with self.append_lock:
