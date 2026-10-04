@@ -4,7 +4,7 @@ Status: Accepted — ratified by the maintainer, 2026-10-04
 
 Date: 2026-09-22
 
-Implementation: None
+Implementation: Slice 1 complete in (B) commits `3e52ac2e359b61e36a74e69df36e518605870538`, `b5319a76643cf8e3bacd40a17f856270082671e6`, `66df05046f3ddb9fd9c07678c9aa1aeca811de1f`, `5121afd3ac3d72f73e1bf2b7267d9e8e646d1c54`, `bb27dfaade6725808b9d4c3fdbf75eb6d18cb387`, `40f6ff0d30e9ad1f4ba47a6feaa257ff51545777`, `e4e14266e3e10e89c16d63df6bcdd46c4b3133bf`, `94b965aa397a6542884bb4f73b82553a9e5544e9`; slice 1b remains deferred.
 
 Supersedes: No accepted ADR for the report-scoped option (a) defined here. Option (b) is an undecided target, not a new origin mapping or permission to change frozen projectors.
 
