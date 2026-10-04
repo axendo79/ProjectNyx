@@ -422,6 +422,27 @@ The complete run matrix and individual unchecked disclosures are recorded in
 `scratch/sol-mutation-matrix.md`. Semantically unchanged index-row permutations
 are controls, not escapes. None of these findings changes accepted authority.
 
+### Queue 6 crash campaign: legacy rebuild API boundary
+
+**Recorded 2026-10-04; existing scope limit, not a new recovery implementation.**
+`storage.rebuild_projection(conn, as_of, "0")` refuses at
+`src/nyx/storage.py:627`: projector "0" does not use the snapshot boundary.
+The documented full-rebuild API covers the stage-two projectors; legacy
+publication uses `materialize_pending`. [ADR 0014 §10](decisions/0014-cross-belief-reducer-and-hash-lineage.md#10-version-isolation)
+preserves version "0", and [ADR 0025 §6](decisions/0025-incremental-result-commitment.md#6-proofs-replay-and-integrity)
+defines version-2 full recovery. No legacy snapshot adapter or guessed rebuild
+behavior was added. The dependent version-0 mid-rebuild kill point is skipped
+with an explicit reason in [tests/test_crash_campaign.py](tests/test_crash_campaign.py).
+
+[scripts/crash_campaign.py](scripts/crash_campaign.py) reproduces actual process
+death before append commit, after append, mid-publication for every projector,
+after publication before acknowledgment, and mid-rebuild for versions "1"/"2".
+It checks reader isolation while the writer is paused, releases the OS lock by
+killing the actual owner, verifies durable log prefixes, uses the supported
+recovery paths, compares complete results with genesis replay, and retries every
+retained request without duplication. The campaign's 280 kills across seeds
+0–19 found no loss of committed events, partial publication, or duplicate retry.
+
 ### Stage 1 verifiability null/empty refusal — resolved
 **Resolved under [ADR 0033 §3](decisions/0033-projector-0-value-and-verifiability-domain.md#3-verifiability-domain):**
 Stage 1 now treats present null and empty-string verifiability as domain
