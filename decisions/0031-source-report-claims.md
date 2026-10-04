@@ -79,8 +79,9 @@ create a promotion path for the reported proposition.
 
 Every external-content ingestion submission declares the report vocabulary it
 uses, on both mentions and observations, in a closed nested source.config object
-carrying vocabulary identity, version and canonical-definition SHA-256. Unrelated
-config fields are preserved. This restriction is prospective: historical
+carrying vocabulary identity, version, digest algorithm, canonicalization profile
+and canonical-definition digest. Unrelated config fields are preserved. This
+restriction is prospective: historical
 undeclared events and equivalent committed retries are unchanged. It changes
 neither envelope nor payload format. The writer checks new admission before
 Layer A append. Each claim's exact property
@@ -134,8 +135,9 @@ no invented metadata and no retroactive admission-policy test.
 
 ### 4. Vocabulary hash inputs, immutable versions and policy changes (R2/R4)
 
-The vocabulary is finite and ADR-specific. Each entry defines an exact property
-string, allowed value shape, artifact scope and report meaning. Duplicate entries,
+The first vocabulary is finite and ADR-specific; the enforcement mechanism is
+producer-generic. Each entry defines an exact property string, allowed value
+shape, artifact scope and report meaning. Duplicate entries,
 unknown schema fields and unsupported constraints refuse. Identity and version
 are nonempty case-sensitive strings, without normalization or implicit latest.
 Section 8(b) drafts the complete closed schema and finite entries.
@@ -202,8 +204,13 @@ ADR 0030: changing it is not positional repair, and the idempotency formula's
 actor_id coverage alone does not establish equivalence.
 
 R5 restricts extraction to the literal ADR title, explicit Status declaration,
-explicit Implementation declaration and one Git rename-report type used by the
-frozen fixture. Literal text is preserved; prose is not interpreted into
+explicit Implementation declaration: only `adr.title.literal`,
+`adr.status.literal` and `adr.implementation.literal` belong to slice 1 under
+the maintainer's 2026-10-04 scope ruling. Ingestion of Git rename reports,
+including the `git.rename.report` vocabulary entry, `git-rename-report` value
+shape and its capture tooling, is deferred to slice 1b. The frozen R092 fixture
+remains a TEST of path identity, not a fourth ingested property in slice 1.
+Literal text is preserved; prose is not interpreted into
 categories and implementation completion is not inferred. Missing fields yield
 no claim; repeated or ambiguous declarations refuse that artifact's extraction.
 Rules are deterministic, with exact grammar drafted in section 8(f).
@@ -247,8 +254,9 @@ R7 requires a checked-in frozen public regression fixture: commit
 902467afa54887de0d15ab9f1a9d23403e9628cc reports R092 for
 decisions/0009-projection-parameters.md ->
 decisions/0010-projection-parameters.md. Test separate subjects for the two paths,
-preservation of the old subject's claims, and a report-scoped Git rename/similarity
-claim with that commit provenance. The “0009” path must not alias the later
+preservation of the old subject's claims, and the later Python ADR 0009's separate
+subject. The frozen R092 transcript supplies TEST provenance, not a slice-1
+Git-report claim, subject or ingestion route. The “0009” path must not alias the later
 Python-target ADR numbered 0009, nor may “0010” become a universal identity key.
 This is a fixture requirement for the unbuilt ingester, not a rename handler.
 
@@ -256,9 +264,11 @@ Check in the exact before/after artifacts and rename report, capture command,
 tool configuration and revision provenance. Independently compare the capture
 with pinned Git objects; routine tests need no fetch or live rename heuristic.
 Include the later Python ADR 0009 as a real imported artifact. Assert distinct
-subjects, retained old candidates, commit-scoped Git-report meaning and no
-aliasing across ADR numbers. Section 8(h) drafts exact packaging and capture
-parameters without substituting another rename.
+subjects, retained old candidates and no aliasing across ADR numbers. Section
+8(h) drafts exact TEST packaging without substituting another rename. R7 does
+not require production capture tooling in slice 1: the `git.rename.report`
+entry, `git-rename-report` value shape and Git-report ingestion/capture tooling
+are deferred to slice 1b under the 2026-10-04 scope ruling.
 
 ### 7. Corpus policy and derived-copy inventory
 
@@ -303,9 +313,13 @@ explicitly resolve every marker; no marked choice is an implementation default.
 #### (a) Declaration keys and complete source example
 
 [DRAFT — maintainer to confirm] Reserve `source.config.report_vocabulary`,
-exactly `{identity, version, definition_sha256}`. Identity/version follow R2;
-the digest is exactly 64 lowercase hexadecimal characters. Missing/extra nested
-fields, wrong types or invalid digest syntax refuse new external admission.
+exactly `{identity, version, digest_algorithm, canonicalization_profile,
+definition_digest}`. Identity/version follow R2; digest_algorithm is `sha256`,
+canonicalization_profile is `nyx.canonical-json/1` (a draft label for the exact
+existing serializer and section 8(b)'s set treatment, not a new wire standard),
+and definition_digest is exactly 64 lowercase hexadecimal characters.
+Missing/extra nested fields, wrong types or invalid digest syntax refuse new
+external admission.
 Unrelated config is preserved unchanged.
 
 [DRAFT — maintainer to confirm] Record an artifact descriptor as
@@ -324,7 +338,9 @@ has an empty locations object; each observation candidate has its own span.
     "report_vocabulary": {
       "identity": "nyx.adr-reports",
       "version": "1",
-      "definition_sha256": "af84b5817bb785950774ab04cea9603d4c110c8ec3ac41405d5f2925ec9d5247"
+      "digest_algorithm": "sha256",
+      "canonicalization_profile": "nyx.canonical-json/1",
+      "definition_digest": "73eed2df21cb3fd66388b186b397301c92bedfaadcf1b51aa822de0e1a1f8e8f"
     },
     "report_artifact": {
       "kind": "adr-path",
@@ -345,7 +361,7 @@ has an empty locations object; each observation candidate has its own span.
 #### (b) Definition schema, repository files and canonical hashing
 
 [DRAFT — maintainer to confirm] Store definitions at
-`config/report-vocabularies/sha256/<definition_sha256>.json`, using the digest
+`config/report-vocabularies/sha256/<definition_digest>.json`, using the digest
 as filename rather than interpolated identity/version. Every release retains all
 historical definitions, original checked-in file bytes and a manifest of their
 identity/version/hash bindings; canonical bytes remain reproducible. Formatting
@@ -355,8 +371,9 @@ changes alone need no new version. No network retrieval substitutes a file.
 below: format is `nyx.adr-report-vocabulary/1`; identity/version obey R2;
 label/description are strings; entries is a nonempty finite set. Each entry has
 exactly property, value_shape, artifact_scope, report_meaning, label, description,
-all nonempty strings. Only these four property/shape/scope combinations are
-supported. Exact names, labels, meanings and shape/scope tags are draft choices.
+all nonempty strings. Slice 1 supports only the three literal ADR
+property/shape/scope combinations below.
+Exact names, labels, meanings and shape/scope tags are draft choices.
 Duplicate properties/entries/JSON keys refuse before set sorting. Unknown fields,
 regexes, arbitrary JSON Schema and executable predicates refuse.
 
@@ -365,7 +382,7 @@ regexes, arbitrary JSON Schema and executable predicates refuse.
   "format": "nyx.adr-report-vocabulary/1",
   "identity": "nyx.adr-reports",
   "version": "1",
-  "label": "Literal ADR and Git reports",
+  "label": "Literal ADR reports",
   "description": "Statements observed in pinned public artifacts, not world-truth assertions.",
   "entries": [
     {
@@ -391,27 +408,15 @@ regexes, arbitrary JSON Schema and executable predicates refuse.
       "report_meaning": "The ADR artifact at the recorded revision stated this literal Implementation declaration.",
       "label": "Implementation declaration",
       "description": "Does not infer implementation completion from prose."
-    },
-    {
-      "property": "git.rename.report",
-      "value_shape": "git-rename-report",
-      "artifact_scope": "git-commit-report",
-      "report_meaning": "Git reported this rename and similarity for the recorded commit and parent under the recorded capture configuration.",
-      "label": "Git rename report",
-      "description": "Establishes neither shared subject identity nor a rename handler."
     }
   ]
 }
 ```
 
 [DRAFT — maintainer to confirm] `literal-string` accepts a nonempty literal
-Unicode string without trimming/normalization. `git-rename-report` accepts exactly
-`{"status":"R092","old_path":<string>,"new_path":<string>,"similarity_percent":92}`;
-paths are exact nonempty Git paths, percentage is an integer (not boolean), and
-only the R7 pinned pair is supported. Its artifact descriptor extends (a) with
-exactly parent_revision, old_blob, new_blob, capture_command, git_version and
-capture_config. Its blob identifies the captured report bytes, not an ADR blob.
-The report artifact has its own path-scoped subject, not an old/new subject link.
+Unicode string without trimming/normalization. `git-rename-report` is not an
+admitted slice-1 value shape; its vocabulary and ingestion contract await slice
+1b. Slice 1's artifact scope is only `adr-path`.
 
 [DRAFT — maintainer to confirm] Parse definitions as strict UTF-8 JSON,
 refusing duplicate keys, nonfinite numbers, invalid Unicode and unsupported fields
@@ -429,18 +434,21 @@ existing serializer; this does not ratify another wire contract.
 
 [DRAFT — maintainer to confirm] Use `config/report-admission.json`, exactly
 `{"format":"nyx.report-admission/1","admitted":[...]}`. Admitted is a set of
-reviewed closed `{identity, version, definition_sha256}` triples, without
-duplicates. Empty admission disables new external requests, not committed
+reviewed closed `{identity, version, digest_algorithm, canonicalization_profile,
+definition_digest}` declarations, without duplicates. Empty admission disables
+new external requests, not committed
 retries. Load all retained definitions, including retired ones. Missing files,
 unknown fields, duplicate keys/entries, bad digests, filename/hash mismatch,
-unresolved triples and multiple hashes for one identity/version fail startup.
+unresolved declarations, unsupported algorithm/profile and multiple digest
+bindings for one identity/version fail startup.
 
 [DRAFT — maintainer to confirm] Use `config/public-report-inputs.json`, exactly
 `{"format":"nyx.public-report-inputs/1","artifacts":[...]}`, whose set entries
 are closed `{repository, path, revision, blob}` records with nonempty strings,
-full pinned Git object IDs and reviewed public availability. Include the rename
-transcript and later Python ADR 0009. No wildcard, mutable ref, reachable URL or
-locally readable path confers permission. Trusted deployment configuration binds
+full pinned Git object IDs and reviewed public availability. Include the
+before/after ADR artifacts and later Python ADR 0009; the rename transcript is
+TEST evidence, not an admitted slice-1 artifact. No wildcard, mutable ref,
+reachable URL or locally readable path confers permission. Trusted deployment configuration binds
 the local checkout to a reviewed repository identifier; caller URLs do not.
 
 [DRAFT — maintainer to confirm] Construct one coherent immutable policy
@@ -448,7 +456,7 @@ snapshot before exposing a writer or creating/modifying a store. Validate every
 definition, allowlist and trusted producer binding. On an existing store, inspect
 recorded declarations read-only against the preserved bundle; a missing historical
 definition fails writer startup, not replay. Failure raises `ReportPolicyError`
-with a reason and file/triple; launcher exits nonzero. No partial snapshot,
+with a reason and file/declaration; launcher exits nonzero. No partial snapshot,
 fallback, hot reload or append is permitted. An existing writer keeps its own
 snapshot; only a successful restart activates replacement policy. Preserve
 bundles with releases/restore material, without a database catalog.
@@ -502,8 +510,11 @@ refuse rather than matching by path or silently reallocating. A separately new
 mention bootstraps its own fresh subject even for equal scope text. Rename
 bootstraps the new path, retaining all old associations and candidates.
 
-[DRAFT — maintainer to confirm] Retain caller manifests at
-`scratch/imports/<run-id>/requests.json`, preserved with caller restore material.
+[DRAFT — maintainer to confirm] Retry request manifests are durable operational
+data stored BESIDE THE STORE, at `<store>.imports/<run-id>/requests.json`, never
+in `scratch/`. Preserve them with the backup bundle, not as disposable checkout
+scratch files. Resuming an interrupted import reuses the saved complete request;
+a reconstructed request with fresh IDs is not a retry.
 Closed fields are format (`nyx.adr-import-requests/1`), projector_version,
 associations (set of exact `{scope, mention_id, subject_id}` records) and requests
 (ordered sequence of exact `{event_request, payload_request}` records containing
@@ -528,9 +539,20 @@ following nonblank continuation lines up to a blank, heading or next recognized
 declaration, with internal line endings unchanged. Do not parse categories,
 supersession prose, ADR numbers or completion from the literal values.
 
+[DRAFT — maintainer to confirm] A candidate declaration is precisely the keyword
+`Status` or `Implementation`, immediately followed by optional `**` markup,
+then a colon. At column zero, detection permits only an optional `- ` prefix
+and optional opening `**` before that keyword; its grammar is
+`^(?:- )?(?:\*\*)?(Status|Implementation)(?:\*\*)?:`.
+This detects candidates, not additional accepted extraction forms: only the four
+literal prefixes above are recognized. Unsupported detected candidates refuse.
+Column-zero prose such as “Implementation is separate work.” or “Status includes
+the explicit partial-supersession notice.” lacks that keyword/markup/colon
+sequence and is ignored, never refused or inferred as a declaration.
+
 [DRAFT — maintainer to confirm] Missing fields produce no claim. Repeated
 recognized titles/fields, empty explicit values, ambiguous/unterminated declarations
-or column-zero Status/Implementation-like forms with unsupported delimiters
+or candidate declarations with unsupported markup/delimiters
 refuse the artifact's entire extraction before preparing requests. Excluded
 quoted/fenced examples do not count as duplicates. No prose inference substitutes
 an absent explicit declaration.
@@ -538,9 +560,34 @@ an absent explicit declaration.
 [DRAFT — maintainer to confirm] One artifact revision's extracted fields share
 an observation, with exact draft properties, fresh candidates, explicit source
 spans/support and `externally_checkable` report verifiability. Zero extracted
-fields yields no property observation. Git extraction accepts only the pinned,
-independently checked R092 transcript, producing (b)'s object and commit/parent/
-blob/tool provenance. It creates neither an identity association nor rename action.
+fields yields no property observation. No Git-report extraction, capture tool,
+Git-report candidate or subject is implemented in slice 1; those await slice 1b.
+
+**Recorded corpus survey (2026-10-04):** `git log --all -- decisions` and a
+full-context, full-index, no-renames patch survey of that same locally reachable
+history found 52 decision-changing commits and 91 distinct numbered Markdown
+artifact revisions across 34 exact paths. An artifact revision means a unique
+`(Git path, blob ID)`, not every unchanged commit snapshot. The baseline is
+`0cdd6bf`; this uncommitted revision is not counted. Full reconstructed blob
+bytes were checked against their native Git object digests; no fetch was used.
+
+| Declaration form outside excluded examples | Artifact revisions containing the form |
+|---|---:|
+| `Status: ` | 69 |
+| `- **Status:** ` | 22 |
+| `Implementation: ` | 69 |
+| `- **Implementation:** ` | 0 |
+
+The rules above extract all 91 revisions and refuse 0: there are no invalid
+UTF-8/BOMs, unclosed fences, repeated/empty recognized fields or unsupported
+candidate declarations in the surveyed corpus. Twenty-two revisions lack an
+Implementation declaration and one early escaped-heading revision lacks a
+literal `# ` title; missing fields yield no claim. This gives 250 literal claims
+(90 titles, 91 statuses, 69 implementation declarations), not inferred metadata.
+Eighteen revisions contain column-zero keyword-led prose, including the two
+examples above; all remain extractable. A broad keyword-prefix interpretation
+would incorrectly refuse those 18. These counts characterize the pinned local
+history, not a production importer or every possible future declaration form.
 
 [DRAFT — maintainer to confirm] Sample one offset-bearing import occurred_at
 per prepared artifact unit and retain its spelling; store source date text
@@ -574,7 +621,7 @@ candidate, with exactly these fields:
 | claim_candidate_id, belief_id, mention_id, subject_id, property_id | Recorded strings, not inferred from numbers. |
 | artifact | Complete recorded report_artifact descriptor, including exact revision/blob. |
 | report_scope | Exactly `{meaning: "artifact_at_revision_stated", vocabulary: <recorded declaration>, artifact_scope: <recorded kind>}`. |
-| value | Complete recorded literal string or Git report object. |
+| value | Complete recorded literal string in slice 1; Git report objects are deferred to slice 1b. |
 | verification_state, verifiability | Candidate fields, qualified by report_scope. |
 | provenance | Exactly `{observation_event_id, occurred_at, recorded_at, event_hash, payload_hash, source, source_class, origin_type, location}`; complete recorded source and candidate's exact span. |
 
@@ -592,17 +639,23 @@ representations remain contingent on confirmation of those drafts.
 
 [DRAFT — maintainer to confirm] Package exact artifacts under
 `tests/fixtures/adr_reports/902467a-r092/`: before.md, after.md,
-rename-report.bin, capture.json and later-python-0009.md. Capture with
+rename-report.bin, capture.json and later-python-0009.md. These are TEST inputs;
+slice 1 imports only the ADR Markdown artifacts and retains the transcript as
+checked-in regression evidence. The recorded capture command is
 `git -c diff.renames=true -c diff.renameLimit=0 -c core.quotePath=false diff-tree --no-commit-id --name-status -r -z -M50% 902467afa54887de0d15ab9f1a9d23403e9628cc^ 902467afa54887de0d15ab9f1a9d23403e9628cc -- decisions/0009-projection-parameters.md decisions/0010-projection-parameters.md`.
 Record full parent/commit/blob IDs, Git version, exact command, effective
-configuration/attributes and transcript digest. Independently check artifacts
-using `git cat-file blob <pinned-blob-id>` and native Git object hashes; verify
-the frozen transcript against the pinned trees at capture. Routine tests read
+configuration/attributes and transcript digest. Fixture provenance records
+independent checks of artifacts using `git cat-file blob <pinned-blob-id>` and
+native Git object hashes; verify
+the frozen transcript against the pinned trees at its capture. Routine tests read
 checked-in bytes/provenance without fetch or a live heuristic. Retain the
-NUL-delimited transcript as binary evidence.
+NUL-delimited transcript as binary TEST evidence. Building a Git-report capture
+tool or ingesting this transcript is deferred to slice 1b; fixture packaging
+does not add a producer or report property in slice 1.
 
-[DRAFT — maintainer to confirm] Use Git `2.53.0.windows.2` for capture and pin
-the later input `decisions/0009-python-314-re-adopted-as-target.md` at
+[DRAFT — maintainer to confirm] Pin the frozen TEST capture provenance to Git
+`2.53.0.windows.2` and the later input
+`decisions/0009-python-314-re-adopted-as-target.md` at
 `531a679598dfbcce45a6a0a239c85be958ec55fd`, blob
 `a495d359f6f7fff2b1edcba09b9a32044aab27b6`. These are locally verified proposed
 fixture choices, still requiring public-input review. The R7 commit's parent is
@@ -610,6 +663,48 @@ fixture choices, still requiring public-input review. The R7 commit's parent is
 `67e7f46e0cd558b64cebfea6af4ffda4fbb4cb81` and
 `fe8f2699577a910206e558dfb8607a362db841a3`, respectively. Those object bindings
 are checked facts of the already selected rename, not alternative rename choices.
+
+## Forward compatibility and recorded dependencies
+
+Proposed ADR 0027 section 3, component E, would make `events.source` encode only
+the opaque actor_id; its private source configuration would be sealed. Proposed
+ADR 0028's persistence inventory (`0028-redaction-and-crypto-shredding.md:754`)
+likewise requires private source.config to be sealed. These are proposed formats,
+not current restrictions on slice-1 events or ratification of protected storage.
+
+[DEPENDENCY — decide at 0027/0028 ratification] Decide where the vocabulary
+declaration lives under the protected format. It must stay readable for
+interpreting report scope. This records a requirement, without selecting a public
+envelope field, protected-body selector, access entitlement or erasure-surviving
+representation. Slice-1 declarations in compatible source.config are unaffected;
+future authority must settle placement/visibility and any format compatibility.
+
+[DRAFT — maintainer to confirm] The declaration names `digest_algorithm` and
+`canonicalization_profile` alongside `definition_digest`, as in section 8(a).
+The draft algorithm is `sha256` and profile is `nyx.canonical-json/1`, referring
+only to the described existing canonical bytes and finite definition schema.
+The declaration commits identity/version and that qualified digest, not a full
+definition. Bare digest naming cannot conceal which algorithm/profile produced
+it; a future format does not silently reinterpret those recorded identifiers.
+
+Enforcement is producer-generic; only the first vocabulary is ADR-specific.
+Later producers—public-document quote reports, chat-message reports and MCP—add
+reviewed vocabularies without changing declaration/admission/retry enforcement.
+Their exact property meanings, scope, extraction and any additional value shapes
+need their own complete reviewed contracts; naming them supplies no defaults or
+permission to ingest private content.
+
+A vocabulary declaration is neither an authorization nor a principal claim.
+ADR 0020 keeps attribution distinct from permission; proposed ADR 0027's principal
+model must not be inferred from a vocabulary identity, version, digest or actor_id.
+The declaration qualifies report meaning and admission, not who owns a claim or
+may supersede it.
+
+Events carry only identity/version and the algorithm/profile-qualified digest.
+A future database catalog can import repository definitions by digest without
+migrating any event. The exact definitions and historical bindings remain
+preserved; replay stays independent of current catalog/policy availability.
+This records forward compatibility, not implementation of a catalog.
 
 ## Verified relationships to earlier decisions
 
@@ -656,7 +751,7 @@ the matrix itself does not convert a draft choice into a ruling.
 | Case | Required evidence |
 |---|---|
 | Declaration and compatibility | Both mention and observation record the closed vocabulary declaration, retain unrelated config and use unchanged envelope/payload formats. Historical undeclared events remain byte-identical and replay unchanged. |
-| Declaration refusal | Missing/null/nonobject declaration, missing/extra/wrong-type fields, empty identity/version, invalid or mismatched hash, unknown property, incompatible scope/value and an invented but correctly hashed definition refuse before new append; count/tip stay unchanged. Case and NFC/NFD strings remain exact, without identity normalization. |
+| Declaration refusal | Missing/null/nonobject declaration, missing/extra/wrong-type fields, empty identity/version, unsupported digest algorithm/canonicalization profile, invalid or mismatched digest, unknown property, incompatible scope/value and an invented but correctly hashed definition refuse before new append; count/tip stay unchanged. Case and NFC/NFD strings remain exact, without identity normalization. |
 | Definition refusal | Duplicate entries/properties/JSON keys, unknown schema fields, unsupported constraints and identity/version reassignment refuse. A merely valid caller hash never supplies reviewed trust. |
 | Canonical definition fixtures | Different whitespace/object-key order preserve canonical hash; changed property/scope/constraint/description/label changes it and requires new version/hash. Set permutations preserve hash; semantic sequences retain order. Original source-byte changes alone need no version. |
 | Trusted-route coverage | Try dropping declaration, relabeling actor_id/source_class and switching each route available in section 8(d)'s controlled producer boundary. All new submissions reach writer-owned classification/admission. Faithful extraction and database bypass are separately evidenced. |
@@ -665,18 +760,25 @@ the matrix itself does not convert a draft choice into a ruling.
 | Conflicting retry after retirement | Reuse event ID/idempotency key with any semantic difference, including config-only vocabulary change; collision refuses before retirement checks, without silently returning or rewriting the original. |
 | Uncommitted retry after retirement | Persist but do not commit a request, retire/restart and retry; refuse under the startup snapshot without reminting or rewriting. A still-running owner uses its unchanged pre-retirement policy. |
 | Partial bootstrap under policy change | Commit mention only, retire/restart; equivalent mention retry returns original pair, pending observation refuses. Mention remains valid without a claim and grants no grandfathering. |
-| Crash before append and caller restore | Persist complete semantic requests/projector/associations, crash and restore retained manifest plus release bundle; retry identical contents under startup admission. Retirement refuses without repair. No acknowledgment is mistaken for commit. |
+| Crash before append and caller restore | Persist complete semantic requests/projector/associations in durable manifests beside the store, crash and restore retained manifest plus release bundle; retry the saved complete request under startup admission. Fresh-ID reconstruction is not a retry. Retirement refuses without repair. No acknowledgment is mistaken for commit. |
 | Crash after append / before publication | After committed append, fail publication or lose acknowledgment, restore a consistent store/retained-request backup and recover the committed prefix without reappend. Return original pair on retry; full replay at equal cutoff/time/version preserves content/hashes/bytes. Policy changes do not affect publication/replay. |
-| Literal extraction and artifact refusal | Exercise literal title/Status/Implementation, missing fields, preserved multiline text, repeated/empty/ambiguous declarations, fenced/quoted examples and all confirmed grammar forms. Missing fields invent no claim; ambiguity refuses the whole artifact before its requests. Never infer categories or implementation completion. |
+| Literal extraction and artifact refusal | Exercise only adr.title.literal, adr.status.literal and adr.implementation.literal, missing fields, preserved multiline text, repeated/empty/ambiguous declarations, fenced/quoted examples and the precise candidate grammar. Keyword-led prose without the colon sequence, including “Implementation is separate work.” and “Status includes the explicit partial-supersession notice.”, is ignored and never refused. Unsupported detected declaration markup refuses the whole artifact before its requests. Never infer categories or implementation completion. |
 | Reader report scope | Call the named adapter with verified reports; inspect candidate identity, exact repository/path/revision/blob, report scope, literal value, location and recorded provenance. Present artifact-at-revision-stated, never embedded world truth; disclose stale publication. |
 | Contradictory and agreeing reports | Across revisions reuse retained mention/subject and current belief with fresh candidates. Read contradictory reports together, including reverse arrival order, without latest winner. Agreeing distinct candidates remain distinct; one supporting observation is not multiplied into independent evidence. |
-| Frozen rename and later Python ADR 0009 | Import checked-in exact before/after ADRs, pinned R092 transcript and actual later Python ADR 0009. Distinct old/new/Python path subjects, old candidates retained, commit-scoped Git-report subject/meaning and no number-based aliases; no rename handler or merge. Capture is independently checked against pinned objects, routine tests require no fetch. |
+| Frozen rename and later Python ADR 0009 — TEST | Import checked-in exact before/after ADR Markdown and actual later Python ADR 0009; keep the frozen 902467a R092 transcript as checked TEST evidence. The renamed path becomes a separate subject, old candidates are retained, and the later Python ADR 0009 never aliases by number. No Git-report subject/property/shape, production capture tool, rename handler or merge in slice 1. The git.rename.report entry, git-rename-report shape and their ingestion/capture tooling are deferred to slice 1b. Recorded capture is independently checked against pinned objects; routine tests require no fetch. |
+| First-import COMPLETION and re-run | At an explicitly selected projector, derived publication progress reaches the exact Layer A log tip and the expected literal claims, identities, scopes and support exist. verify_store success alone is insufficient: it can pass with pending events. Re-run the pinned import using its saved complete requests; event count and tip hash are unchanged. |
+| BACKUP BUNDLE and restore | Back up the store with the SQLite backup API, or checkpoint and close it before copying. Preserve durable beside-store request manifests, all vocabulary definitions/historical bindings, and the exact policy/software revision with that backup bundle. Test one restore: consistent log and derived progress, expected reports, saved-request resumption and no duplicate append on re-run. A loose copy of an active SQLite main file is not the bundle. |
+| Slice-1 FINISH LINE | Import a pinned public revision and complete publication; show a report's exact repository/path/revision/blob and source span; show differing reports from two revisions together without a winner; resume an interrupted import from durable saved complete requests; re-run without appending; restore from the tested backup bundle. Only the three literal ADR properties are ingested; Git-report ingestion remains slice 1b. |
 | Replay versus policy / privileged bypass | Replay compatible historical/retired/undeclared events without definitions or allowlist. In a disposable test store demonstrate privileged direct insertion can bypass admission while passing ordinary checks where structurally valid; verifier success never attests writer-policy enforcement or faithful extraction. |
 | Public inputs, separate dates and explicit selection | Unreviewed/private inputs refuse. Source dates stay separate from retained import occurred_at and writer-assigned recorded_at. Missing projector refuses; explicit supported selections retain all existing golden bytes, roots, hashes and recovery behavior. No implicit switch or default. |
 | Deferred evidence boundary | Option-(a) history stays unchanged by future separately accepted option (b); usage/internal Dream emissions gain no evidence path. No protected deployment or listing/indexing is implemented by this slice. |
 
 ### Deferred cases retained for their own later contracts (R8)
 
+- Slice 1b: the `git.rename.report` vocabulary entry, `git-rename-report` value
+  shape, Git-report artifact descriptor, ingestion and capture tooling. The
+  frozen 902467a R092 transcript remains a slice-1 TEST fixture; it is not an
+  accepted fourth slice-1 property or a requirement to build that producer now.
 - Rebuilding the future listing index from Layer A reproduces mention text and
   associations; its stale state remains disclosed. All persisted copies are
   inventoried, and a private corpus refuses the deployment policy until its
