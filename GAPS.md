@@ -369,6 +369,59 @@ covers the corrupted fixture, clean stores for all projectors and independence
 from the production idempotency helper; legacy numeric-history fixtures retain
 their accepted TEXT-affinity verification behavior.
 
+### Queue 6 mutation campaign: verifier scope and remaining escapes
+
+**Recorded 2026-10-04; non-authoritative findings.** The bounded regressions in
+[tests/test_mutation_campaign.py](tests/test_mutation_campaign.py) and the
+reproducible [mutation generator](scripts/mutation_campaign.py) exercise all event
+columns, payload rows, publications, checkpoints, Merkle content/hashes and append
+freshness indexes using byte flips, row swaps, deletion, duplication and
+self-consistent rehashes. Disposable copies alone have SQL constraints removed.
+
+**Resolved checks:** append-side index reconstruction follows
+[ADR 0014 §8](decisions/0014-cross-belief-reducer-and-hash-lineage.md#8-append-freshness-and-derived-progress)
+and [ADR 0025 §1](decisions/0025-incremental-result-commitment.md#1-version-and-semantic-scope),
+including pending events and both compatible stage-two indexes. Duplicate physical
+map members/checkpoints no longer disappear into dictionary or first-row reads.
+Typed link columns must agree with constitutive/no-confidence content under
+[ADR 0021](decisions/0021-bootstrap-link-treatment.md). The verifier independently
+checks the shipped envelope version and unique event/retry identities; an
+unsupported, consistently rehashed version can no longer pass while production
+log reads refuse it. Projector outputs and historical legacy admission are unchanged.
+
+**Nine remaining mutation instances, four scope findings; no repair authorized:**
+
+- `payloads.canonical_entity_id` can change from NULL to `"x"` in all three
+  projectors without detection. This reserved key-binding metadata is outside
+  the envelope/payload-content commitments; a binding, independent commitment or
+  verifier policy for that metadata remains undecided. No key binding is inferred.
+- Deleting or relabeling the legacy `derived_progress` row yields explicit
+  unknown freshness, rather than a failed verifier exit. Existing legacy stores
+  without checkpoints are already supported as unknown; distinguishing loss
+  from an originally absent checkpoint requires an independently recorded basis.
+  No checkpoint is reconstructed or guessed.
+- Changing or swapping legacy `resolved_beliefs.projected_as_of` passes the
+  standalone verifier. It explicitly excludes evaluation-only timestamps and
+  has no requested shared evaluation time. [ADR 0012](decisions/0012-whole-view-equality.md)
+  requires complete equality at a specified T, including that field; the replay
+  campaign establishes it separately. Verification of a stored evaluation-time
+  claim needs a defined input/basis, rather than a guessed T.
+- Changing or swapping `entity_event_index.updated_at` passes. This is the
+  uncommitted operational clock diagnostic, not an event-derived timestamp;
+  Layer A cannot reconstruct its original value. Diagnostic authentication or
+  an independently trusted copy requires a separate decision.
+
+Minimal reproductions: `build(path, version, 17, 6)` then
+`mutate(path, version, case)` and `classify(path, version, case)` from
+`scripts/mutation_campaign.py`. The exact cases are
+`payloads/canonical_entity_id/flip` (versions 0/1/2),
+`derived_progress/projector_version/delete` and `/flip` (0),
+`resolved_beliefs/projected_as_of/flip` and `/swap` (0), and
+`entity_event_index/updated_at/flip` and `/swap` (0).
+The complete run matrix and individual unchecked disclosures are recorded in
+`scratch/sol-mutation-matrix.md`. Semantically unchanged index-row permutations
+are controls, not escapes. None of these findings changes accepted authority.
+
 ### Stage 1 verifiability null/empty refusal — resolved
 **Resolved under [ADR 0033 §3](decisions/0033-projector-0-value-and-verifiability-domain.md#3-verifiability-domain):**
 Stage 1 now treats present null and empty-string verifiability as domain
