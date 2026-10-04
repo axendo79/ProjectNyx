@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Read-only: no fixes, network, database files, or bytecode writes.
-# ADR commits still require --no-verify; the tracked hook blocks decisions/.
+# The tracked hook permits authority commits only with NYX_AUTHORITY_COMMIT=1.
 """Check repository documentation against files and shipped code.
 
 Checks cover local Markdown navigation, ADR markers/explicit acceptance claims,

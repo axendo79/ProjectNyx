@@ -1,5 +1,6 @@
 #!/bin/bash
-# ADR commits still require --no-verify: protected staged paths remain blocked.
+# Protected staged paths require the maintainer's NYX_AUTHORITY_COMMIT=1.
+# Documentation checks always run, including authorized authority commits.
 # Checks the working tree documentation; never stages, installs, or fixes files.
 set -o pipefail
 
@@ -10,8 +11,10 @@ git diff --cached --name-only --no-renames -z | (
     while IFS= read -r -d '' path; do
         case "$path" in
             spec/*|decisions/*)
-                printf 'Commit blocked: protected staged file: %s\n' "$path" >&2
-                blocked=1
+                if [ "${NYX_AUTHORITY_COMMIT:-}" != "1" ]; then
+                    printf 'Commit blocked: protected staged file: %s\n' "$path" >&2
+                    blocked=1
+                fi
                 ;;
         esac
     done

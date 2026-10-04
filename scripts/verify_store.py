@@ -26,7 +26,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
-from nyx import hashing, merkle
+from nyx import SCHEMA_VERSION, hashing, merkle
 from nyx.storage import open_readonly
 
 
@@ -35,7 +35,8 @@ FIELDS = ('event_id', 'idempotency_key', 'schema_version', 'event_type',
           'payload_hash', 'entity_refs', 'prev_event_hash', 'event_hash')
 KINDS = ('beliefs', 'entities', 'mentions', 'entity_links', 'claim_candidates', 'events')
 COLLECTIONS = ('claim_candidates', 'event_dependencies', 'identity_records')
-CHECKS = ('envelope_hash', 'chain', 'payload_hash', 'idempotency_key', 'recorded_at', 'coverage', 'merkle', 'lineage')
+CHECKS = ('envelope_hash', 'event_schema', 'chain', 'payload_hash', 'idempotency_key',
+          'recorded_at', 'coverage', 'freshness', 'merkle', 'lineage')
 OBSERVATION = 'observation_recorded'
 MENTION = 'entity_mention_recorded'
 CORRECTION = 'correction_appended'
@@ -78,9 +79,16 @@ def read_log(conn, report):
     for row in conn.execute('SELECT * FROM payloads'):
         payloads[row['event_id']].append(dict(row))
     entries, previous_hash, previous_time = [], None, None
+    seen_ids, seen_keys = set(), set()
     for row in rows:
         envelope = {field: row[field] for field in FIELDS}
         eid = envelope['event_id']
+        report.check('event_schema', eid, envelope['schema_version'] == SCHEMA_VERSION,
+                     'unsupported event envelope schema version')
+        report.check('event_schema', eid, eid not in seen_ids and envelope['idempotency_key'] not in seen_keys,
+                     'duplicate event identity or idempotency key')
+        seen_ids.add(eid)
+        seen_keys.add(envelope['idempotency_key'])
         material = {k: v for k, v in envelope.items() if k not in ('event_hash', 'prev_event_hash')}
         try:
             actual = hashing.event_hash(material, envelope['prev_event_hash'])
@@ -147,6 +155,7 @@ class Trees:
         for row in conn.execute("SELECT node_hash,content FROM committed_nodes WHERE projector_version='2'"):
             report.data['merkle_inventory']['retained_nodes'] += 1
             key, raw = row
+            report.check('merkle', key, key not in self.nodes, 'duplicate stored node identity')
             try:
                 node = json.loads(raw)
                 valid = isinstance(node, dict) and node.get('format') == 'nyx-map/1'
@@ -253,6 +262,8 @@ def load_projection(conn, version, report):
             try:
                 for field in ('supporting_events', 'opposing_events', 'superseding_events'):
                     record[field] = json.loads(record[field])
+                report.check('coverage', record['belief_id'], record['belief_id'] not in records['beliefs'],
+                             'duplicate materialized belief identity')
                 records['beliefs'][record['belief_id']] = record
             except (TypeError, ValueError) as error:
                 report.check('coverage', row['belief_id'], False, f'invalid legacy projection JSON: {error}')
@@ -260,12 +271,26 @@ def load_projection(conn, version, report):
         for kind in KINDS:
             for row in conn.execute(f'SELECT * FROM projected_{kind} WHERE projector_version=?', (version,)):
                 try:
-                    records[kind][row[1]] = json.loads(row['content'])
+                    record = json.loads(row['content'])
+                    report.check('coverage', f'{kind}/{row[1]}', row[1] not in records[kind],
+                                 'duplicate projected record identity')
+                    if not isinstance(record, dict):
+                        report.check('coverage', f'{kind}/{row[1]}', False,
+                                     'projected record content is not an object')
+                        continue
+                    if kind == 'entity_links':
+                        report.check('coverage', row[1], row['link_state'] == record.get('link_state') == 'constitutive'
+                                     and row['entity_link_confidence'] is None
+                                     and record.get('entity_link_confidence') is None,
+                                     'typed link fields differ from constitutive/no-confidence content')
+                    records[kind][row[1]] = record
                 except (TypeError, ValueError) as error:
                     report.check('coverage', row[1], False, f'invalid projected record: {error}')
     elif version == '2':
         trees = Trees(conn, report)
-        roots = dict(conn.execute("SELECT kind,root_hash FROM committed_roots WHERE projector_version='2'"))
+        root_rows = conn.execute("SELECT kind,root_hash FROM committed_roots WHERE projector_version='2'").fetchall()
+        roots = dict(root_rows)
+        report.check('merkle', 'root inventory', len(root_rows) == len(roots), 'duplicate committed root kind')
         if roots:
             report.check('merkle', 'root inventory', set(roots) == {*KINDS, 'current_beliefs'}, 'incomplete or extra index roots')
         for kind, root in roots.items():
@@ -279,6 +304,7 @@ def load_projection(conn, version, report):
         cache = {}
         for bid, raw in conn.execute("SELECT belief_id,content FROM projected_beliefs WHERE projector_version='2'"):
             try:
+                report.check('coverage', bid, bid not in cache, 'duplicate cached header identity')
                 cache[bid] = json.loads(raw)
                 headers.append((f'header/{bid}', cache[bid]))
             except (TypeError, ValueError) as error:
@@ -489,6 +515,54 @@ def check_headers(headers, trees, replay, entries, report):
             report.check('lineage', where, False, f'malformed lineage-bearing header: {error}')
 
 
+def check_freshness(conn, projector_version, entries, report):
+    """ADR 0014 §8 / ADR 0025 §1: append indexes cover the full committed log.
+
+    Reconstruct independently of publication progress, including pending events.
+    The legacy operational updated_at is not an event-derived commitment.
+    """
+    subjects, associations, legacy = {}, {}, {}
+    try:
+        for _, envelope, payload in entries:
+            if not isinstance(payload, dict):
+                raise NotImplementedError('payload unavailable; index reconstruction unavailable')
+            eid = envelope['event_id']
+            if projector_version == '0':
+                if envelope['event_type'] not in (OBSERVATION, CORRECTION):
+                    raise NotImplementedError('unsupported legacy event for freshness reconstruction')
+                legacy[payload['belief_id']] = (eid, envelope['event_hash'])
+            elif envelope['event_type'] == MENTION:
+                subjects[payload['subject_id']] = eid
+            elif envelope['event_type'] == OBSERVATION:
+                for claim in payload['claims']:
+                    subjects[claim['subject_id']] = eid
+                    associations[claim['belief_id']] = claim['subject_id']
+            else:
+                raise NotImplementedError('unsupported stage-two event for freshness reconstruction')
+    except (KeyError, TypeError, NotImplementedError) as error:
+        report.skip('freshness', 'append indexes', str(error))
+        return
+    if projector_version == '0':
+        expected = {key: value for key, value in legacy.items()}
+        rows = conn.execute('SELECT entity_id,latest_event_id,latest_event_hash FROM entity_event_index').fetchall()
+        stored = {row[0]: (row[1], row[2]) for row in rows}
+        inventories = [('entity_event_index', expected, stored, len(rows))]
+        report.skip('freshness', 'entity_event_index.updated_at', 'operational clock diagnostic is not committed by Layer A')
+    else:
+        # Both compatible projector indexes are updated by every stage-two append.
+        expected_subjects = {(v, sid): eid for v in ('1', '2') for sid, eid in subjects.items()}
+        expected_beliefs = {(v, bid): sid for v in ('1', '2') for bid, sid in associations.items()}
+        identity_rows = conn.execute('SELECT projector_version,subject_id,latest_event_id FROM identity_event_index').fetchall()
+        belief_rows = conn.execute('SELECT projector_version,belief_id,subject_id FROM belief_event_index').fetchall()
+        inventories = [('identity_event_index', expected_subjects, {(r[0], r[1]): r[2] for r in identity_rows}, len(identity_rows)),
+                       ('belief_event_index', expected_beliefs, {(r[0], r[1]): r[2] for r in belief_rows}, len(belief_rows))]
+    for table, expected, stored, count in inventories:
+        report.check('freshness', table, count == len(stored), 'duplicate append freshness identity')
+        for key in sorted(expected.keys() | stored.keys()):
+            report.check('freshness', f'{table}/{key}', key in expected and key in stored and expected[key] == stored[key],
+                         'missing, extra or differing append index relative to the full committed log')
+
+
 def verify_connection(conn, version, report):
     conn.row_factory = sqlite3.Row
     conn.execute('BEGIN')  # One consistent snapshot for log, roots and progress.
@@ -498,8 +572,11 @@ def verify_connection(conn, version, report):
         for kind in ('coverage', 'merkle', 'lineage'):
             report.skip(kind, version, 'unsupported projector contract')
         return
+    check_freshness(conn, version, entries, report)
     records, headers, trees = load_projection(conn, version, report)
-    progress = conn.execute('SELECT log_position,event_id FROM derived_progress WHERE projector_version=?', (version,)).fetchone()
+    progress_rows = conn.execute('SELECT log_position,event_id FROM derived_progress WHERE projector_version=?', (version,)).fetchall()
+    report.check('coverage', 'derived_progress', len(progress_rows) <= 1, 'duplicate publication checkpoint')
+    progress = progress_rows[0] if progress_rows else None
     tip = entries[-1][0] if entries else 0
     position = progress[0] if progress else 0
     if progress:

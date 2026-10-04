@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 import runpy
 import sqlite3
+import subprocess
+import sys
 
 import pytest
 
@@ -37,6 +39,32 @@ def verify(database):
 def targeted(report, check):
     assert not report['ok']
     assert any(f['check'] == check for f in report['failures']), report
+
+
+@pytest.mark.parametrize('content', ['[]', 'null'])
+@pytest.mark.parametrize('projector_version,table', [
+    *[('1', f'projected_{kind}') for kind in verifier['KINDS']],
+    ('2', 'projected_beliefs'),
+])
+def test_non_object_publication_returns_json_coverage_failure(tmp_path, projector_version, table, content):
+    path = tmp_path / 'non-object.sqlite'
+    with closing(storage.init_db(path, create=True)) as conn:
+        for pair in entries(projector_version):
+            storage.safe_append_event(conn, *pair, projector_version)
+            storage.materialize_pending(conn, T2, projector_version)
+        with conn:
+            changed = conn.execute(
+                f'UPDATE {table} SET content=? WHERE rowid=(SELECT MIN(rowid) FROM {table} WHERE projector_version=?)',
+                (content, projector_version),
+            )
+            assert changed.rowcount == 1
+    result = subprocess.run(
+        [sys.executable, '-B', str(SCRIPT), '--db', str(path), '--projector', projector_version, '--json'],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 1
+    assert result.stderr == '', result.stderr
+    targeted(json.loads(result.stdout), 'coverage')
 
 
 def test_clean_store_counts_and_no_mutation(database):
