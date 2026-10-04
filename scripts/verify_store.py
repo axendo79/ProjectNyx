@@ -274,6 +274,10 @@ def load_projection(conn, version, report):
                     record = json.loads(row['content'])
                     report.check('coverage', f'{kind}/{row[1]}', row[1] not in records[kind],
                                  'duplicate projected record identity')
+                    if not isinstance(record, dict):
+                        report.check('coverage', f'{kind}/{row[1]}', False,
+                                     'projected record content is not an object')
+                        continue
                     if kind == 'entity_links':
                         report.check('coverage', row[1], row['link_state'] == record.get('link_state') == 'constitutive'
                                      and row['entity_link_confidence'] is None
