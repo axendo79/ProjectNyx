@@ -36,8 +36,8 @@ def stamp(at, rng):
     return text.replace('+00:00', 'Z') if offset == 0 and rng.randrange(2) else text
 
 
-def generate(version, seed, count):
-    if version not in ('0', '1', '2') or count < 6:
+def generate(projector_version, seed, count):
+    if projector_version not in ('0', '1', '2') or count < 6:
         raise ValueError('select projector 0/1/2 and at least six events')
     rng = random.Random(seed)
     result, latest = [], {}
@@ -47,7 +47,7 @@ def generate(version, seed, count):
         recorded = stamp(BASE + timedelta(days=5, seconds=i // 2), rng)
         at = BASE + timedelta(seconds=rng.randrange(4000), microseconds=rng.choice((0, 123000, 123456)))
         event_type = events.OBSERVATION_RECORDED
-        if version == '0':
+        if projector_version == '0':
             bid = f'b-{rng.randrange(6)}'
             if i % 5 == 4:
                 event_type = events.CORRECTION_APPENDED
@@ -75,10 +75,10 @@ def generate(version, seed, count):
     return result
 
 
-def prepare(conn, step, version):
+def prepare(conn, step, projector_version):
     common = dict(source=step['source'], source_class='direct_observation',
                   occurred_at=step['occurred_at'], event_id=step['event_id'])
-    if version == '0':
+    if projector_version == '0':
         return writer.prepare_event(**common, event_type=step['event_type'],
                                     origin_type='observed', payload=step['data'])
     if step['event_type'] == events.ENTITY_MENTION_RECORDED:
@@ -86,52 +86,52 @@ def prepare(conn, step, version):
         return ingestion.prepare_mention(conn, **common, origin_type='observed',
             mention_id=data['mention_id'], subject_id=data['subject_id'], text=data['text'])
     return ingestion.prepare_observation(conn, **common, claims=step['data']['claims'],
-                                         projector_version=version)
+                                         projector_version=projector_version)
 
 
-def publication(conn, version, as_of=AS_OF):
-    if version == '0':
+def publication(conn, projector_version, as_of=AS_OF):
+    if projector_version == '0':
         keys = [row[0] for row in conn.execute('SELECT belief_id FROM resolved_beliefs')]
         complete = {'beliefs': {key: storage.read_belief(conn, key, '0') for key in keys}}
     else:
-        complete = storage.read_snapshot(conn, version).complete()
+        complete = storage.read_snapshot(conn, projector_version).complete()
     # The caller proves the progress/tip equality before this normalization.
     for belief in complete['beliefs'].values():
         belief['projected_as_of'] = as_of
     return complete
 
 
-def assert_equivalent(conn, version, as_of=AS_OF):
+def assert_equivalent(conn, projector_version, as_of=AS_OF):
     tip = conn.execute('SELECT rowid,event_id FROM events ORDER BY rowid DESC LIMIT 1').fetchone()
     progress = conn.execute('SELECT log_position,event_id FROM derived_progress WHERE projector_version=?',
-                            (version,)).fetchone()
-    assert progress == tip, (version, progress, tip)
+                            (projector_version,)).fetchone()
+    assert progress == tip, (projector_version, progress, tip)
     log = storage.read_all_events(conn)
-    expected = ({'beliefs': projection.project(log, as_of, '0')} if version == '0' else
-                projection.project_snapshot(log, as_of, version).complete())
-    actual = publication(conn, version, as_of)
-    assert hashing.canonical_json(actual) == hashing.canonical_json(expected), (version, len(log))
-    assert storage.evaluate_whole_view(conn, as_of, version) == expected['beliefs']
+    expected = ({'beliefs': projection.project(log, as_of, '0')} if projector_version == '0' else
+                projection.project_snapshot(log, as_of, projector_version).complete())
+    actual = publication(conn, projector_version, as_of)
+    assert hashing.canonical_json(actual) == hashing.canonical_json(expected), (projector_version, len(log))
+    assert storage.evaluate_whole_view(conn, as_of, projector_version) == expected['beliefs']
 
 
-def build(path, version, seed, count, *, check_prefixes=False):
-    steps = generate(version, seed, count)
+def build(path, projector_version, seed, count, *, check_prefixes=False):
+    steps = generate(projector_version, seed, count)
     requests = []
     with closing(storage.init_db(path, create=True, clock=lambda: BASE.isoformat(), threshold=timedelta(seconds=120))) as conn:
         for i, step in enumerate(steps):
             conn.clock = lambda s=step: s['recorded_at']
-            request = prepare(conn, step, version)
+            request = prepare(conn, step, projector_version)
             requests.append(request)
-            ingestion.submit(conn, request, (BASE + timedelta(days=6, seconds=i)).isoformat(), version)
+            ingestion.submit(conn, request, (BASE + timedelta(days=6, seconds=i)).isoformat(), projector_version)
             if check_prefixes:
-                assert_equivalent(conn, version)
-        assert_equivalent(conn, version)
+                assert_equivalent(conn, projector_version)
+        assert_equivalent(conn, projector_version)
     return requests
 
 
-def exercise(path, version, seed, count, *, check_prefixes=False):
-    requests = build(path, version, seed, count, check_prefixes=check_prefixes)
-    report = verify_store(path, version)
+def exercise(path, projector_version, seed, count, *, check_prefixes=False):
+    requests = build(path, projector_version, seed, count, check_prefixes=check_prefixes)
+    report = verify_store(path, projector_version)
     assert report['ok'] and report['freshness']['state'] == 'current' and not report['pending'], report
     with closing(storage.init_db(path, clock=lambda: (BASE + timedelta(days=7)).isoformat(),
                                  threshold=timedelta(seconds=120))) as conn:
@@ -139,13 +139,13 @@ def exercise(path, version, seed, count, *, check_prefixes=False):
         order = list(requests)
         random.Random(seed + 1).shuffle(order)
         for request in order:
-            committed = ingestion.submit(conn, request, AS_OF, version)
+            committed = ingestion.submit(conn, request, AS_OF, projector_version)
             assert committed[0].event_id == request[0].event_id
         assert storage.read_all_events(conn) == before
-        assert_equivalent(conn, version)
-    report = verify_store(path, version)
+        assert_equivalent(conn, projector_version)
+    report = verify_store(path, projector_version)
     assert report['ok'] and not report['pending'], report
-    return dict(projector=version, seed=seed, events=count, retries=len(requests))
+    return dict(projector=projector_version, seed=seed, events=count, retries=len(requests))
 
 
 def main(argv=None):
@@ -158,11 +158,11 @@ def main(argv=None):
     started, results = monotonic(), []
     with tempfile.TemporaryDirectory(prefix='nyx-replay-') as temp:
         for seed in range(args.seeds):
-            for version in ('0', '1', '2'):
+            for projector_version in ('0', '1', '2'):
                 if monotonic() - started >= args.minutes * 60:
                     break
-                path = Path(temp) / f'{version}-{seed}.db'
-                results.append(exercise(path, version, seed, args.events))
+                path = Path(temp) / f'{projector_version}-{seed}.db'
+                results.append(exercise(path, projector_version, seed, args.events))
                 if args.output:
                     args.output.write_text(json.dumps(dict(results=results), indent=2) + '\n', encoding='utf-8')
             else:

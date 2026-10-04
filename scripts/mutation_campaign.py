@@ -93,7 +93,7 @@ def rehash_legacy(conn, field):
         conn.execute('UPDATE resolved_beliefs SET view_version_hash=? WHERE belief_id=?', (digest, bid))
 
 
-def mutate(path, version, case):
+def mutate(path, projector_version, case):
     with closing(sqlite3.connect(path)) as conn, conn:
         if case.startswith('legacy/'):
             rehash_legacy(conn, case.split('/')[1])
@@ -106,10 +106,10 @@ def mutate(path, version, case):
             conn.execute("INSERT INTO committed_nodes VALUES ('2',?,?)", (hashing._sha256_hex(raw), raw))
             return True
         if case == 'publication/delete':
-            table = 'resolved_beliefs' if version == '0' else 'projected_beliefs'
+            table = 'resolved_beliefs' if projector_version == '0' else 'projected_beliefs'
             return field_mutation(conn, table, 'belief_id', 'delete')
         if case.startswith('freshness/'):
-            table = 'entity_event_index' if version == '0' else 'identity_event_index'
+            table = 'entity_event_index' if projector_version == '0' else 'identity_event_index'
             return field_mutation(conn, table, 'latest_event_id', case.split('/')[1])
         table, field, operation = case.split('/')
         if table == 'nodes':
@@ -118,32 +118,32 @@ def mutate(path, version, case):
         return field_mutation(conn, table, field, operation)
 
 
-def classify(path, version, case):
-    report = verify_store(path, version)
+def classify(path, projector_version, case):
+    report = verify_store(path, projector_version)
     production = []
     # Reads only: no recovery silently replaces the mutant being inspected.
     operations = {'log': lambda conn: storage.read_all_events(conn),
-                  'publication': lambda conn: publication(conn, version),
-                  'status': lambda conn: storage.read_projection_status(conn, version)}
+                  'publication': lambda conn: publication(conn, projector_version),
+                  'status': lambda conn: storage.read_projection_status(conn, projector_version)}
     for name, operation in operations.items():
         try:
             with closing(storage.open_readonly(path)) as conn:
                 operation(conn)
         except (ValueError, RuntimeError, NotImplementedError, sqlite3.Error, KeyError, TypeError) as error:
             production.append(f'{name}: {type(error).__name__}: {error}')
-    return dict(projector=version, case=case,
+    return dict(projector=projector_version, case=case,
                 outcome='CAUGHT' if not report['ok'] else 'PRODUCTION ONLY' if production else 'ESCAPED',
                 checks=sorted({f['check'] for f in report['failures']}),
                 failures=report['failures'], production=production, unchecked=report['unchecked'])
 
 
-def cases(path, version):
+def cases(path, projector_version):
     tables = ['events', 'payloads', 'derived_progress']
-    tables += (['resolved_beliefs', 'entity_event_index'] if version == '0' else
+    tables += (['resolved_beliefs', 'entity_event_index'] if projector_version == '0' else
                ['projected_beliefs', 'identity_event_index', 'belief_event_index'])
     tables += (['projected_entities', 'projected_mentions', 'projected_entity_links',
-                'projected_claim_candidates', 'projected_events'] if version == '1' else
-               ['committed_nodes', 'committed_roots'] if version == '2' else [])
+                'projected_claim_candidates', 'projected_events'] if projector_version == '1' else
+               ['committed_nodes', 'committed_roots'] if projector_version == '2' else [])
     result = []
     with closing(sqlite3.connect(path)) as conn:
         for table in tables:
@@ -152,9 +152,9 @@ def cases(path, version):
                 result.extend(f'{table}/{field}/{op}' for op in ('flip', 'swap'))
             result.extend(f'{table}/{fields[0]}/{op}' for op in ('delete', 'duplicate'))
     result += ['publication/delete', 'freshness/delete', 'freshness/swap']
-    if version == '0':
+    if projector_version == '0':
         result += ['legacy/idempotency_key/rehash', 'legacy/schema_version/rehash']
-    if version == '2':
+    if projector_version == '2':
         result += ['nodes/branch/rehash']
     return result
 
@@ -163,20 +163,20 @@ def campaign(directory, seed=17, count=12, minutes=45):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     results, started = [], monotonic()
-    for version in ('0', '1', '2'):
-        base = directory / f'base-{version}.db'
-        build(base, version, seed, count)
-        assert verify_store(base, version)['ok']
-        for index, case in enumerate(cases(base, version)):
+    for projector_version in ('0', '1', '2'):
+        base = directory / f'base-{projector_version}.db'
+        build(base, projector_version, seed, count)
+        assert verify_store(base, projector_version)['ok']
+        for index, case in enumerate(cases(base, projector_version)):
             if monotonic() - started >= minutes * 60:
                 raise TimeoutError('mutation campaign budget exhausted before matrix completion')
-            target = directory / f'mutant-{version}-{index}.db'
+            target = directory / f'mutant-{projector_version}-{index}.db'
             backup(base, target)
-            changed = mutate(target, version, case)
-            result = classify(target, version, case) if changed else dict(
-                projector=version, case=case, outcome='CONTROL', checks=[], production=[])
+            changed = mutate(target, projector_version, case)
+            result = classify(target, projector_version, case) if changed else dict(
+                projector=projector_version, case=case, outcome='CONTROL', checks=[], production=[])
             results.append(result)
-        print(f'Projector {version}: {len(results)} cumulative cases', flush=True)
+        print(f'Projector {projector_version}: {len(results)} cumulative cases', flush=True)
     return results
 
 
@@ -196,7 +196,7 @@ def write_matrix(path, results):
     for result in results:
         if result['outcome'] in ('ESCAPED', 'PRODUCTION ONLY'):
             lines += [f"### {result['projector']} — {result['case']}", '',
-                      'Reproduction: build a fresh generator store, then call `mutate(path, version, case)`.',
+                      'Reproduction: build a fresh generator store, then call `mutate(path, projector_version, case)`.',
                       f"Verifier outcome: {result['outcome']}; production refusals: {result['production']!r}.",
                       f"Explicit unchecked checks: {result.get('unchecked', [])!r}.", '']
     Path(path).write_text('\n'.join(lines) + '\n', encoding='utf-8')

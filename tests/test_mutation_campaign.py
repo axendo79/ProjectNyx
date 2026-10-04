@@ -13,16 +13,16 @@ def harness():
     return module
 
 
-@pytest.mark.parametrize('version', ['0', '1', '2'])
+@pytest.mark.parametrize('projector_version', ['0', '1', '2'])
 @pytest.mark.parametrize('case', ['events/source_class/flip', 'payloads/ciphertext/delete',
                                 'publication/delete', 'derived_progress/event_id/flip',
                                 'freshness/delete', 'freshness/swap'])
-def test_representative_matrix(tmp_path, version, case):
+def test_representative_matrix(tmp_path, projector_version, case):
     campaign = harness()
     path = tmp_path / 'mutation.db'
-    campaign.build(path, version, 17, 8)
-    campaign.mutate(path, version, case)
-    result = campaign.classify(path, version, case)
+    campaign.build(path, projector_version, 17, 8)
+    campaign.mutate(path, projector_version, case)
+    result = campaign.classify(path, projector_version, case)
     assert result['outcome'] == 'CAUGHT', result
     assert result['checks'], result
 
@@ -31,23 +31,23 @@ def test_representative_matrix(tmp_path, version, case):
                                 'nodes/content/flip', 'nodes/hash/flip', 'nodes/branch/rehash'])
 def test_self_consistent_and_merkle_mutants(tmp_path, case):
     campaign = harness()
-    version = '0' if case.startswith('legacy/') else '2'
+    projector_version = '0' if case.startswith('legacy/') else '2'
     path = tmp_path / 'mutation.db'
-    campaign.build(path, version, 17, 8)
-    campaign.mutate(path, version, case)
-    result = campaign.classify(path, version, case)
+    campaign.build(path, projector_version, 17, 8)
+    campaign.mutate(path, projector_version, case)
+    result = campaign.classify(path, projector_version, case)
     assert result['outcome'] == 'CAUGHT', result
 
 
-@pytest.mark.parametrize('version', ['0', '1', '2'])
-def test_clean_campaign_store(tmp_path, version):
+@pytest.mark.parametrize('projector_version', ['0', '1', '2'])
+def test_clean_campaign_store(tmp_path, projector_version):
     campaign = harness()
     path = tmp_path / 'clean.db'
-    campaign.build(path, version, 17, 8)
-    assert campaign.verify_store(path, version)['ok']
+    campaign.build(path, projector_version, 17, 8)
+    assert campaign.verify_store(path, projector_version)['ok']
 
 
-@pytest.mark.parametrize('version,case', [
+@pytest.mark.parametrize('projector_version,case', [
     ('0', 'resolved_beliefs/belief_id/duplicate'),
     ('0', 'derived_progress/projector_version/duplicate'),
     ('1', 'projected_entities/projector_version/duplicate'),
@@ -58,12 +58,12 @@ def test_clean_campaign_store(tmp_path, version):
     ('2', 'committed_roots/projector_version/duplicate'),
     ('2', 'projected_beliefs/projector_version/duplicate'),
 ])
-def test_discovered_structural_misses(tmp_path, version, case):
+def test_discovered_structural_misses(tmp_path, projector_version, case):
     campaign = harness()
     path = tmp_path / 'mutation.db'
-    campaign.build(path, version, 17, 8)
-    assert campaign.mutate(path, version, case)
-    result = campaign.classify(path, version, case)
+    campaign.build(path, projector_version, 17, 8)
+    assert campaign.mutate(path, projector_version, case)
+    result = campaign.classify(path, projector_version, case)
     assert result['outcome'] == 'CAUGHT', result
 
 

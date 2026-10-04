@@ -35,7 +35,7 @@ def pause(conn, point):
     raise RuntimeError('crash child unexpectedly resumed')
 
 
-def child(path, version, point, manifest):
+def child(path, projector_version, point, manifest):
     saved = json.loads(Path(manifest).read_text(encoding='utf-8'))
     request = writer.EventRequest(**saved['envelope']), writer.PayloadRequest(**saved['payload'])
     with closing(storage.init_db(path, clock=lambda: saved['clock'], threshold=timedelta(seconds=120))) as conn:
@@ -44,19 +44,19 @@ def child(path, version, point, manifest):
                 if sql.upper().startswith('INSERT INTO PAYLOADS'):
                     pause(conn, point)  # Event row inserted; append transaction not committed.
             conn.set_trace_callback(trace)
-            storage.append_submission(conn, request, version)
+            storage.append_submission(conn, request, projector_version)
         else:
-            storage.append_submission(conn, request, version)
+            storage.append_submission(conn, request, projector_version)
             if point == 'after_append':
                 pause(conn, point)
             elif point == 'mid_publication':
                 boundary = {'0': 'INSERT INTO DERIVED_PROGRESS', '1': 'INSERT INTO PROJECTED_EVENTS',
-                            '2': 'INSERT INTO COMMITTED_ROOTS'}[version]
+                            '2': 'INSERT INTO COMMITTED_ROOTS'}[projector_version]
                 conn.set_trace_callback(lambda sql: pause(conn, point)
                                         if sql.upper().startswith(boundary) else None)
-                storage.materialize_pending(conn, AS_OF, version)
+                storage.materialize_pending(conn, AS_OF, projector_version)
             else:
-                storage.materialize_pending(conn, AS_OF, version)
+                storage.materialize_pending(conn, AS_OF, projector_version)
                 if point == 'after_publication':
                     pause(conn, point)
                 elif point == 'mid_rebuild':
@@ -64,24 +64,24 @@ def child(path, version, point, manifest):
                     # transaction; pause before its first progress write.
                     conn.set_trace_callback(lambda sql: pause(conn, point)
                                             if sql.upper().startswith('INSERT INTO DERIVED_PROGRESS') else None)
-                    storage.rebuild_projection(conn, AS_OF, version)
+                    storage.rebuild_projection(conn, AS_OF, projector_version)
                 else:
                     raise ValueError(point)
     raise RuntimeError(f'kill point was not reached: {point}')
 
 
-def exercise(directory, version, seed, point):
-    if version == '0' and point == 'mid_rebuild':
+def exercise(directory, projector_version, seed, point):
+    if projector_version == '0' and point == 'mid_rebuild':
         raise NotImplementedError('rebuild_projection requires the snapshot boundary (projectors 1/2)')
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / 'nyx.db'
-    requests = build(path, version, seed, 6)
-    step = generate(version, seed, 7)[6]
+    requests = build(path, projector_version, seed, 6)
+    step = generate(projector_version, seed, 7)[6]
     with closing(storage.init_db(path, clock=lambda: step['recorded_at'], threshold=timedelta(seconds=120))) as conn:
-        request = prepare(conn, step, version)
+        request = prepare(conn, step, projector_version)
         before = storage.read_all_events(conn)
-        old_publication = publication(conn, version)
+        old_publication = publication(conn, projector_version)
     manifest = directory / 'nyx.db.imports' / 'request.json'
     manifest.parent.mkdir()
     manifest.write_text(json.dumps(dict(envelope=asdict(request[0]), payload=asdict(request[1]),
@@ -91,7 +91,7 @@ def exercise(directory, version, seed, point):
     # Windows venv redirectors can leave a child alive if killed. Launch the
     # real executable and verify the process announcing the pause is its owner.
     proc = subprocess.Popen([sys._base_executable, '-B', str(Path(__file__).resolve()),
-                             '--child', str(path), version, point, str(manifest)],
+                             '--child', str(path), projector_version, point, str(manifest)],
                             env=environment, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, text=True)
     ready = Queue()
@@ -109,10 +109,10 @@ def exercise(directory, version, seed, point):
             assert len(visible) == expected_count
             assert visible[:6] == before  # Every previously committed byte survives.
             if point in ('before_append_commit', 'after_append', 'mid_publication'):
-                assert publication(reader, version) == old_publication
+                assert publication(reader, projector_version) == old_publication
             else:
-                assert_equivalent(reader, version)
-        report = verify_store(path, version)
+                assert_equivalent(reader, projector_version)
+        report = verify_store(path, projector_version)
         assert report['ok'], report
         assert len(report['pending']) == (1 if point in ('after_append', 'mid_publication') else 0), report
         proc.kill()
@@ -128,24 +128,24 @@ def exercise(directory, version, seed, point):
         committed_before_recovery = storage.read_all_events(conn)
         assert len(committed_before_recovery) == expected_count
         # Exercise supported recovery paths on every restart; neither may append.
-        storage.materialize_pending(conn, AS_OF, version)
-        assert_equivalent(conn, version)
-        if version in ('1', '2'):
-            storage.rebuild_projection(conn, AS_OF, version)
+        storage.materialize_pending(conn, AS_OF, projector_version)
+        assert_equivalent(conn, projector_version)
+        if projector_version in ('1', '2'):
+            storage.rebuild_projection(conn, AS_OF, projector_version)
         assert storage.read_all_events(conn) == committed_before_recovery
-        assert_equivalent(conn, version)
-        result = ingestion.submit(conn, request, AS_OF, version)
+        assert_equivalent(conn, projector_version)
+        result = ingestion.submit(conn, request, AS_OF, projector_version)
         assert result[0].event_id == request[0].event_id
         all_requests = [*requests, request]
         retained = storage.read_all_events(conn)
         assert len(retained) == 7
         for retry in [*all_requests, request]:
-            ingestion.submit(conn, retry, AS_OF, version)
+            ingestion.submit(conn, retry, AS_OF, projector_version)
         assert storage.read_all_events(conn) == retained
-        assert_equivalent(conn, version)
-    report = verify_store(path, version)
+        assert_equivalent(conn, projector_version)
+    report = verify_store(path, projector_version)
     assert report['ok'] and not report['pending'] and report['freshness']['state'] == 'current', report
-    return dict(projector=version, seed=seed, point=point, committed_at_kill=expected_count,
+    return dict(projector=projector_version, seed=seed, point=point, committed_at_kill=expected_count,
                 events_after_retry=7, retries=8)
 
 
@@ -162,13 +162,13 @@ def main(argv=None):
     started, results = monotonic(), []
     with tempfile.TemporaryDirectory(prefix='nyx-crashes-') as temp:
         for seed in range(args.seeds):
-            for version in ('0', '1', '2'):
+            for projector_version in ('0', '1', '2'):
                 for point in POINTS:
-                    if version == '0' and point == 'mid_rebuild':
+                    if projector_version == '0' and point == 'mid_rebuild':
                         continue  # Existing documented API supports snapshot versions 1/2 only.
                     if monotonic() - started >= args.minutes * 60:
                         raise TimeoutError('crash campaign budget exhausted')
-                    results.append(exercise(Path(temp) / f'{seed}-{version}-{point}', version, seed, point))
+                    results.append(exercise(Path(temp) / f'{seed}-{projector_version}-{point}', projector_version, seed, point))
             print(f'Seed {seed}: {len(results)} killed writers recovered', flush=True)
     summary = dict(kills=len(results), events=sum(r['events_after_retry'] for r in results),
                    retries=sum(r['retries'] for r in results), seeds=list(range(args.seeds)),

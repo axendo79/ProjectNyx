@@ -515,7 +515,7 @@ def check_headers(headers, trees, replay, entries, report):
             report.check('lineage', where, False, f'malformed lineage-bearing header: {error}')
 
 
-def check_freshness(conn, version, entries, report):
+def check_freshness(conn, projector_version, entries, report):
     """ADR 0014 §8 / ADR 0025 §1: append indexes cover the full committed log.
 
     Reconstruct independently of publication progress, including pending events.
@@ -527,7 +527,7 @@ def check_freshness(conn, version, entries, report):
             if not isinstance(payload, dict):
                 raise NotImplementedError('payload unavailable; index reconstruction unavailable')
             eid = envelope['event_id']
-            if version == '0':
+            if projector_version == '0':
                 if envelope['event_type'] not in (OBSERVATION, CORRECTION):
                     raise NotImplementedError('unsupported legacy event for freshness reconstruction')
                 legacy[payload['belief_id']] = (eid, envelope['event_hash'])
@@ -542,7 +542,7 @@ def check_freshness(conn, version, entries, report):
     except (KeyError, TypeError, NotImplementedError) as error:
         report.skip('freshness', 'append indexes', str(error))
         return
-    if version == '0':
+    if projector_version == '0':
         expected = {key: value for key, value in legacy.items()}
         rows = conn.execute('SELECT entity_id,latest_event_id,latest_event_hash FROM entity_event_index').fetchall()
         stored = {row[0]: (row[1], row[2]) for row in rows}
