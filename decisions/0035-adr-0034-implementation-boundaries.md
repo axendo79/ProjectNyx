@@ -1,6 +1,6 @@
 # ADR 0035: ADR 0034 Implementation Boundaries — Schema, Dependencies, Report Corrections
 
-Status: Accepted — ratified by the maintainer, 2026-10-05
+Status: Accepted — ratified by the maintainer, 2026-10-05; section 1 amended the same day for schema-5 committed-table constraints
 
 Date: 2026-10-05
 
@@ -41,6 +41,18 @@ This ADR closes each gap without changing any other part of ADR 0034.
   for working copies (ADR 0034 section 10); no open, read or append path calls it.
 - Every other version, including 0–3 and 6 and above, keeps ADR 0011's
   refuse-and-preserve behavior.
+
+**Amendment, 2026-10-05: committed tables in schema 5.** In schema 4,
+`committed_nodes` and `committed_roots` carry `CHECK (projector_version = '2')`.
+In schema 5 both constraints are `CHECK (projector_version IN ('2', '3'))`, so
+version-"3" committed rows are stored in the same tables, isolated by
+`projector_version` as ADR 0034 section 1 requires. No other table definition
+changes. Because SQLite cannot alter a CHECK constraint in place, the explicit
+migration rebuilds exactly these two tables inside its single transaction (create
+the schema-5 table, copy every row unchanged, drop the old table, rename),
+verifies that every copied row is identical, and rolls back entirely on any
+failure. No new committed tables are added and the relation table is not
+repurposed.
 
 Existing tests that pin fresh creation at version 4, or refuse version 5, change
 their expectations to this rule. Event bytes, hashes, lineage and derived results
@@ -85,6 +97,9 @@ empty admission list ADR 0034 ratified.
 
 ## Acceptance cases
 
+- Fresh schema 5 accepts version-"3" committed node and root rows and refuses
+  any other version; migration of a version-4 copy rebuilds both tables with
+  identical rows, and an injected failure leaves the copy at version 4 unchanged.
 - Fresh creation records version 5; a version-4 database opens for "0", "1" and
   "2" with identical results and unchanged bytes; selecting "3" on it refuses
   without mutation; explicit migration of a copy yields version 5 and leaves the
