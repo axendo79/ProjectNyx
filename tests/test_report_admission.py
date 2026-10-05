@@ -49,6 +49,29 @@ def tip(conn):
     return conn.execute('SELECT count(*) FROM events').fetchone()[0], storage.last_event_hash(conn)
 
 
+@pytest.mark.parametrize('route', ['safe-legacy', 'locked-legacy'])
+@pytest.mark.parametrize('kind', ['mention', 'observation'])
+def test_valid_reports_require_explicit_stage_two_projector(tmp_path, route, kind):
+    from nyx.report_policy import ReportPolicyError
+    d = deployment(tmp_path)
+    with closing(d.open_writer(create=True)) as conn:
+        if kind == 'observation':
+            ingestion.submit(conn, mention(conn, d.policy), AS_OF, '2')
+            request = observation(conn, d.policy)
+        else:
+            request = mention(conn, d.policy)
+        pair = writer.assign(request, AT, storage.last_event_hash(conn))
+        before = tip(conn)
+        with pytest.raises(ReportPolicyError, match='requires explicit projector "1" or "2"'):
+            if route == 'safe-legacy':
+                storage.safe_append_event(conn, *pair)
+            else:
+                with conn:
+                    conn.execute('BEGIN IMMEDIATE')
+                    storage._append_legacy_locked(conn, *pair)
+        assert tip(conn) == before
+
+
 @pytest.mark.parametrize('route', ['append', 'submit', 'safe', 'direct-stage', 'locked-stage',
     'locked-legacy', 'safe-legacy', 'skeleton-mention', 'skeleton-observation', 'wrapper'])
 def test_every_producer_route_refuses_before_mutation(tmp_path, route):
