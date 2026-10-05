@@ -3,11 +3,12 @@ from dataclasses import asdict, dataclass, field
 from copy import deepcopy
 
 from . import committed, hashing, integrity, merkle, transition_dependencies
-from .events import CORRECTION_APPENDED, CANDIDATE_REPLACED
+from .events import CORRECTION_APPENDED, CANDIDATE_REPLACED, CANDIDATE_EXPIRED
 from .reducer import ReducerProjector, _fields, _string, _required, _fresh, _entity_refs
 
 TRANSITIONS = {CORRECTION_APPENDED: ("corrected", "corrected_by"),
-               CANDIDATE_REPLACED: ("replaced", "replaced_by")}
+               CANDIDATE_REPLACED: ("replaced", "replaced_by"),
+               CANDIDATE_EXPIRED: ("expired", "expired_at")}
 
 
 @dataclass(frozen=True)
@@ -31,12 +32,17 @@ def reduce_transition(snapshot, envelope, payload, as_of):
     _instant(envelope.recorded_at, "recorded_at")
     occurred = _instant(envelope.occurred_at)
     _fresh(snapshot, "events", envelope.event_id, {})
-    _fields(payload, ("claim", "targets", "basis"))
-    claim = payload["claim"]
-    _fields(claim, ("mention_id", "subject_id", "property_id", "belief_id",
-                    "claim_candidate_id", "value", "verifiability"))
-    belief_id = _string(claim, "belief_id")
-    _fresh(snapshot, "claim_candidates", _string(claim, "claim_candidate_id"), {})
+    if envelope.event_type == CANDIDATE_EXPIRED:
+        _fields(payload, ("belief_id", "targets", "basis"))
+        claim = None
+        belief_id = _string(payload, "belief_id")
+    else:
+        _fields(payload, ("claim", "targets", "basis"))
+        claim = payload["claim"]
+        _fields(claim, ("mention_id", "subject_id", "property_id", "belief_id",
+                        "claim_candidate_id", "value", "verifiability"))
+        belief_id = _string(claim, "belief_id")
+        _fresh(snapshot, "claim_candidates", _string(claim, "claim_candidate_id"), {})
     _fields(payload["basis"], ("kind", "statement"))
     basis_kind = "stated_error" if envelope.event_type == CORRECTION_APPENDED else "stated"
     if payload["basis"]["kind"] != basis_kind:
@@ -69,9 +75,16 @@ def reduce_transition(snapshot, envelope, payload, as_of):
     dependency = {"event_id": envelope.event_id, "event_hash": envelope.event_hash,
                   "envelope": asdict(envelope), "payload": deepcopy(payload)}
     delta = committed.Delta(envelope.event_id, events={envelope.event_id: dependency})
-    delta = committed.reduce_claims(snapshot, envelope, [claim], as_of, "3", delta)
-    # Start from this event's fresh candidate tree, then change only target leaves.
-    trees = Snapshot(delta.roots).collection_trees(belief_id)
+    if claim is not None:
+        delta = committed.reduce_claims(snapshot, envelope, [claim], as_of, "3", delta)
+        trees = Snapshot(delta.roots).collection_trees(belief_id)
+    else:
+        _entity_refs(envelope, [belief["subject_id"]])
+        trees = snapshot.collection_trees(belief_id)
+        trees["event_dependencies"] = merkle.put(trees["event_dependencies"], envelope.event_id,
+                                                 dependency, delta.nodes)
+        delta.beliefs[belief_id] = {**belief, "updated_at": envelope.recorded_at,
+                                   "projected_as_of": as_of}
     status, relation = TRANSITIONS[envelope.event_type]
     for candidate in candidates:
         candidate.update(live_status=status, superseding_events=[envelope.event_id])
