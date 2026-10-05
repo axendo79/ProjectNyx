@@ -4,7 +4,7 @@ Status: Accepted — ratified by the maintainer, 2026-10-05; implementation boun
 
 Date: 2026-10-05
 
-Implementation: None
+Implementation: Complete under projector "3" in (B) commits `d85bd970af17035e4ab477c2d3565d0ad3eedd2c`, `82c3aa67a1327a1d9720afa973a2fa68a9c79c51`, `55f8ec295804be160ff987bccd16fffd29634831`, `8331f379ac3c118f5132489b881995020fb06a19`, `da060a98852acabbaf4c4452e215d96e4151045f`, `e769e60c982ac663f475f5ac3e1189085a70d679`, `25e0a85ab14db2b819a48d4076683a37fff7ec39`, `f8f90f4e26ad0c576803dfa7864a28d88f937300`, `3d2dab2000956e53e726397893bcfae93d53b530`, `52f652e38ac59b2944c892e7f7eaa8129f2cda06`, `8112fd6054d8d8b5ab03b4e0b6127fc575a6cc51`, `0de58397ed95c0e8dcc6afee63ba67f93ca7f8d6`, `f48565a66123d829018e9f8ec7f84d0375e3c40c`, `0460655607c7048df2f3695643a2f766b3406f0a`, `de53ee6b81fb8515743bca53b6ba4bdc97d7d93c`, `90e71197f62b1e92cc910211a669ef425a568228`, `ff02ac4f04864b65ba910074de447451e34d077c`, merged by PR #14 (`ecc1f36`), as bounded by ADR 0035. Report corrections remain deferred under ADR 0035 section 3.
 
 Supersedes: [ADR 0023 section 5](0023-stage-two-contract.md#5-corrections-are-deferred-under-version-1), only under explicitly selected projector "3"; projectors "1" and "2" keep every refusal. [ADR 0024 section 1](0024-no-authoritative-head.md#1-no-authoritative-head-under-version-1), only to the extent that an explicit recorded transition ends a named candidate's live status under projector "3"; recency still selects nothing. [ADR 0031 section 8](0031-source-report-claims.md#8-exact-ratified-first-slice-contract), only its single-extractor admission, and only for report-correction evidence under section 6 below.
 
