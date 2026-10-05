@@ -4,7 +4,7 @@ Status: Accepted — ratified by the maintainer, 2026-10-05; section 1 amended t
 
 Date: 2026-10-05
 
-Implementation: None
+Implementation: Complete in (B) commits `82c3aa67a1327a1d9720afa973a2fa68a9c79c51`, `55f8ec295804be160ff987bccd16fffd29634831`, `8331f379ac3c118f5132489b881995020fb06a19`, `da060a98852acabbaf4c4452e215d96e4151045f` (schema 4/5 and migration including the committed-table amendment, the dependency check, and report-correction refusal), merged by PR #14 (`ecc1f36`).
 
 Supersedes: [ADR 0025](0025-incremental-result-commitment.md)'s single supported database schema version, only as stated in section 1. [ADR 0034 section 6](0034-forward-state-transitions.md#6-correction-evidence)'s report mis-extraction route, only by deferring it as stated in section 3; its four evidence conditions remain the rule for that later decision.
 
