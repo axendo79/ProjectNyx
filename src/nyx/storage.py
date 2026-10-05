@@ -526,7 +526,12 @@ def _append_stage_two_locked(conn, envelope, payload, projector_version, before_
     subjects = set(delta.entities) | {b["subject_id"] for b in delta.beliefs.values()}
     # Both projectors consume this same event contract. Freshness describes
     # Layer A, while progress remains separately pinned to each projector.
-    for compatible_projector_version in ("1", "2", "3"):
+    versions = ("1", "2")
+    if projector_version == "3" or conn.execute(
+            "SELECT 1 FROM identity_event_index WHERE projector_version='3' LIMIT 1").fetchone():
+        versions += ("3",)
+        _initialize_forward_freshness(conn)
+    for compatible_projector_version in versions:
         for subject_id in subjects:
             conn.execute(
                 "INSERT INTO identity_event_index VALUES (?,?,?) "
@@ -890,6 +895,13 @@ def _publish_delta(conn: sqlite3.Connection, version: str, position: int, delta)
         "log_position=excluded.log_position, event_id=excluded.event_id",
         (version, position, delta.event_id),
     )
+    if version == "3":
+        for relation in getattr(delta, "relations", {}).values():
+            if relation["log_position"] != position:
+                raise ValueError("relation publication position mismatch")
+            conn.execute("INSERT INTO candidate_relations VALUES (?,?,?,?,?)",
+                (version, relation["target_candidate_id"], relation["event_id"],
+                 relation["relation"], position))
 
 
 def _pending_events(conn: sqlite3.Connection, position: int, *, limit: int = -1):
@@ -956,6 +968,8 @@ def materialize_pending(conn: sqlite3.Connection, as_of: str,
     while True:
         with conn:
             conn.execute("BEGIN IMMEDIATE")
+            if projector_version == "3":
+                _initialize_forward_freshness(conn)
             if projector_version == "0":
                 log_position = _legacy_publication_position(conn)
             else:
@@ -995,12 +1009,16 @@ def rebuild_projection(conn: sqlite3.Connection, as_of: str,
         raise RuntimeError("recovery requires its own transaction")
     with conn:
         conn.execute("BEGIN IMMEDIATE")
+        if projector_version == "3":
+            _initialize_forward_freshness(conn)
         log = _pending_events(conn, 0)
         for table, _ in _RECORD_TABLES.values():
             conn.execute(f"DELETE FROM {table} WHERE projector_version = ?", (projector_version,))
         if projector_version in ("2", "3"):
             conn.execute("DELETE FROM committed_roots WHERE projector_version=?", (projector_version,))
             conn.execute("DELETE FROM committed_nodes WHERE projector_version=?", (projector_version,))
+        if projector_version == "3":
+            conn.execute("DELETE FROM candidate_relations WHERE projector_version=?", (projector_version,))
         conn.execute("DELETE FROM derived_progress WHERE projector_version = ?", (projector_version,))
         snapshot = (committed.Snapshot() if projector_version == "2"
                     else forward.Snapshot() if projector_version == "3"
@@ -1102,6 +1120,80 @@ def require_projector_schema(conn, projector_version):
             raise SchemaCompatibilityError("unsupported_projector_schema", "projector 3 requires schema 5")
         if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='candidate_relations'").fetchone() is None:
             raise SchemaCompatibilityError("missing_relations", "schema 5 requires candidate_relations")
+
+
+def _initialize_forward_freshness(conn):
+    """Initialize 3's compatible prefix only on explicit forward publication/write.
+
+    Frozen writers do not introduce an unselected version's rows. Once selected,
+    subsequent compatible appends maintain all active indexes in the append lock.
+    """
+    if not conn.in_transaction:
+        raise RuntimeError("freshness initialization requires a transaction")
+    if conn.execute("SELECT 1 FROM identity_event_index WHERE projector_version='3' LIMIT 1").fetchone():
+        return
+    conn.execute("INSERT INTO identity_event_index SELECT '3',subject_id,latest_event_id "
+                 "FROM identity_event_index WHERE projector_version='2'")
+    conn.execute("INSERT INTO belief_event_index SELECT '3',belief_id,subject_id "
+                 "FROM belief_event_index WHERE projector_version='2'")
+
+
+def read_claim_candidate_details(conn, candidate_id, projector_version):
+    """Indexed named read, including the validated relation ending live status."""
+    if projector_version != "3":
+        raise ValueError("ending relations require explicit projector 3")
+    require_projector_schema(conn, projector_version)
+    if not conn.in_transaction:
+        with conn:
+            conn.execute("BEGIN")
+            return read_claim_candidate_details(conn, candidate_id, projector_version)
+    snapshot = _read_snapshot(conn, projector_version)
+    candidate = snapshot.record("claim_candidates", candidate_id)
+    if candidate is None:
+        return None
+    rows = conn.execute("SELECT target_candidate_id,event_id,relation,log_position "
+        "FROM candidate_relations WHERE projector_version=? AND target_candidate_id=?",
+        (projector_version, candidate_id)).fetchall()
+    ending = None
+    if candidate["superseding_events"]:
+        if len(candidate["superseding_events"]) != 1:
+            raise ValueError("candidate has invalid ending relations")
+        eid = candidate["superseding_events"][0]
+        entry = snapshot.event(eid)
+        position = conn.execute("SELECT rowid FROM events WHERE event_id=?", (eid,)).fetchone()
+        if (entry is None or position is None or position[0] > snapshot.log_position
+                or entry["envelope"]["event_type"] not in forward.TRANSITIONS
+                or candidate_id not in entry["payload"]["targets"]):
+            raise ValueError("candidate relation has no matching recorded transition")
+        ending = {"target_candidate_id": candidate_id, "event_id": eid,
+            "relation": forward.TRANSITIONS[entry["envelope"]["event_type"]][1], "log_position": position[0]}
+    expected = [] if ending is None else [tuple(ending.values())]
+    if rows != expected:
+        raise ValueError("stored candidate relation differs from committed records")
+    forward.validate_ending(candidate, ending)
+    return {"candidate": candidate, "ending_relation": ending}
+
+
+def read_candidate_sets(conn, belief_id, projector_version):
+    """Complete materialized live and retained sets at the published cutoff."""
+    if projector_version != "3":
+        raise ValueError("live/retained sets require explicit projector 3")
+    require_projector_schema(conn, projector_version)
+    if not conn.in_transaction:
+        with conn:
+            conn.execute("BEGIN")
+            return read_candidate_sets(conn, belief_id, projector_version)
+    belief = _read_snapshot(conn, projector_version).belief(belief_id)
+    if belief is None:
+        return None
+    live, retained = [], []
+    for candidate in belief["claim_candidates"]:
+        details = read_claim_candidate_details(conn, candidate["claim_candidate_id"], projector_version)
+        if details["candidate"] != candidate:
+            raise ValueError("belief candidate differs from indexed candidate")
+        (live if details["ending_relation"] is None else retained).append(
+            candidate if details["ending_relation"] is None else details)
+    return {"live": live, "retained": retained}
 
 
 def migrate_working_copy(source_path, working_path):

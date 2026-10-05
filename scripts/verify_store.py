@@ -550,8 +550,12 @@ def check_freshness(conn, projector_version, entries, report):
         report.skip('freshness', 'entity_event_index.updated_at', 'operational clock diagnostic is not committed by Layer A')
     else:
         # Both compatible projector indexes are updated by every stage-two append.
-        expected_subjects = {(v, sid): eid for v in ('1', '2') for sid, eid in subjects.items()}
-        expected_beliefs = {(v, bid): sid for v in ('1', '2') for bid, sid in associations.items()}
+        versions = ('1', '2')
+        if projector_version == '3' or conn.execute(
+                "SELECT 1 FROM identity_event_index WHERE projector_version='3' LIMIT 1").fetchone():
+            versions += ('3',)
+        expected_subjects = {(v, sid): eid for v in versions for sid, eid in subjects.items()}
+        expected_beliefs = {(v, bid): sid for v in versions for bid, sid in associations.items()}
         identity_rows = conn.execute('SELECT projector_version,subject_id,latest_event_id FROM identity_event_index').fetchall()
         belief_rows = conn.execute('SELECT projector_version,belief_id,subject_id FROM belief_event_index').fetchall()
         inventories = [('identity_event_index', expected_subjects, {(r[0], r[1]): r[2] for r in identity_rows}, len(identity_rows)),

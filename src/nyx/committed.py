@@ -231,7 +231,8 @@ def reduce_ordinary(snapshot, envelope, payload, as_of, projector_version):
     _fields(payload, ("claims",))
     if not isinstance(payload["claims"], list) or not payload["claims"]:
         raise ValueError("observation requires nonempty explicitly scoped claims")
-    return reduce_claims(snapshot, envelope, payload["claims"], as_of, projector_version, delta)
+    delta, trees = reduce_claims(snapshot, envelope, payload["claims"], as_of, projector_version, delta)
+    return _finish(snapshot, delta, trees)
 
 
 def reduce_claims(snapshot, envelope, claims, as_of, projector_version, delta):
@@ -323,7 +324,7 @@ def reduce_claims(snapshot, envelope, claims, as_of, projector_version, delta):
             "belief_id": belief_id, "view_version_hash": prior["view_version_hash"]}]
         result["view_version_hash"] = hashing._sha256_hex(hashing.canonical_json(
             lineage_for(envelope.event_id, envelope.event_hash, predecessors, result, projector_version)))
-    return _finish(snapshot, delta, belief_trees)
+    return delta, belief_trees
 
 
 class Projector(ReducerProjector):

@@ -12,6 +12,8 @@ def read_snapshot(conn):
 
 
 def read_snapshot_for(conn, projector_version):
+    if projector_version not in ("2", "3"):
+        raise ValueError("unsupported committed projector")
     snapshot_type = forward.Snapshot if projector_version == "3" else committed.Snapshot
     if not conn.in_transaction:
         raise RuntimeError("snapshot reads require a transaction")
@@ -74,6 +76,8 @@ def publish(conn, delta):
 
 
 def publish_for(conn, delta, projector_version):
+    if projector_version not in ("2", "3"):
+        raise ValueError("unsupported committed projector")
     if not conn.in_transaction:
         raise RuntimeError("delta publication requires a transaction")
     for node_hash, raw in delta.nodes.items():

@@ -15,6 +15,51 @@ TRANSITIONS = {CORRECTION_APPENDED: ("corrected", "corrected_by"),
 class Snapshot(committed.Snapshot):
     projector_version: str = field(default="3", init=False)
 
+    def relations(self):
+        """Reconstruct indexed ending relations from the committed event chain."""
+        pending = {entry["envelope"]["prev_event_hash"]: entry for entry in self.events()}
+        previous, result = None, {}
+        for position in range(1, self.log_position + 1):
+            entry = pending[previous]
+            envelope, payload = entry["envelope"], entry["payload"]
+            if envelope["event_type"] in TRANSITIONS:
+                for target in payload["targets"]:
+                    result[target] = {"target_candidate_id": target, "event_id": envelope["event_id"],
+                        "relation": TRANSITIONS[envelope["event_type"]][1], "log_position": position}
+            previous = envelope["event_hash"]
+        return result
+
+    def candidate_sets(self, belief_id):
+        belief = self.belief(belief_id)
+        if belief is None:
+            return None
+        relations = self.relations()
+        live, retained = [], []
+        for candidate in belief["claim_candidates"]:
+            ending = relations.get(candidate["claim_candidate_id"])
+            validate_ending(candidate, ending)
+            if ending is None:
+                live.append(candidate)
+            else:
+                retained.append({"candidate": candidate, "ending_relation": ending})
+        return {"live": live, "retained": retained}
+
+
+@dataclass(frozen=True)
+class Delta(committed.Delta):
+    relations: dict = field(default_factory=dict)
+
+
+def validate_ending(candidate, ending):
+    if ending is None:
+        if candidate["live_status"] != "live" or candidate["superseding_events"]:
+            raise ValueError("candidate ending relation is missing")
+    else:
+        statuses = {relation: status for status, relation in TRANSITIONS.values()}
+        if (candidate["live_status"] != statuses.get(ending["relation"])
+                or candidate["superseding_events"] != [ending["event_id"]]):
+            raise ValueError("candidate differs from ending relation")
+
 
 class Projector(ReducerProjector):
     def reduce(self, snapshot, envelope, payload, as_of):
@@ -74,10 +119,10 @@ def reduce_transition(snapshot, envelope, payload, as_of):
     transition_dependencies.check_transition_dependencies(snapshot, targets)
     dependency = {"event_id": envelope.event_id, "event_hash": envelope.event_hash,
                   "envelope": asdict(envelope), "payload": deepcopy(payload)}
-    delta = committed.Delta(envelope.event_id, events={envelope.event_id: dependency})
+    delta = Delta(envelope.event_id, events={envelope.event_id: dependency})
     if claim is not None:
-        delta = committed.reduce_claims(snapshot, envelope, [claim], as_of, "3", delta)
-        trees = Snapshot(delta.roots).collection_trees(belief_id)
+        delta, belief_trees = committed.reduce_claims(snapshot, envelope, [claim], as_of, "3", delta)
+        trees = belief_trees[belief_id]
     else:
         _entity_refs(envelope, [belief["subject_id"]])
         trees = snapshot.collection_trees(belief_id)
@@ -90,6 +135,8 @@ def reduce_transition(snapshot, envelope, payload, as_of):
         candidate.update(live_status=status, superseding_events=[envelope.event_id])
         cid = candidate["claim_candidate_id"]
         delta.claim_candidates[cid] = candidate
+        delta.relations[cid] = {"target_candidate_id": cid, "event_id": envelope.event_id,
+                               "relation": relation, "log_position": snapshot.log_position + 1}
         trees["claim_candidates"] = merkle.put(trees["claim_candidates"], cid, candidate, delta.nodes)
     header = delta.beliefs[belief_id]
     header["collection_roots"] = {k: merkle.digest(v) for k, v in trees.items()}
