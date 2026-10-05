@@ -64,6 +64,14 @@ implemented read contract; naming the candidate is available. Corrections, merge
 splits, verification approvals, and associations with existing subjects refuse at
 both append and replay in this stage.
 
+Accepted [ADR 0034](decisions/0034-forward-state-transitions.md) defines explicit
+forward corrections, replacements and expiry under projector `"3"`. That
+projector, schema version 5 migration, transition handlers and live/retained reads
+remain unimplemented. Shared Layer A integrity validation now admits
+`candidate_replaced` and `candidate_expired`. Frozen projectors `"1"` and `"2"`
+still refuse both types at reduction: historical replay before their recording
+position works, while replay reaching them refuses. Recency still selects nothing.
+
 Proposed stage-three draft: [ADR 0027](decisions/0027-stage-three-authority-and-acceptance.md).
 
 The new reducer reads a consistent pre-event snapshot and returns one complete
@@ -510,6 +518,9 @@ are explicitly unchecked; this is not an audit of world truth. Coverage is in
 | `src/nyx/` | Event types, storage, projection, hashing, validation, and the walking-skeleton APIs. Some broader interfaces remain stubs. |
 | [src/nyx/timestamps.py](src/nyx/timestamps.py) | Pure ingestion-time timestamp validation; preserves accepted spellings and is independent of the writer clock. |
 | [src/nyx/cli.py](src/nyx/cli.py) | Read-only belief, identity, log, replay, integrity and store-status inspection. |
+| [src/nyx/events.py](src/nyx/events.py), [src/nyx/integrity.py](src/nyx/integrity.py) | ADR 0034 transition type constants and shared Layer A integrity admission; transition reduction remains unimplemented. |
+| [tests/test_frozen_reader_compatibility.py](tests/test_frozen_reader_compatibility.py) | Shipped projector-2 validation beyond historical cutoffs, correction refusal and equal-recording-time inclusion. |
+| [tests/test_forward_event_types.py](tests/test_forward_event_types.py) | ADR 0034 new-type integrity admission, frozen reduction/append refusal and historical cutoff behavior. |
 | `tests/` | Storage, event, projection, correction, and invariant regression tests. |
 | `scripts/` | Diagnostic probes, verifier/docs checks, and public ADR import/backup/restore launchers. |
 | `config/` | Retained report vocabularies, admitted bindings and reviewed pinned public inputs. |
@@ -575,6 +586,7 @@ merge, split, approval, or authority handlers.
 | [0031](decisions/0031-source-report-claims.md) | [report_policy.py](src/nyx/report_policy.py) frozen deployment/admission; [storage.py] guarded producer routes; [adr_literals.py](src/nyx/adr_literals.py) exact extraction; [report_importer.py](src/nyx/report_importer.py) durable requests/completion; [reports.py](src/nyx/reports.py) named report details; [report_backup.py](src/nyx/report_backup.py) SQLite bundle/restore. Slice 1b remains deferred. | [test_report_policy.py](tests/test_report_policy.py), [test_report_admission.py](tests/test_report_admission.py), [test_adr_literals.py](tests/test_adr_literals.py), [test_report_importer.py](tests/test_report_importer.py), [test_report_reader.py](tests/test_report_reader.py), [test_report_rename.py](tests/test_report_rename.py), [test_report_backup.py](tests/test_report_backup.py), [test_report_acceptance.py](tests/test_report_acceptance.py): complete first-slice matrix and both-projector finish line. |
 | [0032](decisions/0032-explicit-stage-two-projector-selection.md) | Explicit stage-two selection in [ingestion.py], [projection.py], [reducer.py], [skeleton.py], [storage.py] and the [lineage probe](scripts/probe_lineage_scaling.py); allowlisted legacy defaults remain "0". | [test_explicit_projector_selection.py](tests/test_explicit_projector_selection.py) scans src/scripts AST parameters and class fields, checks enumerated aliases and exact parser options, and checks omission before work; existing stage-two/frozen-byte suites preserve selected versions. |
 | [0033](decisions/0033-projector-0-value-and-verifiability-domain.md) | [integrity.py](src/nyx/integrity.py) `validate_legacy_submission`, called by [immune.py](src/nyx/immune.py) `stage1_schema_validate` and [storage.py] `append_submission`, `_append_legacy_locked`. | [test_legacy_admission_domain.py](tests/test_legacy_admission_domain.py): independent refusal at all three boundaries, unchanged Layer A count/tip, empty strings and all labels, directly inserted numeric history; existing frozen-byte and stage-two suites remain unchanged. |
+| [0034](decisions/0034-forward-state-transitions.md) | Partial: [events.py](src/nyx/events.py) `CANDIDATE_REPLACED`, `CANDIDATE_EXPIRED`; [integrity.py](src/nyx/integrity.py) `EVENT_TYPES`. Projector "3", schema 5/migration, transitions, relation publication/reads and store-transition tooling remain unimplemented. | [test_forward_event_types.py](tests/test_forward_event_types.py): shared admission, frozen append/reduction refusal, historical snapshot/rebuild cutoffs and legacy handler refusal; [test_frozen_reader_compatibility.py](tests/test_frozen_reader_compatibility.py): shipped unknown-event/correction behavior. No projector-3 acceptance suite ships. |
 
 [projection.py]: src/nyx/projection.py
 [reducer.py]: src/nyx/reducer.py

@@ -664,6 +664,12 @@ or an *authoritative override* (takes the head regardless of date)? Settling it 
 settling whether `occurred_at` on a correction is **event** time or **validity** time. The
 raise is greppable so the decision, when made, finds every site that assumed it was open.
 
+[ADR 0034 section 4](decisions/0034-forward-state-transitions.md#4-eligibility-checked-at-the-locked-pre-event-snapshot)
+retains `BackdatedCorrectionError` for projector "3" corrections before a target's
+recording-event occurred_at, with equality allowed and comparison as instants.
+This decides the forward transition's event-time constraint; external valid-time
+semantics remain open. The projector-3 handler is not yet implemented.
+
 ### Origin → verification_state beyond `observed`
 **→ [ADR 0004](decisions/0004-correction-appended-supersedes-via-superseding-events.md)** ·
 `_state_for_origin` raises `NotImplementedError`
@@ -684,9 +690,23 @@ historical replay rule is added.
 ### Candidate corrections and target eligibility
 **Deferred:** [ADR 0018](decisions/0018-correction-supersedes-candidates.md) governs
 candidate supersession; [ADR 0023 §5](decisions/0023-stage-two-contract.md#5-corrections-are-deferred-under-version-1)
-governs the current stage boundary. Candidate-target eligibility is incomplete.
-Version "1" refuses corrections before append and on replay, including explicit-target
-submissions. Version "0" retains its implemented correction path and existing refusals.
+governs the frozen stage boundary. Version "1" and "2" refuse corrections before
+append and on replay, including explicit-target submissions. Version "0" retains
+its implemented correction path and existing refusals.
+
+**Decided for projector "3", implementation pending:**
+[ADR 0034](decisions/0034-forward-state-transitions.md) supplies live-target
+eligibility, one-belief scope, explicit correction/replacement/expiry operations,
+retained history and the forward timestamp rule. Shared integrity admission of
+the new event types is implemented, with frozen-reader coverage in
+[tests/test_forward_event_types.py](tests/test_forward_event_types.py).
+Projector "3" registration, schema 5 migration, transition handlers and reads
+remain unimplemented. ADR 0034 R9 requires an actual dependency check; ADR 0015
+sections 4–5 describe logical approval dependencies but do not identify the
+recorded stage-two relations that establish a transition target's dependents or
+necessary justification. That mapping remains decision-blocked. ADR 0034 section
+6 also requires report evidence in `basis` without defining its report-specific
+object shape; the ordinary `stated_error` shape cannot supply it by inference.
 
 ### Existing-subject association and multi-user authority
 **Blocked:** admissible association bases remain unratified under
