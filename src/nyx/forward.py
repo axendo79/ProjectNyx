@@ -109,7 +109,7 @@ def reduce_transition(snapshot, envelope, payload, as_of):
         if (candidate["belief_id"], candidate["subject_id"], candidate["property_id"]) != (
                 belief_id, belief["subject_id"], belief["property_id"]):
             raise ValueError("targets must share the exact belief scope")
-        if "report_vocabulary" in candidate["source"]["config"]:
+        if "report_vocabulary" in candidate["source"].get("config", {}):
             raise NotImplementedError("report-scoped transitions refuse under ADR 0035 section 3")
         if envelope.event_type == CORRECTION_APPENDED:
             recorded = _required(snapshot, "events", candidate["supporting_events"][0])

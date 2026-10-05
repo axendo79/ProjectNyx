@@ -64,3 +64,20 @@ def test_report_replacement_refuses(tmp_path, monkeypatch):
         with pytest.raises(NotImplementedError, match="report"):
             storage.safe_append_event(conn, *pair, "3")
         assert tuple(conn.iterdump()) == before
+
+
+@pytest.mark.parametrize("kind", ["correction", "replacement", "expiry"])
+def test_transitions_accept_targets_whose_source_has_no_config(kind):
+    # source.config is optional (integrity.py); its absence means not report-scoped.
+    from test_forward_expiry import expiry
+    log = initial_log({"actor_id": "user"})
+    event_type, payload = {
+        "correction": (events.CORRECTION_APPENDED, correction(["c-A"])),
+        "replacement": (events.CANDIDATE_REPLACED, replacement(["c-A"])),
+        "expiry": (events.CANDIDATE_EXPIRED, expiry(["c-A"])),
+    }[kind]
+    pair = event(event_type, payload, 3, log[-1])
+    snapshot = projection.project_snapshot(decoded(log + [pair]), T2, "3")
+    target = snapshot.record("claim_candidates", "c-A")
+    assert target["live_status"] == {"correction": "corrected", "replacement": "replaced",
+                                     "expiry": "expired"}[kind]
