@@ -58,6 +58,8 @@ def _identity_version(version):
 
 
 def _replay(conn, version, as_of):
+    if version == "3":
+        storage.require_projector_schema(conn, version)
     log = storage.read_all_events(conn)
     if isinstance(projection.PROJECTORS[version], projection.ReducerProjector):
         return projection.project_snapshot(log, as_of, version).complete()
