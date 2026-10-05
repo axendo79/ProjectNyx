@@ -129,22 +129,19 @@ def test_cli_requires_explicit_projector_and_reports_proof(tmp_path, capsys):
     assert json.loads(capsys.readouterr().out)['identities_unchanged'] is True
 
 
-def test_transition_carries_retained_import_manifests(tmp_path):
+def test_retained_import_manifests_require_a_report_bundle(tmp_path):
     # ADR 0031: <store>.imports/<run-id>/requests.json is durable data that
     # travels with backups; the working copy and source backup keep exact copies.
-    import hashlib
     source, working = tmp_path / 'source.db', tmp_path / 'working.db'
     schema_four(source)
     manifest = source.with_name(source.name + '.imports') / 'run-1' / 'requests.json'
     manifest.parent.mkdir(parents=True)
     manifest.write_bytes(b'{"format": "nyx.adr-import-requests/1"}\n')
     before = manifest.read_bytes()
-    result = tool().transition_store(source, working, '3')
-    digest = hashlib.sha256(before).hexdigest()
-    assert result['imports'] == {'run-1/requests.json': digest}
-    for copy in (working, Path(result['backup'])):
-        assert (copy.with_name(copy.name + '.imports') / 'run-1' / 'requests.json').read_bytes() == before
+    with pytest.raises(ValueError, match='report bundle'):
+        tool().transition_store(source, working, '3')
     assert manifest.read_bytes() == before
+    assert not working.exists()
 
 
 def test_transition_without_imports_records_none_and_refuses_existing_output(tmp_path):
@@ -158,8 +155,13 @@ def test_transition_without_imports_records_none_and_refuses_existing_output(tmp
     assert not other.with_name(other.name + '.imports').exists()
 
 
-def interrupted_report_store(tmp_path):
-    """A real ADR 0031 store, interrupted after its mention, plus its backup bundle."""
+def repositories():
+    from test_report_policy import REPOSITORY, ROOT
+    return {REPOSITORY: ROOT}
+
+
+def interrupted_report_store(tmp_path, boundary='mention'):
+    """A real ADR 0031 store, interrupted at a supported boundary, plus its bundle."""
     from nyx import report_importer as importer, report_backup, report_policy
     from test_report_admission import AS_OF, deployment
     from test_report_importer import PATH, REVISION
@@ -170,25 +172,28 @@ def interrupted_report_store(tmp_path):
     with closing(d.open_writer(create=True)) as conn:
         manifest = importer.prepare_import(conn, REPOSITORY, REVISION, [PATH], 'one', projector_version='2')
         mention_request, _ = importer.requests(importer.read_manifest(manifest, projector_version='2'))
-        ingestion.submit(conn, mention_request, AS_OF, '2')
+        if boundary == 'mention':
+            ingestion.submit(conn, mention_request, AS_OF, '2')
         bundle = report_backup.backup_bundle(conn, tmp_path / 'bundle', projector_version='2',
                                              software_revision=revision, policy_revision=revision)
     return d, config, bundle
 
 
-def test_report_store_transition_requires_its_bundle_and_resumes_on_working_copy(tmp_path):
+@pytest.mark.parametrize('boundary', ['before-append', 'mention'])
+def test_report_store_transition_requires_its_bundle_and_resumes_on_working_copy(tmp_path, boundary):
     # ADR 0031 BACKUP BUNDLE row and ADR 0034 section 10 step 1: a report store's
     # backup is its ADR 0031 bundle (policy, definitions, revisions, manifests).
     from nyx import report_importer as importer, reports
     from nyx.report_policy import ReportDeployment
     from test_report_policy import REPOSITORY, ROOT
-    d, config, bundle = interrupted_report_store(tmp_path)
+    d, config, bundle = interrupted_report_store(tmp_path, boundary)
     with pytest.raises(ValueError, match='report bundle'):
         tool().transition_store(d.store, tmp_path / 'unbundled.db', '3')
     with closing(storage.open_readonly(d.store)) as conn:
         source_tip = storage.last_event_hash(conn)
     working = tmp_path / 'working.db'
-    result = tool().transition_store(d.store, working, '3', report_bundle=bundle)
+    result = tool().transition_store(d.store, working, '3', report_bundle=bundle,
+                                     repositories=repositories())
     assert result['report_bundle']['tip_hash'] == source_tip
     assert result['report_bundle']['projector_version'] == '2'
     assert len(result['report_bundle']['bundle_sha256']) == 64
@@ -196,7 +201,8 @@ def test_report_store_transition_requires_its_bundle_and_resumes_on_working_copy
     with closing(resumed.open_writer()) as conn:
         count = conn.execute('SELECT count(*) FROM events').fetchone()[0]
         out = importer.resume_import(conn, 'one', projector_version='2')
-        assert conn.execute('SELECT count(*) FROM events').fetchone()[0] == count + 1
+        assert conn.execute('SELECT count(*) FROM events').fetchone()[0] == 2
+        assert count == (0 if boundary == 'before-append' else 1)
         details = reports.read_report_details(conn, out['claim_candidate_ids'], projector_version='2')
         assert len(details['reports']) == 3
         tip_after = storage.last_event_hash(conn)
@@ -214,4 +220,19 @@ def test_report_store_transition_refuses_a_stale_bundle(tmp_path):
     with closing(d.open_writer()) as conn:
         importer.resume_import(conn, 'one', projector_version='2')
     with pytest.raises(ValueError, match='report bundle'):
-        tool().transition_store(d.store, tmp_path / 'working.db', '3', report_bundle=bundle)
+        tool().transition_store(d.store, tmp_path / 'working.db', '3', report_bundle=bundle,
+                                repositories=repositories())
+
+
+def test_report_store_transition_refuses_an_unrestorable_bundle(tmp_path):
+    # File hashes, log, tip and manifests all match, but restore_bundle would
+    # reject the bindings; the transition must refuse the same bundle.
+    import json
+    d, _, bundle = interrupted_report_store(tmp_path)
+    metadata = json.loads((bundle / 'bundle.json').read_bytes())
+    metadata['vocabulary_bindings'] = []
+    (bundle / 'bundle.json').write_text(json.dumps(metadata), encoding='utf-8')
+    with pytest.raises(ValueError, match='report bundle'):
+        tool().transition_store(d.store, tmp_path / 'working.db', '3', report_bundle=bundle,
+                                repositories=repositories())
+    assert not (tmp_path / 'working.db').exists()

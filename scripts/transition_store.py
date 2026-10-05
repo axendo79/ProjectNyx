@@ -38,32 +38,38 @@ def tree_hashes(root):
             for path in sorted(root.rglob('*')) if path.is_file()}
 
 
-def report_bundle_record(bundle, log, tip, imports):
-    """ADR 0031 BACKUP BUNDLE: a report store's backup is its validated bundle.
+def report_bundle_record(bundle, log, tip, imports, repositories):
+    """ADR 0031 BACKUP BUNDLE: a report store's backup is a restorable bundle.
 
-    The bundle must capture exactly this source: same Layer A log and tip, and
-    the same retained import manifests. Policy, definitions and revisions are
-    validated by report_backup's own bundle check, not re-implemented here.
+    Restorability is proven, not inferred from file hashes: a trial
+    report_backup.restore_bundle runs from a temporary copy of the bundle
+    (restoring in place could leave SQLite side files that break its exact
+    inventory). The restored store must hold this source's Layer A log and tip,
+    and its import manifests must equal the source's.
     """
     from nyx import report_backup
     root = Path(bundle).resolve()
+    if not isinstance(repositories, dict) or not repositories:
+        raise ValueError('report bundle validation requires the public repository mapping')
     try:
-        version = json.loads((root / 'bundle.json').read_bytes()).get('projector_version')
+        metadata = json.loads((root / 'bundle.json').read_bytes())
+        version = metadata.get('projector_version')
         if version not in ('1', '2'):
             raise ValueError(f'unsupported bundle projector_version {version!r}')
-        root, metadata = report_backup._bundle(root, version)
-        # Read a temporary copy: opening the bundle's own database could leave
-        # SQLite side files that break the bundle's exact file inventory.
         with tempfile.TemporaryDirectory() as scratch:
-            copy = Path(scratch) / 'store.sqlite3'
-            shutil.copyfile(root / 'store.sqlite3', copy)
-            with closing(storage.open_readonly(copy)) as conn:
-                bundled_log = storage.read_all_events(conn)
+            copy = Path(scratch) / 'bundle'
+            shutil.copytree(root, copy)
+            trial = Path(scratch) / 'trial.db'
+            report_backup.restore_bundle(copy, trial, repositories=repositories, projector_version=version)
+            with closing(storage.open_readonly(trial)) as conn:
+                restored_log = storage.read_all_events(conn)
+                restored_tip = storage.last_event_hash(conn)
+            restored_imports = tree_hashes(imports_of(trial))
+            # restore_bundle retains its bundle.json beside the restored requests.
+            restored_imports.pop('bundle.json', None)
     except (OSError, ValueError) as error:
-        raise ValueError(f'report bundle is invalid: {error}') from error
-    bundled_imports = {name[len('imports/'):]: digest for name, digest in metadata['files'].items()
-                       if name.startswith('imports/')}
-    if metadata['tip_hash'] != tip or bundled_log != log or bundled_imports != imports:
+        raise ValueError(f'report bundle is not restorable: {error}') from error
+    if restored_tip != tip or restored_log != log or restored_imports != imports:
         raise ValueError('report bundle does not match the source store (tip, log or import manifests)')
     return dict(path=str(root), bundle_sha256=file_hash(root / 'bundle.json'),
                 projector_version=version, software_revision=metadata['software_revision'],
@@ -78,7 +84,8 @@ def logical_image(source):
         return tuple(image.iterdump())
 
 
-def transition_store(source_path, working_path, projector_version, report_bundle=None):
+def transition_store(source_path, working_path, projector_version, report_bundle=None,
+                     repositories=None):
     if projector_version != '3':
         raise ValueError('store transition requires explicitly selected projector 3')
     source_path, working_path = Path(source_path).resolve(), Path(working_path).resolve()
@@ -100,10 +107,11 @@ def transition_store(source_path, working_path, projector_version, report_bundle
         log = storage.read_all_events(source)
         has_reports = any('report_vocabulary' in json.loads(envelope.source).get('config', {})
                           for envelope, _ in log)
-        if has_reports and report_bundle is None:
-            raise ValueError('source contains report-scoped events; supply its ADR 0031 report bundle')
-        bundle_record = (None if report_bundle is None else
-                         report_bundle_record(report_bundle, log, storage.last_event_hash(source), imports))
+        # Saved import requests are report material even before any append.
+        if (has_reports or imports) and report_bundle is None:
+            raise ValueError('source holds report events or import requests; supply its ADR 0031 report bundle')
+        bundle_record = (None if report_bundle is None else report_bundle_record(
+            report_bundle, log, storage.last_event_hash(source), imports, repositories))
         at = log[-1][0].recorded_at if log else created_at
         # SQLite backup captures WAL-resident committed data too; no file copy
         # can silently omit it. Both outputs use this same pinned read snapshot.
@@ -157,10 +165,14 @@ def main(argv=None):
     parser.add_argument('--working', required=True, type=Path)
     parser.add_argument('--projector-version', required=True, choices=['3'])
     parser.add_argument('--report-bundle', type=Path, default=None,
-                        help='ADR 0031 backup bundle; required when the source holds report events')
+                        help='ADR 0031 backup bundle; required when the source holds report events or import requests')
+    parser.add_argument('--repository', action='append', default=[], metavar='URL=PATH',
+                        help='public repository mapping used to validate the report bundle (repeatable)')
     args = parser.parse_args(argv)
     try:
-        result = transition_store(args.source, args.working, args.projector_version, args.report_bundle)
+        repositories = dict(item.split('=', 1) for item in args.repository)
+        result = transition_store(args.source, args.working, args.projector_version, args.report_bundle,
+                                  {url: Path(path) for url, path in repositories.items()} or None)
     except (OSError, sqlite3.Error, ValueError, NotImplementedError) as error:
         print(str(error), file=sys.stderr)
         return 1
