@@ -185,13 +185,13 @@ CREATE TABLE projected_events (
 -- ADR 0025: version-2 compact headers stay in projected_beliefs; accumulated
 -- content and indexes use immutable nodes plus independently published roots.
 CREATE TABLE committed_nodes (
-    projector_version TEXT NOT NULL CHECK (projector_version = '2'),
+    projector_version TEXT NOT NULL CHECK (projector_version IN ('2', '3')),
     node_hash TEXT NOT NULL,
     content TEXT NOT NULL,
     PRIMARY KEY (projector_version, node_hash)
 );
 CREATE TABLE committed_roots (
-    projector_version TEXT NOT NULL CHECK (projector_version = '2'),
+    projector_version TEXT NOT NULL CHECK (projector_version IN ('2', '3')),
     kind TEXT NOT NULL,
     root_hash TEXT NOT NULL,
     PRIMARY KEY (projector_version, kind)
@@ -262,4 +262,14 @@ CREATE TABLE entity_links (
     link_basis                    TEXT,
     link_state                     TEXT NOT NULL,  -- proposed|accepted|rejected|split
     event_id                        TEXT           -- FK, set once decision becomes a Layer A event
+);
+
+-- ADR 0034 / 0035: derived ending relations; published with progress.
+CREATE TABLE candidate_relations (
+    projector_version TEXT NOT NULL,
+    target_candidate_id TEXT NOT NULL,
+    event_id TEXT NOT NULL,
+    relation TEXT NOT NULL CHECK (relation IN ('corrected_by','replaced_by','expired_at')),
+    log_position INTEGER NOT NULL CHECK (log_position > 0),
+    PRIMARY KEY (projector_version, target_candidate_id, event_id)
 );

@@ -24,7 +24,7 @@ from typing import Any
 from . import hashing, integrity
 from .events import CORRECTION_APPENDED, OBSERVATION_RECORDED, ORIGIN_OBSERVED, Envelope
 from .reducer import ReducerProjector, Snapshot
-from . import committed
+from . import committed, forward
 
 # Genesis seed for a belief's view_version_hash lineage (empty string) — the value
 # folded against for the first event that touches a belief. spec/NYX_V0_IMPLEMENTATION.md §1.
@@ -244,7 +244,7 @@ def fold(
 
 
 # Version-pinned implementations; the snapshot boundary is additive (ADR 0014).
-PROJECTORS = {"0": fold, "1": ReducerProjector(), "2": committed.Projector()}
+PROJECTORS = {"0": fold, "1": ReducerProjector(), "2": committed.Projector(), "3": forward.Projector()}
 
 
 def project(
@@ -290,6 +290,7 @@ def project_snapshot(events, as_of: str, projector_version: str) -> Snapshot:
         raise ValueError("complete snapshot requires a registered snapshot projector")
     cutoff = _instant(as_of, "as_of")
     snapshot = (committed.Snapshot() if projector_version == "2"
+                else forward.Snapshot() if projector_version == "3"
                 else Snapshot({}, projector_version=projector_version))
     for position, (envelope, payload) in enumerate(integrity.verified_log(events), 1):
         if _instant(envelope.recorded_at, "recorded_at") > cutoff:

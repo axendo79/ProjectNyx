@@ -4,6 +4,7 @@
 Legacy corrections are never backdated (ADR 0005). Stage two contains only
 constitutive mentions and observations (ADR 0023). Complete live publications
 are compared with genesis replay at a shared time, including every field.
+Projector 3 additionally exercises ordinary corrections, replacement and expiry.
 ADR 0012 permits evaluation-time relabeling for this time-independent reducer
 only after establishing publication at the same log tip. No historical view is
 obtained by relabeling current rows.
@@ -37,6 +38,8 @@ def stamp(at, rng):
 
 
 def generate(projector_version, seed, count):
+    if projector_version == '3':
+        return generate_forward(seed, count)
     if projector_version not in ('0', '1', '2') or count < 6:
         raise ValueError('select projector 0/1/2 and at least six events')
     rng = random.Random(seed)
@@ -75,6 +78,36 @@ def generate(projector_version, seed, count):
     return result
 
 
+def generate_forward(seed, count):
+    """Retain the frozen generator; add explicit live-target transitions for 3."""
+    steps = generate('2', seed, count)
+    rng, live = random.Random(seed + 3000), {}
+    for index, step in enumerate(steps):
+        if step['event_type'] == events.ENTITY_MENTION_RECORDED:
+            continue
+        if live and index % 4 != 3:
+            cid = rng.choice(sorted(live))
+            target, stamp_value = live.pop(cid)
+            kind = (events.CORRECTION_APPENDED, events.CANDIDATE_REPLACED, events.CANDIDATE_EXPIRED)[index % 4]
+            step['event_type'] = kind
+            if kind == events.CANDIDATE_EXPIRED:
+                data = {'belief_id': target['belief_id'], 'targets': [cid]}
+            else:
+                claim = {**target, 'claim_candidate_id': f'transition-{index}', 'value': VALUES[index % len(VALUES)]}
+                data = {'claim': claim, 'targets': [cid]}
+                if kind == events.CORRECTION_APPENDED:
+                    step['occurred_at'] = stamp(max(datetime.fromisoformat(step['occurred_at']),
+                        datetime.fromisoformat(stamp_value)) + timedelta(seconds=1), rng)
+                live[claim['claim_candidate_id']] = (claim, step['occurred_at'])
+            data['basis'] = {'kind': 'stated_error' if kind == events.CORRECTION_APPENDED else 'stated',
+                             'statement': f'generated transition {index}'}
+            step['data'] = data
+        else:
+            for claim in step['data']['claims']:
+                live[claim['claim_candidate_id']] = (claim, step['occurred_at'])
+    return steps
+
+
 def prepare(conn, step, projector_version):
     common = dict(source=step['source'], source_class='direct_observation',
                   occurred_at=step['occurred_at'], event_id=step['event_id'])
@@ -85,6 +118,12 @@ def prepare(conn, step, projector_version):
         data = step['data']
         return ingestion.prepare_mention(conn, **common, origin_type='observed',
             mention_id=data['mention_id'], subject_id=data['subject_id'], text=data['text'])
+    if projector_version == '3' and step['event_type'] != events.OBSERVATION_RECORDED:
+        data = step['data']
+        bid = data['belief_id'] if step['event_type'] == events.CANDIDATE_EXPIRED else data['claim']['belief_id']
+        subject = storage.read_snapshot(conn, projector_version).header(bid)['subject_id']
+        return writer.prepare_event(**common, event_type=step['event_type'], origin_type='observed',
+                                    payload=data, entity_refs=[subject])
     return ingestion.prepare_observation(conn, **common, claims=step['data']['claims'],
                                          projector_version=projector_version)
 
@@ -112,6 +151,10 @@ def assert_equivalent(conn, projector_version, as_of=AS_OF):
     actual = publication(conn, projector_version, as_of)
     assert hashing.canonical_json(actual) == hashing.canonical_json(expected), (projector_version, len(log))
     assert storage.evaluate_whole_view(conn, as_of, projector_version) == expected['beliefs']
+    if projector_version == '3':
+        snapshot = projection.project_snapshot(log, as_of, projector_version)
+        for bid in expected['beliefs']:
+            assert storage.read_candidate_sets(conn, bid, projector_version) == snapshot.candidate_sets(bid)
 
 
 def build(path, projector_version, seed, count, *, check_prefixes=False):
@@ -158,7 +201,7 @@ def main(argv=None):
     started, results = monotonic(), []
     with tempfile.TemporaryDirectory(prefix='nyx-replay-') as temp:
         for seed in range(args.seeds):
-            for projector_version in ('0', '1', '2'):
+            for projector_version in ('0', '1', '2', '3'):
                 if monotonic() - started >= args.minutes * 60:
                     break
                 path = Path(temp) / f'{projector_version}-{seed}.db'

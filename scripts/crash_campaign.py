@@ -51,7 +51,7 @@ def child(path, projector_version, point, manifest):
                 pause(conn, point)
             elif point == 'mid_publication':
                 boundary = {'0': 'INSERT INTO DERIVED_PROGRESS', '1': 'INSERT INTO PROJECTED_EVENTS',
-                            '2': 'INSERT INTO COMMITTED_ROOTS'}[projector_version]
+                            '2': 'INSERT INTO COMMITTED_ROOTS', '3': 'INSERT INTO CANDIDATE_RELATIONS'}[projector_version]
                 conn.set_trace_callback(lambda sql: pause(conn, point)
                                         if sql.upper().startswith(boundary) else None)
                 storage.materialize_pending(conn, AS_OF, projector_version)
@@ -130,7 +130,7 @@ def exercise(directory, projector_version, seed, point):
         # Exercise supported recovery paths on every restart; neither may append.
         storage.materialize_pending(conn, AS_OF, projector_version)
         assert_equivalent(conn, projector_version)
-        if projector_version in ('1', '2'):
+        if projector_version in ('1', '2', '3'):
             storage.rebuild_projection(conn, AS_OF, projector_version)
         assert storage.read_all_events(conn) == committed_before_recovery
         assert_equivalent(conn, projector_version)
@@ -162,7 +162,7 @@ def main(argv=None):
     started, results = monotonic(), []
     with tempfile.TemporaryDirectory(prefix='nyx-crashes-') as temp:
         for seed in range(args.seeds):
-            for projector_version in ('0', '1', '2'):
+            for projector_version in ('0', '1', '2', '3'):
                 for point in POINTS:
                     if projector_version == '0' and point == 'mid_rebuild':
                         continue  # Existing documented API supports snapshot versions 1/2 only.

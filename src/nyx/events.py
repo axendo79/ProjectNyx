@@ -25,6 +25,9 @@ from .timestamps import validate_timestamp
 CLAIM_ASSERTED = "claim_asserted"
 OBSERVATION_RECORDED = "observation_recorded"
 CORRECTION_APPENDED = "correction_appended"
+# ADR 0034: integrity admission is shared; each projector keeps its own reducer.
+CANDIDATE_REPLACED = "candidate_replaced"
+CANDIDATE_EXPIRED = "candidate_expired"
 CLAIM_QUESTIONED = "claim_questioned"
 CLAIM_QUARANTINED = "claim_quarantined"
 CLAIM_RESTORED = "claim_restored"

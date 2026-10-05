@@ -63,7 +63,7 @@ def _record(db_path: str | Path, event_type: str, submission: Mapping[str, Any],
     a later event, never by editing one (Invariant 1).
     """
     storage._registered_projector(projector_version)
-    if projector_version in ("1", "2"):
+    if projector_version in ("1", "2", "3"):
         return _record_stage_two(db_path, event_type, submission, projector_version)
     if "recorded_at" in submission or "prev_event_hash" in submission:
         raise ValueError("recorded_at and prev_event_hash belong to the writer")

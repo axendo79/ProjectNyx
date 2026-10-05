@@ -136,6 +136,8 @@ class PolicySnapshot:
 
     def authorize(self, conn, envelope, data, *, projector_version):
         context = f'event {envelope.event_id} report declaration'
+        if projector_version not in ('1', '2'):
+            refuse(context, 'report-scoped admission requires explicit projector "1" or "2"')
         source = strict_json(envelope.source.encode('utf-8'), context)
         config = source.get('config') if isinstance(source, dict) else None
         if not isinstance(config, dict): refuse(context, 'missing report config')

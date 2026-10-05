@@ -4,21 +4,28 @@ import json
 from dataclasses import replace
 from types import MappingProxyType
 
-from . import committed, hashing, merkle
+from . import committed, hashing, merkle, forward
 
 
 def read_snapshot(conn):
+    return read_snapshot_for(conn, "2")
+
+
+def read_snapshot_for(conn, projector_version):
+    if projector_version not in ("2", "3"):
+        raise ValueError("unsupported committed projector")
+    snapshot_type = forward.Snapshot if projector_version == "3" else committed.Snapshot
     if not conn.in_transaction:
         raise RuntimeError("snapshot reads require a transaction")
     progress = conn.execute(
-        "SELECT log_position,event_id FROM derived_progress WHERE projector_version='2'"
+        "SELECT log_position,event_id FROM derived_progress WHERE projector_version=?", (projector_version,)
     ).fetchone()
-    roots = dict(conn.execute("SELECT kind,root_hash FROM committed_roots WHERE projector_version='2'"))
+    roots = dict(conn.execute("SELECT kind,root_hash FROM committed_roots WHERE projector_version=?", (projector_version,)))
     if progress is None:
-        if (roots or conn.execute("SELECT 1 FROM committed_nodes WHERE projector_version='2' LIMIT 1").fetchone()
-                or conn.execute("SELECT 1 FROM projected_beliefs WHERE projector_version='2' LIMIT 1").fetchone()):
+        if (roots or conn.execute("SELECT 1 FROM committed_nodes WHERE projector_version=? LIMIT 1", (projector_version,)).fetchone()
+                or conn.execute("SELECT 1 FROM projected_beliefs WHERE projector_version=? LIMIT 1", (projector_version,)).fetchone()):
             raise ValueError("unproven version-2 materialization; recover by full replay")
-        return committed.Snapshot()
+        return snapshot_type()
     if set(roots) != set(committed.INDEX_KINDS):
         raise ValueError("incomplete committed root inventory; recover by full replay")
     if conn.execute("SELECT event_id FROM events WHERE rowid=?", (progress[0],)).fetchone() != (progress[1],):
@@ -36,7 +43,7 @@ def read_snapshot(conn):
         if digest in cache:
             return cache[digest]
         row = conn.execute(
-            "SELECT content FROM committed_nodes WHERE projector_version='2' AND node_hash=?", (digest,)
+            "SELECT content FROM committed_nodes WHERE projector_version=? AND node_hash=?", (projector_version, digest)
         ).fetchone()
         if row is None:
             raise ValueError("missing committed node; recover by full replay")
@@ -52,7 +59,7 @@ def read_snapshot(conn):
         cache[digest] = node
         return node
 
-    return committed.Snapshot({k: reference(v) for k, v in roots.items()}, *progress)
+    return snapshot_type({k: reference(v) for k, v in roots.items()}, *progress)
 
 
 def publication_material(delta):
@@ -65,24 +72,30 @@ def publication_material(delta):
 
 
 def publish(conn, delta):
+    return publish_for(conn, delta, "2")
+
+
+def publish_for(conn, delta, projector_version):
+    if projector_version not in ("2", "3"):
+        raise ValueError("unsupported committed projector")
     if not conn.in_transaction:
         raise RuntimeError("delta publication requires a transaction")
     for node_hash, raw in delta.nodes.items():
         if hashing._sha256_hex(raw) != node_hash:
             raise ValueError("publication node hash mismatch")
         inserted = conn.execute(
-            "INSERT INTO committed_nodes VALUES ('2',?,?) ON CONFLICT DO NOTHING", (node_hash, raw))
+            "INSERT INTO committed_nodes VALUES (?,?,?) ON CONFLICT DO NOTHING", (projector_version, node_hash, raw))
         if inserted.rowcount == 0 and conn.execute(
-            "SELECT content FROM committed_nodes WHERE projector_version='2' AND node_hash=?", (node_hash,)
+            "SELECT content FROM committed_nodes WHERE projector_version=? AND node_hash=?", (projector_version, node_hash)
         ).fetchone() != (raw,):
             raise ValueError("existing committed node is corrupt")
     for belief_id, header in delta.beliefs.items():
         conn.execute(
-            "INSERT INTO projected_beliefs VALUES ('2',?,?) "
+            "INSERT INTO projected_beliefs VALUES (?,?,?) "
             "ON CONFLICT(projector_version,belief_id) DO UPDATE SET content=excluded.content",
-            (belief_id, hashing.canonical_json(header)))
+            (projector_version, belief_id, hashing.canonical_json(header)))
     for kind, root in delta.root_changes.items():
         conn.execute(
-            "INSERT INTO committed_roots VALUES ('2',?,?) "
+            "INSERT INTO committed_roots VALUES (?,?,?) "
             "ON CONFLICT(projector_version,kind) DO UPDATE SET root_hash=excluded.root_hash",
-            (kind, merkle.digest(root)))
+            (projector_version, kind, merkle.digest(root)))

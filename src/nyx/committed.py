@@ -37,8 +37,12 @@ def result_root(roots):
 
 
 def lineage(event_id, event_hash, predecessors, header):
+    return lineage_for(event_id, event_hash, predecessors, header, "2")
+
+
+def lineage_for(event_id, event_hash, predecessors, header, projector_version):
     return {
-        "lineage_format": "nyx-belief-lineage/2", "projector_version": "2",
+        "lineage_format": "nyx-belief-lineage/" + projector_version, "projector_version": projector_version,
         "producing_event": {"event_id": event_id, "event_hash": event_hash},
         "predecessors": hashing.canonical_set(predecessors),
         "result": {k: v for k, v in header.items() if k not in (
@@ -139,11 +143,11 @@ class Snapshot:
         return None if key is None else self.header(key)
 
     def apply(self, delta, position):
-        return Snapshot(delta.roots, position, delta.event_id)
+        return type(self)(delta.roots, position, delta.event_id)
 
     def detached(self):
         cache = {}
-        return Snapshot({k: merkle.detach(v, cache) for k, v in self.roots.items()},
+        return type(self)({k: merkle.detach(v, cache) for k, v in self.roots.items()},
                         self.log_position, self.event_id)
 
     def inclusion_proof(self, belief_id, collection, key):
@@ -176,9 +180,13 @@ def _finish(snapshot, delta, belief_trees):
 
 
 def reduce(snapshot, envelope, payload, as_of):
+    return reduce_ordinary(snapshot, envelope, payload, as_of, "2")
+
+
+def reduce_ordinary(snapshot, envelope, payload, as_of, projector_version):
     from .projection import _instant, _state_for_origin
 
-    if not isinstance(snapshot, Snapshot) or snapshot.projector_version != PROJECTOR_VERSION:
+    if not isinstance(snapshot, Snapshot) or snapshot.projector_version != projector_version:
         raise ValueError("snapshot projector version does not match reducer")
     if envelope.event_type not in SUPPORTED_EVENTS:
         raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
@@ -219,12 +227,22 @@ def reduce(snapshot, envelope, payload, as_of):
         _entity_refs(envelope, [subject_id])
         return _finish(snapshot, delta, {})
 
-    state = _state_for_origin(envelope.origin_type)
+    _state_for_origin(envelope.origin_type)
     _fields(payload, ("claims",))
     if not isinstance(payload["claims"], list) or not payload["claims"]:
         raise ValueError("observation requires nonempty explicitly scoped claims")
+    delta, trees = reduce_claims(snapshot, envelope, payload["claims"], as_of, projector_version, delta)
+    return _finish(snapshot, delta, trees)
+
+
+def reduce_claims(snapshot, envelope, claims, as_of, projector_version, delta):
+    """Shared claim mechanics after the caller validates the recorded event."""
+    from .projection import _state_for_origin
+    state = _state_for_origin(envelope.origin_type)
+    source = json.loads(envelope.source)
+    dependency = delta.events[envelope.event_id]
     belief_trees = {}
-    for claim in payload["claims"]:
+    for claim in claims:
         _fields(claim, ("mention_id", "subject_id", "property_id", "belief_id",
                         "claim_candidate_id", "value", "verifiability"))
         for name in ("mention_id", "subject_id", "property_id", "belief_id", "claim_candidate_id"):
@@ -274,6 +292,8 @@ def reduce(snapshot, envelope, payload, as_of):
                                   {"event_id": envelope.event_id, "belief_id": belief_id,
                                    "claim_candidate_id": candidate_id}]],
         }
+        if projector_version == "3":
+            candidate["live_status"] = "live"
         delta.claim_candidates[candidate_id] = candidate
         if belief_id not in belief_trees:
             belief_trees[belief_id] = snapshot.collection_trees(belief_id)
@@ -303,8 +323,8 @@ def reduce(snapshot, envelope, payload, as_of):
         predecessors = [] if prior is None else [{
             "belief_id": belief_id, "view_version_hash": prior["view_version_hash"]}]
         result["view_version_hash"] = hashing._sha256_hex(hashing.canonical_json(
-            lineage(envelope.event_id, envelope.event_hash, predecessors, result)))
-    return _finish(snapshot, delta, belief_trees)
+            lineage_for(envelope.event_id, envelope.event_hash, predecessors, result, projector_version)))
+    return delta, belief_trees
 
 
 class Projector(ReducerProjector):

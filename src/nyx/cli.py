@@ -58,6 +58,8 @@ def _identity_version(version):
 
 
 def _replay(conn, version, as_of):
+    if version == "3":
+        storage.require_projector_schema(conn, version)
     log = storage.read_all_events(conn)
     if isinstance(projection.PROJECTORS[version], projection.ReducerProjector):
         return projection.project_snapshot(log, as_of, version).complete()
@@ -95,11 +97,18 @@ def _run(conn, args):
     if name == "belief":
         status = storage.read_belief_status(conn, args.belief_id, version)
         if args.as_of is None:
-            return {"read_mode": "materialized", **status}
+            result = {"read_mode": "materialized", **status}
+            if version == "3":
+                result["candidate_sets"] = storage.read_candidate_sets(conn, args.belief_id, version)
+            return result
         view = storage.evaluate_whole_view(conn, args.as_of, version)
-        return {"read_mode": "replay", "as_of": args.as_of,
+        result = {"read_mode": "replay", "as_of": args.as_of,
                 "belief": view.get(args.belief_id),
                 "materialized_status": {key: value for key, value in status.items() if key != "belief"}}
+        if version == "3":
+            snapshot = projection.project_snapshot(storage.read_all_events(conn), args.as_of, version)
+            result["candidate_sets"] = snapshot.candidate_sets(args.belief_id)
+        return result
     _identity_version(version)
     status = storage.read_entity_status(conn, args.subject_id, version)
     if args.as_of is not None:

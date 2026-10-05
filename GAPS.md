@@ -360,9 +360,15 @@ rename/similarity supplies no identity merge or association authority.
 envelope/payload commitments, genesis and predecessor links, recording-time
 monotonicity and materialized event coverage. It reconstructs legacy and
 stage-two contents from the log without normal read/projector validation.
-For projector "2", it rebuilds roots from leaves and checks retained headers
+For projectors "2" and "3", it rebuilds roots from leaves and checks retained headers
 against independently reconstructed lineage under
-[ADR 0025](decisions/0025-incremental-result-commitment.md).
+[ADR 0025](decisions/0025-incremental-result-commitment.md). Projector "3" independently
+reconstructs ordinary transitions and checks the complete relation inventory
+against candidate live status, superseding events, ending event and log position
+under [ADR 0034](decisions/0034-forward-state-transitions.md).
+[tests/test_forward_verifier.py](tests/test_forward_verifier.py) covers deleted or
+altered relations and self-consistently rehashed live-status mutations, independence
+from production reducers, every-prefix parity and actual process-death recovery.
 Full-log accounting reports events beyond validated stored publication progress
 as pending without failing verification. Missing applied events and projected
 references absent from the log fail coverage; unknown progress is not inferred
@@ -434,6 +440,15 @@ Minimal reproductions: `build(path, version, 17, 6)` then
 The complete run matrix and individual unchecked disclosures are recorded in
 `scratch/sol-mutation-matrix.md`. Semantically unchanged index-row permutations
 are controls, not escapes. None of these findings changes accepted authority.
+
+**Queue 12 extension (2026-10-05):** the campaign now includes projector "3",
+transition-generated stores and relation/live-status mutations. The full fixture
+matrix has 407 cases: 331 caught, 66 controls and 10 escapes. All projector-3
+relation and live-status mutations are caught. The additional escape is the same
+`payloads/canonical_entity_id/flip` on version "3", extending the existing reserved
+metadata finding to all four projectors; the other nine are unchanged. No repair
+outside the task or binding decision is inferred. Results are retained in
+`scratch/q12-c9-mutation-matrix.md` and `.json`.
 
 ### Queue 6 crash campaign: legacy rebuild API boundary
 
@@ -629,6 +644,17 @@ and metadata in one transaction; non-empty creation requests refuse. Missing,
 zero, unsupported, or malformed metadata refuses without repair or migration.
 The ADR acceptance tests cover refusal without mutation and rollback on failure.
 Automatic migrations remain outside scope; incompatible databases are rejected.
+[ADR 0035 section 1](decisions/0035-adr-0034-implementation-boundaries.md#1-schema-versions-4-and-5)
+is implemented: fresh creation uses 5, existing 4 opens unchanged, other versions
+refuse, and explicit migration validates a distinct exact copy before adding the
+relation table and updating metadata atomically. The section-1 amendment rebuilds
+exactly `committed_nodes` and `committed_roots` with the schema-5 version-2/3
+constraints in that same transaction, with every copied row verified unchanged.
+No ordinary path invokes migration.
+[tests/test_forward_schema.py](tests/test_forward_schema.py) covers migration and
+source preservation; [tests/test_committed_schema_amendment.py](tests/test_committed_schema_amendment.py)
+covers constraints, row preservation and failure after table rebuilding. The
+existing schema/read suites cover versions and metadata.
 
 ### Timestamp canonicalization belongs at the ingestion boundary
 `src/nyx/immune.py` · follow-on from
@@ -664,6 +690,13 @@ or an *authoritative override* (takes the head regardless of date)? Settling it 
 settling whether `occurred_at` on a correction is **event** time or **validity** time. The
 raise is greppable so the decision, when made, finds every site that assumed it was open.
 
+[ADR 0034 section 4](decisions/0034-forward-state-transitions.md#4-eligibility-checked-at-the-locked-pre-event-snapshot)
+retains `BackdatedCorrectionError` for projector "3" corrections before a target's
+recording-event occurred_at, with equality allowed and comparison as instants.
+The projector-3 handler implements this event-time constraint, with acceptance
+coverage in [tests/test_forward_correction.py](tests/test_forward_correction.py).
+External valid-time semantics remain open.
+
 ### Origin → verification_state beyond `observed`
 **→ [ADR 0004](decisions/0004-correction-appended-supersedes-via-superseding-events.md)** ·
 `_state_for_origin` raises `NotImplementedError`
@@ -684,9 +717,58 @@ historical replay rule is added.
 ### Candidate corrections and target eligibility
 **Deferred:** [ADR 0018](decisions/0018-correction-supersedes-candidates.md) governs
 candidate supersession; [ADR 0023 §5](decisions/0023-stage-two-contract.md#5-corrections-are-deferred-under-version-1)
-governs the current stage boundary. Candidate-target eligibility is incomplete.
-Version "1" refuses corrections before append and on replay, including explicit-target
-submissions. Version "0" retains its implemented correction path and existing refusals.
+governs the frozen stage boundary. Version "1" and "2" refuse corrections before
+append and on replay, including explicit-target submissions. Version "0" retains
+its implemented correction path and existing refusals.
+
+**Implemented for projector "3" ordinary claims:**
+[ADR 0034](decisions/0034-forward-state-transitions.md) supplies live-target
+eligibility, one-belief scope, explicit correction/replacement/expiry operations,
+retained history and the forward timestamp rule. Shared integrity admission of
+the new event types is implemented, with frozen-reader coverage in
+[tests/test_forward_event_types.py](tests/test_forward_event_types.py).
+[ADR 0035 section 2](decisions/0035-adr-0034-implementation-boundaries.md#2-dependency-check-for-transitions-adr-0034-r9)
+resolves the recorded dependency mapping. The predicate ships in
+[transition_dependencies.py](src/nyx/transition_dependencies.py), with every
+refusal and ordinary-check witness in
+[test_transition_dependencies.py](tests/test_transition_dependencies.py).
+Every correction, replacement and expiry invokes it at the locked pre-event
+snapshot and on replay in [forward.py](src/nyx/forward.py). The ordinary successor
+retains only its own direct-observation evidence and can itself be transitioned.
+The correction/replacement/expiry acceptance suites cover closed payloads,
+one-belief live-target eligibility, timestamps, unchanged count/tip on refusals,
+forged replay and successor chains. [tests/test_forward_expiry.py](tests/test_forward_expiry.py)
+contains the all-operation dependency matrix.
+
+Live/retained named and cutoff reads, ending relation/event/position, atomic
+publication, retry-after-expiry and cross-type collisions ship, covered by
+[tests/test_forward_reads.py](tests/test_forward_reads.py) and
+[tests/test_forward_retries.py](tests/test_forward_retries.py). Independent
+verification and replay/mutation/crash campaigns include projector "3".
+[scripts/transition_store.py](scripts/transition_store.py) implements ADR 0034
+section 10 steps 1-3: source hash/backup, new-copy migration, every-position
+equivalence with unchanged identities and own-lineage verification. Source
+preservation and working-copy backup/restore are tested only on temporary fixtures
+in [tests/test_store_transition.py](tests/test_store_transition.py).
+
+**Deferred report corrections:** ADR 0035 section 3 requires every transition
+including a report-scoped target to refuse at append and replay. Those refusals
+ship. No report basis, extractor admission or correction-evidence mechanism is
+inferred; their decision remains deferred.
+
+### Projector 3 committed storage constraint
+
+**RESOLVED (Queue 12 C2):** the accepted ADR 0035 section-1 committed-table
+amendment supplies `CHECK (projector_version IN ('2', '3'))` for schema 5 and
+the exact two-table row-preserving transactional migration. Both are implemented;
+schema-4 tables retain their original constraint. Projector "3" is registered and
+uses isolated rows in the shared committed representation. Complete ordinary-prefix
+equivalence permits only the ADR 0034 section-1a differences and verifies each
+version's own lineage. [tests/test_forward_projector.py](tests/test_forward_projector.py)
+and [tests/test_committed_schema_amendment.py](tests/test_committed_schema_amendment.py)
+cover those contracts. Frozen event bytes, hashes, lineage and derived results
+remain unchanged on schemas 4 and 5. Historical scratch STUCK entries describe
+the pre-amendment state and do not describe the current implementation.
 
 ### Existing-subject association and multi-user authority
 **Blocked:** admissible association bases remain unratified under

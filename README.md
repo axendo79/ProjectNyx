@@ -23,7 +23,7 @@ new legacy observations and corrections require a string `value` (including
 and the shared legacy append path used by `safe_append_event` independently
 refuse domain violations with `IntegrityError` before append. Historical replay
 and the standalone verifier's numeric TEXT-affinity handling remain unchanged.
-Stage-two writers (`"1"` and `"2"`) instead validate supported events in the reducer
+Stage-two writers (`"1"`, `"2"` and `"3"`) instead validate supported events in the reducer
 inside the append transaction; they do not run the Immune Stage 1 pipeline.
 All versions validate envelope schema/taxonomy, offset-bearing timestamps, payload
 hashes, event hashes and predecessor links at append. The implemented paths append
@@ -63,6 +63,36 @@ named candidate. Single-candidate scalar belief requests also remain outside the
 implemented read contract; naming the candidate is available. Corrections, merges,
 splits, verification approvals, and associations with existing subjects refuse at
 both append and replay in this stage.
+
+Accepted [ADR 0034](decisions/0034-forward-state-transitions.md) defines explicit
+forward corrections, replacements and expiry under projector `"3"`, bounded by
+[ADR 0035](decisions/0035-adr-0034-implementation-boundaries.md). These operations
+ship for ordinary claims: explicit live targets are checked at the locked pre-event
+snapshot, and ended candidates retain their evidence and standing. Corrections
+require a `stated_error` basis and an occurred_at at or after each target's own
+recording-event occurred_at; replacement and expiry use a `stated` basis without that ordering
+rule. Every transition checks the recorded dependency predicate. Report-scoped
+targets refuse at append and replay; report corrections remain deferred.
+
+Projector `"3"` reuses `"2"` ordinary-event behavior with its own lineage and
+`live_status` on every candidate. `storage.read_candidate_sets(conn, belief_id, "3")`
+returns complete `live` candidates and `retained` entries containing the candidate
+and its `ending_relation` (relation, event ID and log position).
+`storage.read_claim_candidate_details(conn, candidate_id, "3")` returns the same
+named detail shape, including retained candidates. CLI belief reads include these
+sets for current and historical cutoffs. Relation rows publish atomically with
+progress and are checked independently against replay, lineage and candidate fields.
+Scalar selection remains outside the read contract; recency selects nothing.
+
+Fresh schema 5 and explicit working-copy migration include the committed-table
+amendment. [The store-transition tool](scripts/transition_store.py) hashes and
+backs up a fixture or source store, migrates a new working copy and proves complete
+projector-2/3 equivalence at every pre-existing position with unchanged identities.
+It never appends a transition or designates an authoritative store.
+Shared Layer A integrity validation admits
+`candidate_replaced` and `candidate_expired`. Frozen projectors `"1"` and `"2"`
+still refuse both types at reduction: historical replay before their recording
+position works, while replay reaching them refuses.
 
 Proposed stage-three draft: [ADR 0027](decisions/0027-stage-three-authority-and-acceptance.md).
 
@@ -326,7 +356,7 @@ keys with different semantics refuse. The legacy raw-input wrapper retains its
 lookup of the original event identity. Low-level `safe_append_event` still requires
 an exact retained `(Envelope, Payload)` pair; it performs no positional repair.
 
-For typed identity freshness in versions `"1"`/`"2"`, use `read_entity_status`,
+For typed identity freshness in versions `"1"`/`"2"`/`"3"`, use `read_entity_status`,
 `read_mention_status`, or `read_entity_link_status`. Each returns `record`, `stale`,
 `derived_progress`, `append_freshness`, and `freshness_scope`. An absent mention or
 link with no known subject conservatively uses log-wide freshness, so unpublished
@@ -335,13 +365,33 @@ emit `StaleProjectionWarning` with the status attached when stale, including a
 stale `None`. `projection.is_stale` compares applied and appended positions under
 ADR 0014; it no longer accepts the superseded hash-comparison arguments.
 
-Database schema version `4` is required under
-[ADR 0025](decisions/0025-incremental-result-commitment.md), superseding ADR 0017's
-schema selection. Older databases, including version `3`, are refused unchanged;
-there is no migration, and recreation is an operator action. Versions `"1"` and
-`"2"` have isolated materializations and progress. Appending a compatible stage-two
-event through either updates freshness for both, so an unadvanced materialization
-is labeled stale. Rebuild and publication select one projector explicitly.
+Fresh databases use schema version `5` under
+[ADR 0035](decisions/0035-adr-0034-implementation-boundaries.md#1-schema-versions-4-and-5).
+Existing version-4 stores open unchanged for projectors `"0"`, `"1"` and `"2"`.
+Other versions, including `0` through `3` and `6` and above, refuse unchanged. No open,
+read or append path migrates a store. `storage.migrate_working_copy(source_path,
+working_path)` validates a distinct exact version-4 copy, adds `candidate_relations`
+and updates its metadata in one transaction, leaving the source untouched. In that
+same transaction it rebuilds exactly `committed_nodes` and `committed_roots` with
+`CHECK (projector_version IN ('2', '3'))`, copying and verifying every row unchanged.
+`storage.require_projector_schema(conn, projector_version)` refuses version-4
+selection for `"3"`. Versions `"1"`, `"2"` and `"3"` have isolated materializations
+and progress. Compatible stage-two appends update freshness for `"1"` and `"2"`
+and for `"3"` once its index is active, so an unadvanced materialization is labeled
+stale. Explicit version-3 publication or append activates that index; frozen writers
+do not add it to stores that have never used `"3"`. Rebuild and publication select one
+projector explicitly.
+
+The store-transition proof is an explicit operation:
+
+```powershell
+python scripts/transition_store.py --source scratch/reference-p2.sqlite --working scratch/new-p3.sqlite --projector-version 3
+```
+
+All output paths must be new. It writes a source backup and JSON proof manifest
+beside the working copy, includes WAL-resident committed data, verifies every
+prefix and independently audits the resulting projector-3 publication. The source
+is checked unchanged. Authority designation remains the maintainer's later step.
 
 ## Public ADR source reports
 
@@ -491,9 +541,11 @@ python scripts/verify_store.py --db scratch/demo-p2.sqlite --projector 2 --json
 
 It uses the read-only opener and shared hash/Merkle primitives, independently
 reconstructing log integrity, projected event coverage and belief contents
-without normal readers, validators or reducers. For projector "2" it also
+without normal readers, validators or reducers. For projectors "2" and "3" it also
 rebuilds declared roots from leaves and checks retained historical headers
-against independently reconstructed predecessor lineage. Counts and all
+against independently reconstructed predecessor lineage. Projector "3" additionally
+reconstructs transitions and checks relation rows against retained candidate
+status, ending event and log position. Counts and all
 failures are reported; failures return exit status 1. Events beyond validated
 stored publication progress are reported as pending without failing verification;
 the projector-2 seed passes with one pending event. A missing event that progress
@@ -501,7 +553,8 @@ claims was applied, or a projected reference absent from the log, fails coverage
 Publication freshness is disclosed separately. Unsupported semantics,
 evaluation-only `projected_as_of`, and unavailable historical lineage checks
 are explicitly unchecked; this is not an audit of world truth. Coverage is in
-[test_verify_store.py](tests/test_verify_store.py).
+[test_verify_store.py](tests/test_verify_store.py) and
+[test_forward_verifier.py](tests/test_forward_verifier.py).
 
 ## Repository layout
 
@@ -510,6 +563,18 @@ are explicitly unchecked; this is not an audit of world truth. Coverage is in
 | `src/nyx/` | Event types, storage, projection, hashing, validation, and the walking-skeleton APIs. Some broader interfaces remain stubs. |
 | [src/nyx/timestamps.py](src/nyx/timestamps.py) | Pure ingestion-time timestamp validation; preserves accepted spellings and is independent of the writer clock. |
 | [src/nyx/cli.py](src/nyx/cli.py) | Read-only belief, identity, log, replay, integrity and store-status inspection. |
+| [src/nyx/events.py](src/nyx/events.py), [src/nyx/integrity.py](src/nyx/integrity.py) | ADR 0034 transition type constants and shared Layer A integrity admission. |
+| [src/nyx/forward.py](src/nyx/forward.py) | Projector 3 ordinary-event dispatch, correction/replacement/expiry reducer, retained relations, complete cross-version comparison and own-lineage verification. |
+| [tests/test_forward_projector.py](tests/test_forward_projector.py), [tests/test_forward_correction.py](tests/test_forward_correction.py), [tests/test_forward_replacement.py](tests/test_forward_replacement.py), [tests/test_forward_expiry.py](tests/test_forward_expiry.py), [tests/test_forward_retries.py](tests/test_forward_retries.py) | Equivalence/dispatch, locked eligibility and replay, closed payloads, timestamps, dependency/report refusals, successor chains and retained retries/collisions. |
+| [tests/test_forward_reads.py](tests/test_forward_reads.py) | Live/retained indexed and cutoff reads, named details, atomic relation publication and recovery. |
+| [tests/test_forward_verifier.py](tests/test_forward_verifier.py) | Independent projector-3 audit, relation/live-status mutation failures, replay prefixes and actual crash recovery. |
+| [scripts/transition_store.py](scripts/transition_store.py), [tests/test_store_transition.py](tests/test_store_transition.py) | Source hash/backup, new working-copy migration and every-position equivalence proof; fixture-only source preservation and working-copy backup/restore tests. |
+| [tests/test_frozen_reader_compatibility.py](tests/test_frozen_reader_compatibility.py) | Shipped projector-2 validation beyond historical cutoffs, correction refusal and equal-recording-time inclusion. |
+| [tests/test_forward_event_types.py](tests/test_forward_event_types.py) | ADR 0034 new-type integrity admission, frozen reduction/append refusal and historical cutoff behavior. |
+| [src/nyx/transition_dependencies.py](src/nyx/transition_dependencies.py) | ADR 0035 closed target and reverse-dependency predicate, used by every projector-3 transition at append and replay. |
+| [tests/test_transition_dependencies.py](tests/test_transition_dependencies.py) | Every recorded dependency refusal and a witness that ordinary targets are checked. |
+| [tests/test_forward_schema.py](tests/test_forward_schema.py) | Version-4 selection refusal, exact working-copy migration, source preservation and transaction rollback. |
+| [tests/test_committed_schema_amendment.py](tests/test_committed_schema_amendment.py) | Schema-5 committed constraints, exact two-table row-preserving migration and rollback after rebuilding. |
 | `tests/` | Storage, event, projection, correction, and invariant regression tests. |
 | `scripts/` | Diagnostic probes, verifier/docs checks, and public ADR import/backup/restore launchers. |
 | `config/` | Retained report vocabularies, admitted bindings and reviewed pinned public inputs. |
@@ -559,22 +624,24 @@ merge, split, approval, or authority handlers.
 | [0013](decisions/0013-cross-belief-identity-semantics.md) | [reducer.py] `reduce`, `evidence_event_ids`; [storage.py] typed read functions. Merge/split and successor-resolution handlers are absent. | `test_same_spelling_in_distinct_id_scopes_never_aliases`, `test_typed_reads_never_search_other_id_scopes`, `test_no_head_named_candidate_and_event_evidence_scope`, `test_deferred_events_refuse_both_boundaries` |
 | [0014](decisions/0014-cross-belief-reducer-and-hash-lineage.md) | [reducer.py] `Snapshot`, `EventDelta`, `reduce`; [hashing.py] `belief_lineage`, `canonical_set`; [storage.py] `_append_stage_two`, `_publish_delta`, `materialize_pending`, `read_belief_status`, `read_projection_status`, `rebuild_projection` | `test_snapshot_detached_pure_and_no_clock_or_allocation`, `test_snapshot_apply_detached_branches_and_constructor_equivalence`, `test_snapshot_apply_only_serializes_delta_records`, `test_lineage_complete_result_and_pre_event_dependencies`, `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`, `test_recovery_ignores_corrupt_snapshot_and_rolls_back_failure`, `test_two_connections_cannot_authorize_against_old_append_position`; [test_canonical_independence.py](tests/test_canonical_independence.py) bounded independent canonical-byte/hash evidence; [test_read_surface.py](tests/test_read_surface.py) legacy freshness/unknown checkpoints; [test_cli.py](tests/test_cli.py) stale and unpublished read disclosure |
 | [0015](decisions/0015-candidate-scoped-verification.md) | [reducer.py] `canonical_claim_candidates`, `evidence_event_ids`, `reduce`. Later standing/approval handlers are absent. | `test_same_value_different_standing_and_identity_paths_survive` (supplied-state fixture), `test_no_head_named_candidate_and_event_evidence_scope`, `test_lineage_covers_candidate_contents_with_predecessors_fixed` |
-| [0016](decisions/0016-schema-version-2.md) | [schema.sql](schema.sql) `derived_progress`; [storage.py] `_publish_delta`, `_read_snapshot`; current schema selection is in row 0025 | `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
-| [0017](decisions/0017-schema-version-3.md) | [storage.py] `_validate_schema`; [schema.sql](schema.sql) `projected_*` tables. Current schema selection is in row 0025. | `test_version_two_existing_database_refuses_byte_unchanged`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
-| [0018](decisions/0018-correction-supersedes-candidates.md) | No version-"1" correction handler; refusal boundaries in [storage.py] `_append_stage_two` and [reducer.py] `reduce` | `test_deferred_events_refuse_both_boundaries`; successful candidate-correction coverage is absent |
+| [0016](decisions/0016-schema-version-2.md) | [schema.sql](schema.sql) `derived_progress`; [storage.py] `_publish_delta`, `_read_snapshot`; current schema selection is in row 0035 | `test_append_progress_freshness_uses_entity_not_belief_spelling`, `test_atomic_publication_at_every_record_kind`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
+| [0017](decisions/0017-schema-version-3.md) | [storage.py] `_validate_schema`; [schema.sql](schema.sql) `projected_*` tables. Current schema selection is in row 0035. | `test_version_two_existing_database_refuses_byte_unchanged`; [test_database_schema_versioning.py](tests/test_database_schema_versioning.py) |
+| [0018](decisions/0018-correction-supersedes-candidates.md) | Projector-3 ordinary corrections in [forward.py](src/nyx/forward.py) `reduce_transition`, bounded by ADRs 0034/0035; frozen "1"/"2" refuse in [storage.py] `_append_stage_two` and [reducer.py] `reduce` | `test_deferred_events_refuse_both_boundaries`; [test_forward_correction.py](tests/test_forward_correction.py) one/all/no-target c-A/c-B/c-C cases, retained standing and fresh-candidate correction |
 | [0019](decisions/0019-identity-bootstrap.md) | [ingestion.py] `prepare_mention`, `prepare_observation`, `submit`; [reducer.py] `reduce`; [skeleton.py] `record_mention`, `_record_stage_two` | `test_bootstrap_mention_only_and_confidence`, `test_new_mentions_with_identical_text_and_different_actors_are_isolated`, `test_retained_retry_mention_survives_and_no_remint`, `test_writer_lookup_and_skeleton_two_then_one_events` |
 | [0020](decisions/0020-multi-user-authority-undecided.md) | No authority-policy handler; [reducer.py] `_fields`, `reduce` and [storage.py] `_append_stage_two` provide current rejection boundaries | `test_no_implicit_support_authority_or_other_candidate_roles`, `test_deferred_events_refuse_both_boundaries`; no authority-model acceptance suite |
 | [0021](decisions/0021-bootstrap-link-treatment.md) | [reducer.py] `identity_confidence_ceiling`, `reduce`; [schema.sql](schema.sql) `projected_entity_links` | `test_bootstrap_mention_only_and_confidence`, `test_new_mention_cannot_reuse_identity_or_invent_defaults` |
 | [0022](decisions/0022-belief-container-uniqueness.md) | [ingestion.py] `prepare_observation`; [storage.py] `lookup_current_belief_id`; [reducer.py] `Snapshot.current_belief`, `reduce`; [schema.sql](schema.sql) `idx_current_subject_property` | `test_exact_properties_and_current_only_uniqueness`, `test_stale_lookup_duplicate_pair_and_reused_event_id`, `test_writer_lookup_and_skeleton_two_then_one_events` |
 | [0023](decisions/0023-stage-two-contract.md) | [ingestion.py] preparation/submission functions; [reducer.py] `reduce`; [storage.py] `_append_stage_two`; [lineage probe](scripts/probe_lineage_scaling.py) | `test_exact_properties_and_current_only_uniqueness`, `test_missing_explicit_claim_contents_refuse`, `test_one_event_same_belief_multiple_claims`, `test_retained_retry_mention_survives_and_no_remint`, `test_deferred_events_refuse_both_boundaries`. The probe is outside the suite. |
 | [0024](decisions/0024-no-authoritative-head.md) | [reducer.py] `scalar_belief_value`, `reduce`; [storage.py] `read_belief_scalar`, `read_claim_candidate_value` | `test_no_head_named_candidate_and_event_evidence_scope`, `test_one_event_same_belief_multiple_claims`, `test_cutoffs_time_only_lineage_and_unrelated_beliefs` |
-| [0025](decisions/0025-incremental-result-commitment.md) | [merkle.py](src/nyx/merkle.py) canonical trees/proofs; [committed.py](src/nyx/committed.py) version-2 reducer/snapshot; [committed_storage.py](src/nyx/committed_storage.py) indexed loading/publication; [storage.py] dispatch/recovery and schema version 4; [lineage probe](scripts/probe_lineage_scaling.py) | [test_incremental_commitment.py](tests/test_incremental_commitment.py): `test_all_prefixes_replay_storage_independent_roots_and_version_isolation`, `test_write_path_does_not_enumerate_or_rewrite_accumulated_collections`, tree/proof, crash, corruption, concurrency and frozen-byte tests; [schema tests](tests/test_database_schema_versioning.py) |
+| [0025](decisions/0025-incremental-result-commitment.md) | [merkle.py](src/nyx/merkle.py) canonical trees/proofs; [committed.py](src/nyx/committed.py) version-2 reducer/snapshot; [committed_storage.py](src/nyx/committed_storage.py) indexed loading/publication; [storage.py] dispatch/recovery and version-4 committed representation (current schema selection is in row 0035); [lineage probe](scripts/probe_lineage_scaling.py) | [test_incremental_commitment.py](tests/test_incremental_commitment.py): `test_all_prefixes_replay_storage_independent_roots_and_version_isolation`, `test_write_path_does_not_enumerate_or_rewrite_accumulated_collections`, tree/proof, crash, corruption, concurrency and frozen-byte tests; [schema tests](tests/test_database_schema_versioning.py) |
 | [0026](decisions/0026-usage-is-not-evidence.md) | Binding usage/evidence boundary; usage recording remains unimplemented. [committed.py](src/nyx/committed.py) rejects unsupported world-event types. | [test_incremental_commitment.py](tests/test_incremental_commitment.py), `test_deferred_and_usage_events_refuse_both_boundaries`; no usage subsystem acceptance suite |
 | [0029](decisions/0029-dream-emission-semantics.md) | Proposed / not implemented. Distinct DreamEmission type, inseparable recall origin, Layer A event-domain reducer inputs and no emission-to-evidence path; recording and operational contracts remain decision-blocked. | No executable Dream acceptance coverage; proposed conformance cases are in ADR 0029. |
 | [0030](decisions/0030-sole-writer-and-positional-fields.md) | [writer.py](src/nyx/writer.py) semantic requests, field-complement comparison, OS lock and typed refusal; [storage.py] `init_db`, `append_submission`; [ingestion.py] preparation and `submit`; [skeleton.py] wrappers. | [test_sole_writer.py](tests/test_sole_writer.py): injected clocks/thresholds, inclusive skew boundaries, clamping, semantic retries, field classification, crash/publication recovery, read-only independence, subprocess kill/reacquisition and refusal reporting. |
 | [0031](decisions/0031-source-report-claims.md) | [report_policy.py](src/nyx/report_policy.py) frozen deployment/admission; [storage.py] guarded producer routes; [adr_literals.py](src/nyx/adr_literals.py) exact extraction; [report_importer.py](src/nyx/report_importer.py) durable requests/completion; [reports.py](src/nyx/reports.py) named report details; [report_backup.py](src/nyx/report_backup.py) SQLite bundle/restore. Slice 1b remains deferred. | [test_report_policy.py](tests/test_report_policy.py), [test_report_admission.py](tests/test_report_admission.py), [test_adr_literals.py](tests/test_adr_literals.py), [test_report_importer.py](tests/test_report_importer.py), [test_report_reader.py](tests/test_report_reader.py), [test_report_rename.py](tests/test_report_rename.py), [test_report_backup.py](tests/test_report_backup.py), [test_report_acceptance.py](tests/test_report_acceptance.py): complete first-slice matrix and both-projector finish line. |
 | [0032](decisions/0032-explicit-stage-two-projector-selection.md) | Explicit stage-two selection in [ingestion.py], [projection.py], [reducer.py], [skeleton.py], [storage.py] and the [lineage probe](scripts/probe_lineage_scaling.py); allowlisted legacy defaults remain "0". | [test_explicit_projector_selection.py](tests/test_explicit_projector_selection.py) scans src/scripts AST parameters and class fields, checks enumerated aliases and exact parser options, and checks omission before work; existing stage-two/frozen-byte suites preserve selected versions. |
 | [0033](decisions/0033-projector-0-value-and-verifiability-domain.md) | [integrity.py](src/nyx/integrity.py) `validate_legacy_submission`, called by [immune.py](src/nyx/immune.py) `stage1_schema_validate` and [storage.py] `append_submission`, `_append_legacy_locked`. | [test_legacy_admission_domain.py](tests/test_legacy_admission_domain.py): independent refusal at all three boundaries, unchanged Layer A count/tip, empty strings and all labels, directly inserted numeric history; existing frozen-byte and stage-two suites remain unchanged. |
+| [0034](decisions/0034-forward-state-transitions.md) | Projector "3" in [forward.py](src/nyx/forward.py) `Projector`, `reduce_transition`, `assert_semantically_equivalent`, `verify_lineage`; shared committed representation in [committed.py](src/nyx/committed.py)/[committed_storage.py](src/nyx/committed_storage.py); [storage.py] atomic relation publication, `read_claim_candidate_details`, `read_candidate_sets` and recovery; [cli.py](src/nyx/cli.py) current/cutoff sets; [verify_store.py](scripts/verify_store.py) independent audit; [transition_store.py](scripts/transition_store.py) section-10 steps 1-3. | [test_forward_projector.py](tests/test_forward_projector.py), [test_forward_correction.py](tests/test_forward_correction.py), [test_forward_replacement.py](tests/test_forward_replacement.py), [test_forward_expiry.py](tests/test_forward_expiry.py), [test_forward_retries.py](tests/test_forward_retries.py), [test_forward_reads.py](tests/test_forward_reads.py), [test_forward_verifier.py](tests/test_forward_verifier.py), [test_store_transition.py](tests/test_store_transition.py); [frozen readers](tests/test_frozen_reader_compatibility.py), [event types](tests/test_forward_event_types.py); projector-3 [replay](scripts/replay_campaign.py), [crash](scripts/crash_campaign.py) and [mutation](scripts/mutation_campaign.py) campaigns. |
+| [0035](decisions/0035-adr-0034-implementation-boundaries.md) | [storage.py] `require_projector_schema`, `migrate_working_copy`, `_validate_schema`, `init_db`; [schema.sql](schema.sql) version-5 relation table and amended committed constraints; [transition_dependencies.py](src/nyx/transition_dependencies.py) `check_transition_dependencies`, invoked by [forward.py](src/nyx/forward.py) for every transition. Report targets refuse at append/replay; report corrections remain deferred. | [test_forward_schema.py](tests/test_forward_schema.py), [test_committed_schema_amendment.py](tests/test_committed_schema_amendment.py), [test_database_schema_versioning.py](tests/test_database_schema_versioning.py), [test_read_surface.py](tests/test_read_surface.py), [test_transition_dependencies.py](tests/test_transition_dependencies.py); [test_forward_expiry.py](tests/test_forward_expiry.py) all-operation dependency matrix; correction/replacement/expiry suites cover report refusals. |
 
 [projection.py]: src/nyx/projection.py
 [reducer.py]: src/nyx/reducer.py

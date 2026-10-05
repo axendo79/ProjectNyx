@@ -61,7 +61,7 @@ def test_commands_read_fixture_without_mutation(store, capsys, command):
     elif command == "verify":
         assert output["result"] == "PASS" and output["event_count"] == 2
     elif command == "status":
-        assert output["schema_version"] == 4 and output["event_count"] == 2
+        assert output["schema_version"] == 5 and output["event_count"] == 2
         assert output["freshness"][version]["stale"] is False
     else:
         assert output["returned_count"] == 2

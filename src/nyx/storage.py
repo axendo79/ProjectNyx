@@ -19,10 +19,11 @@ import re
 import sqlite3
 import warnings
 from functools import partial
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from . import hashing, projection, committed, committed_storage, integrity, writer
+from . import hashing, projection, committed, committed_storage, forward, integrity, writer
 from .events import Envelope, Payload
 from .projection import _instant
 from .reducer import EventDelta, RECORD_KINDS, SUPPORTED_EVENTS
@@ -41,7 +42,8 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-DATABASE_SCHEMA_VERSION = 4  # ADR 0025; older databases refuse unchanged.
+DATABASE_SCHEMA_VERSION = 5  # ADR 0035: legacy version 4 remains supported.
+_RELATION_DDL = "CREATE TABLE candidate_relations (\n    projector_version TEXT NOT NULL,\n    target_candidate_id TEXT NOT NULL,\n    event_id TEXT NOT NULL,\n    relation TEXT NOT NULL CHECK (relation IN ('corrected_by','replaced_by','expired_at')),\n    log_position INTEGER NOT NULL CHECK (log_position > 0),\n    PRIMARY KEY (projector_version, target_candidate_id, event_id)\n);"
 # Initialization diagnostics, not an identity or compatibility signal.
 CREATED_BY = "nyx/0.0.0"
 
@@ -125,7 +127,7 @@ def _validate_schema(conn: sqlite3.Connection) -> None:
         raise SchemaCompatibilityError("zero_version", "explicit schema version zero is unsupported")
     if version < 0:
         raise SchemaCompatibilityError("malformed_metadata", "schema version must be positive")
-    if version != DATABASE_SCHEMA_VERSION:
+    if version not in (4, 5):
         raise SchemaCompatibilityError("unsupported_version", f"unsupported schema version {version}")
     expected_columns = [("INTEGER", 0, 1), ("INTEGER", 1, 0), ("TEXT", 1, 0), ("TEXT", 1, 0)]
     if [(col[2].upper(), col[3], col[5]) for col in columns] != expected_columns:
@@ -271,6 +273,8 @@ def read_projection_status(conn: sqlite3.Connection, projector_version: str = "0
     and lineage are not substitutes for an applied position (ADR 0014).
     """
     _registered_projector(projector_version)
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
     if not conn.in_transaction:
         with conn:
             conn.execute("BEGIN")
@@ -318,7 +322,9 @@ def safe_append_event(conn: sqlite3.Connection, envelope: Envelope, payload: Pay
     `safe_write_jsonl` under the superseded flat-JSONL design (spec/HANDOFF_2026-07-11.md).
     """
     _registered_projector(projector_version)
-    if projector_version in ("1", "2"):
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
+    if projector_version in ("1", "2", "3"):
         return _append_stage_two(conn, envelope, payload, projector_version)
     if conn.in_transaction:
         raise RuntimeError("append requires its own transaction")
@@ -385,6 +391,8 @@ def append_submission(conn, request, projector_version):
     publishes on behalf of its caller. Committed retries need no publication.
     """
     _registered_projector(projector_version)
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
     data = writer.validate_request(request)
     if not isinstance(conn, writer.WriterConnection) or conn.owner_lock is None:
         raise RuntimeError("ordinary append requires the owning writer connection")
@@ -492,7 +500,8 @@ def _append_stage_two_locked(conn, envelope, payload, projector_version, before_
     data = integrity.decode_payload(envelope, payload)
     from .report_policy import guard
     guard(conn, envelope, data, projector_version=projector_version)
-    if envelope.event_type not in SUPPORTED_EVENTS:
+    if envelope.event_type not in SUPPORTED_EVENTS and not (
+            projector_version == "3" and envelope.event_type in forward.TRANSITIONS):
         raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
     tip = conn.execute(
         "SELECT rowid,event_id,event_hash,recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
@@ -517,7 +526,12 @@ def _append_stage_two_locked(conn, envelope, payload, projector_version, before_
     subjects = set(delta.entities) | {b["subject_id"] for b in delta.beliefs.values()}
     # Both projectors consume this same event contract. Freshness describes
     # Layer A, while progress remains separately pinned to each projector.
-    for compatible_projector_version in ("1", "2"):
+    versions = ("1", "2")
+    if projector_version == "3" or conn.execute(
+            "SELECT 1 FROM identity_event_index WHERE projector_version='3' LIMIT 1").fetchone():
+        versions += ("3",)
+        _initialize_forward_freshness(conn)
+    for compatible_projector_version in versions:
         for subject_id in subjects:
             conn.execute(
                 "INSERT INTO identity_event_index VALUES (?,?,?) "
@@ -556,6 +570,8 @@ def evaluate_whole_view(
     if not isinstance(as_of, str):
         raise ValueError("whole-view evaluation requires an explicit as_of timestamp")
     _instant(as_of, "as_of")
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
     return projection.project(read_all_events(conn), as_of, projector_version)
 
 
@@ -567,7 +583,9 @@ def read_belief(conn: sqlite3.Connection, belief_id: str,
     belief has been materialized yet. Version 0 retains its original return shape.
     """
     _registered_projector(projector_version)
-    if projector_version in ("1", "2"):
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
+    if projector_version in ("1", "2", "3"):
         # Row and freshness come from one consistent SQLite read snapshot. Stale
         # metadata is operational disclosure, not part of the projected content.
         status = read_belief_status(conn, belief_id, projector_version)
@@ -655,8 +673,9 @@ def _read_snapshot(conn: sqlite3.Connection, version: str) -> projection.Snapsho
     """Caller owns one transaction across these reads and publication/acceptance."""
     if not conn.in_transaction:
         raise RuntimeError("snapshot reads require a transaction")
-    if version == "2":
-        return committed_storage.read_snapshot(conn)
+    if version in ("2", "3"):
+        require_projector_schema(conn, version)
+        return committed_storage.read_snapshot(conn) if version == "2" else committed_storage.read_snapshot_for(conn, version)
     progress = conn.execute(
         "SELECT log_position, event_id FROM derived_progress WHERE projector_version = ?",
         (version,),
@@ -684,23 +703,27 @@ def _read_snapshot(conn: sqlite3.Connection, version: str) -> projection.Snapsho
 def read_snapshot(conn, projector_version):
     """Read all derived records and progress in one consistent transaction."""
     _snapshot_projector(projector_version)
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
     if conn.in_transaction:
         snapshot = _read_snapshot(conn, projector_version)
-        return snapshot.detached() if projector_version == "2" else snapshot
+        return snapshot.detached() if projector_version in ("2", "3") else snapshot
     with conn:
         conn.execute("BEGIN")
         snapshot = _read_snapshot(conn, projector_version)
-        return snapshot.detached() if projector_version == "2" else snapshot
+        return snapshot.detached() if projector_version in ("2", "3") else snapshot
 
 
 def _read_record(conn, kind, identifier, projector_version):
     _snapshot_projector(projector_version)
-    if projector_version == "2":
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
+    if projector_version in ("2", "3"):
         if conn.in_transaction:
-            return _read_snapshot(conn, "2").record(kind, identifier)
+            return _read_snapshot(conn, projector_version).record(kind, identifier)
         with conn:
             conn.execute("BEGIN")
-            return _read_snapshot(conn, "2").record(kind, identifier)
+            return _read_snapshot(conn, projector_version).record(kind, identifier)
     table, column = _RECORD_TABLES[kind]
     row = conn.execute(f"SELECT content FROM {table} WHERE projector_version=? AND {column}=?",
                        (projector_version, identifier)).fetchone()
@@ -724,6 +747,8 @@ def read_identity_status(conn, kind, identifier, projector_version):
     Existing records and entity IDs use the append-side subject index.
     """
     _snapshot_projector(projector_version)
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
     if kind not in ("entities", "mentions", "entity_links"):
         raise ValueError("identity status requires an entity, mention, or entity link")
     if not conn.in_transaction:
@@ -813,6 +838,8 @@ def read_belief_scalar(conn, belief_id, projector_version):
 def lookup_current_belief_id(conn, subject_id, property_id, projector_version):
     """Writer lookup uses the recorded pair, with exact string equality."""
     _snapshot_projector(projector_version)
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
     row = conn.execute(
         "SELECT belief_id FROM projected_beliefs WHERE projector_version=? "
         "AND json_extract(content,'$.subject_id')=? AND json_extract(content,'$.property_id')=? "
@@ -829,9 +856,12 @@ def _publish_delta(conn: sqlite3.Connection, version: str, position: int, delta)
     """
     if not conn.in_transaction:
         raise RuntimeError("delta publication requires a transaction")
-    if version == "2":
-        committed_storage.publish(conn, delta)
-    for key, belief in ({} if version == "2" else delta.beliefs).items():
+    if version in ("2", "3"):
+        if version == "2":
+            committed_storage.publish(conn, delta)
+        else:
+            committed_storage.publish_for(conn, delta, version)
+    for key, belief in ({} if version in ("2", "3") else delta.beliefs).items():
         if version == "0":
             _upsert_legacy_belief(conn, belief)
         else:
@@ -840,7 +870,7 @@ def _publish_delta(conn: sqlite3.Connection, version: str, position: int, delta)
                 "ON CONFLICT(projector_version, belief_id) DO UPDATE SET content=excluded.content",
                 (version, key, hashing.canonical_json(belief)),
             )
-    if version not in ("0", "2"):
+    if version not in ("0", "2", "3"):
         for kind in RECORD_KINDS:
             if kind == "beliefs":
                 continue
@@ -865,6 +895,13 @@ def _publish_delta(conn: sqlite3.Connection, version: str, position: int, delta)
         "log_position=excluded.log_position, event_id=excluded.event_id",
         (version, position, delta.event_id),
     )
+    if version == "3":
+        for relation in getattr(delta, "relations", {}).values():
+            if relation["log_position"] != position:
+                raise ValueError("relation publication position mismatch")
+            conn.execute("INSERT INTO candidate_relations VALUES (?,?,?,?,?)",
+                (version, relation["target_candidate_id"], relation["event_id"],
+                 relation["relation"], position))
 
 
 def _pending_events(conn: sqlite3.Connection, position: int, *, limit: int = -1):
@@ -922,6 +959,8 @@ def materialize_pending(conn: sqlite3.Connection, as_of: str,
     rebuild_projection(), never a possibly partial snapshot.
     """
     projector = _registered_projector(projector_version)
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
     cutoff = _instant(as_of, "as_of")
     if conn.in_transaction:
         raise RuntimeError("derived publication requires its own transaction")
@@ -929,6 +968,8 @@ def materialize_pending(conn: sqlite3.Connection, as_of: str,
     while True:
         with conn:
             conn.execute("BEGIN IMMEDIATE")
+            if projector_version == "3":
+                _initialize_forward_freshness(conn)
             if projector_version == "0":
                 log_position = _legacy_publication_position(conn)
             else:
@@ -961,19 +1002,26 @@ def rebuild_projection(conn: sqlite3.Connection, as_of: str,
     the previous publication remains committed and available with stale labels.
     """
     projector = _snapshot_projector(projector_version)
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
     cutoff = _instant(as_of, "as_of")
     if conn.in_transaction:
         raise RuntimeError("recovery requires its own transaction")
     with conn:
         conn.execute("BEGIN IMMEDIATE")
+        if projector_version == "3":
+            _initialize_forward_freshness(conn)
         log = _pending_events(conn, 0)
         for table, _ in _RECORD_TABLES.values():
             conn.execute(f"DELETE FROM {table} WHERE projector_version = ?", (projector_version,))
-        if projector_version == "2":
-            conn.execute("DELETE FROM committed_roots WHERE projector_version='2'")
-            conn.execute("DELETE FROM committed_nodes WHERE projector_version='2'")
+        if projector_version in ("2", "3"):
+            conn.execute("DELETE FROM committed_roots WHERE projector_version=?", (projector_version,))
+            conn.execute("DELETE FROM committed_nodes WHERE projector_version=?", (projector_version,))
+        if projector_version == "3":
+            conn.execute("DELETE FROM candidate_relations WHERE projector_version=?", (projector_version,))
         conn.execute("DELETE FROM derived_progress WHERE projector_version = ?", (projector_version,))
         snapshot = (committed.Snapshot() if projector_version == "2"
+                    else forward.Snapshot() if projector_version == "3"
                     else projection.Snapshot({}, projector_version=projector_version))
         for next_position, envelope, payload in log:
             if _instant(envelope.recorded_at, "recorded_at") > cutoff:
@@ -996,7 +1044,9 @@ def read_belief_status(conn: sqlite3.Connection, belief_id: str,
     if projector_version == "0":
         return _read_legacy_belief_status(conn, belief_id)
     _snapshot_projector(projector_version)
-    if projector_version == "2" and not conn.in_transaction:
+    if projector_version == "3":
+        require_projector_schema(conn, projector_version)
+    if projector_version in ("2", "3") and not conn.in_transaction:
         with conn:
             conn.execute("BEGIN")
             return read_belief_status(conn, belief_id, projector_version)
@@ -1025,8 +1075,8 @@ def read_belief_status(conn: sqlite3.Connection, belief_id: str,
     stale = projection.is_stale(position, latest_position, record_present=content is not None,
                                 progress_valid=position is None or event_id == applied_id)
     belief = None if content is None else json.loads(content)
-    if projector_version == "2" and belief is not None:
-        snapshot = _read_snapshot(conn, "2")
+    if projector_version in ("2", "3") and belief is not None:
+        snapshot = _read_snapshot(conn, projector_version)
         if snapshot.header(belief_id) != belief:
             raise ValueError("belief lookup header differs from committed record")
         belief = snapshot.belief(belief_id)
@@ -1060,3 +1110,130 @@ def _read_legacy_belief_status(conn, belief_id):
     if stale is None:
         result["reason"] = "legacy materialization has no recorded applied progress"
     return result
+
+
+def require_projector_schema(conn, projector_version):
+    """ADR 0035: selecting 3 never migrates a legacy store."""
+    _validate_schema(conn)
+    if projector_version == "3":
+        if conn.execute("SELECT version FROM schema_meta").fetchone() != (5,):
+            raise SchemaCompatibilityError("unsupported_projector_schema", "projector 3 requires schema 5")
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='candidate_relations'").fetchone() is None:
+            raise SchemaCompatibilityError("missing_relations", "schema 5 requires candidate_relations")
+
+
+def _initialize_forward_freshness(conn):
+    """Initialize 3's compatible prefix only on explicit forward publication/write.
+
+    Frozen writers do not introduce an unselected version's rows. Once selected,
+    subsequent compatible appends maintain all active indexes in the append lock.
+    """
+    if not conn.in_transaction:
+        raise RuntimeError("freshness initialization requires a transaction")
+    if conn.execute("SELECT 1 FROM identity_event_index WHERE projector_version='3' LIMIT 1").fetchone():
+        return
+    conn.execute("INSERT INTO identity_event_index SELECT '3',subject_id,latest_event_id "
+                 "FROM identity_event_index WHERE projector_version='2'")
+    conn.execute("INSERT INTO belief_event_index SELECT '3',belief_id,subject_id "
+                 "FROM belief_event_index WHERE projector_version='2'")
+
+
+def read_claim_candidate_details(conn, candidate_id, projector_version):
+    """Indexed named read, including the validated relation ending live status."""
+    if projector_version != "3":
+        raise ValueError("ending relations require explicit projector 3")
+    require_projector_schema(conn, projector_version)
+    if not conn.in_transaction:
+        with conn:
+            conn.execute("BEGIN")
+            return read_claim_candidate_details(conn, candidate_id, projector_version)
+    snapshot = _read_snapshot(conn, projector_version)
+    candidate = snapshot.record("claim_candidates", candidate_id)
+    if candidate is None:
+        return None
+    rows = conn.execute("SELECT target_candidate_id,event_id,relation,log_position "
+        "FROM candidate_relations WHERE projector_version=? AND target_candidate_id=?",
+        (projector_version, candidate_id)).fetchall()
+    ending = None
+    if candidate["superseding_events"]:
+        if len(candidate["superseding_events"]) != 1:
+            raise ValueError("candidate has invalid ending relations")
+        eid = candidate["superseding_events"][0]
+        entry = snapshot.event(eid)
+        position = conn.execute("SELECT rowid FROM events WHERE event_id=?", (eid,)).fetchone()
+        if (entry is None or position is None or position[0] > snapshot.log_position
+                or entry["envelope"]["event_type"] not in forward.TRANSITIONS
+                or candidate_id not in entry["payload"]["targets"]):
+            raise ValueError("candidate relation has no matching recorded transition")
+        ending = {"target_candidate_id": candidate_id, "event_id": eid,
+            "relation": forward.TRANSITIONS[entry["envelope"]["event_type"]][1], "log_position": position[0]}
+    expected = [] if ending is None else [tuple(ending.values())]
+    if rows != expected:
+        raise ValueError("stored candidate relation differs from committed records")
+    forward.validate_ending(candidate, ending)
+    return {"candidate": candidate, "ending_relation": ending}
+
+
+def read_candidate_sets(conn, belief_id, projector_version):
+    """Complete materialized live and retained sets at the published cutoff."""
+    if projector_version != "3":
+        raise ValueError("live/retained sets require explicit projector 3")
+    require_projector_schema(conn, projector_version)
+    if not conn.in_transaction:
+        with conn:
+            conn.execute("BEGIN")
+            return read_candidate_sets(conn, belief_id, projector_version)
+    belief = _read_snapshot(conn, projector_version).belief(belief_id)
+    if belief is None:
+        return None
+    live, retained = [], []
+    for candidate in belief["claim_candidates"]:
+        details = read_claim_candidate_details(conn, candidate["claim_candidate_id"], projector_version)
+        if details["candidate"] != candidate:
+            raise ValueError("belief candidate differs from indexed candidate")
+        (live if details["ending_relation"] is None else retained).append(
+            candidate if details["ending_relation"] is None else details)
+    return {"live": live, "retained": retained}
+
+
+def migrate_working_copy(source_path, working_path):
+    """Explicitly migrate an exact, distinct working copy, never its source."""
+    source_path, working_path = Path(source_path).resolve(), Path(working_path).resolve()
+    if source_path == working_path or source_path.samefile(working_path):
+        raise ValueError("migration requires distinct source and working copy")
+    with closing(open_readonly(source_path)) as source:
+        if source.execute("SELECT version FROM schema_meta").fetchone() != (4,):
+            raise ValueError("migration source must be schema 4")
+        image = sqlite3.connect(":memory:")
+        try:
+            source.backup(image)
+            reference = tuple(image.iterdump())
+        finally:
+            image.close()
+    conn = init_db(working_path)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        if tuple(conn.iterdump()) != reference:
+            raise ValueError("working path must contain an exact copy of the source")
+        for table in ("committed_nodes", "committed_roots"):
+            ddl = next(statement for statement in _schema_statements(_SCHEMA_PATH.read_text(encoding="utf-8"))
+                       if "CREATE TABLE " + table + " (" in statement)
+            ddl = ddl[ddl.index("CREATE TABLE " + table):]
+            rows = conn.execute(f"SELECT * FROM {table} ORDER BY 1,2").fetchall()
+            conn.execute(ddl.replace("CREATE TABLE " + table,
+                                     "CREATE TABLE " + table + "_schema5", 1))
+            conn.execute(f"INSERT INTO {table}_schema5 SELECT * FROM {table}")
+            if conn.execute(f"SELECT * FROM {table}_schema5 ORDER BY 1,2").fetchall() != rows:
+                raise ValueError("committed migration row mismatch")
+            conn.execute(f"DROP TABLE {table}")
+            conn.execute(f"ALTER TABLE {table}_schema5 RENAME TO {table}")
+        for statement in _schema_statements(_RELATION_DDL):
+            conn.execute(statement)
+        conn.execute("UPDATE schema_meta SET version=5 WHERE id=1")
+        require_projector_schema(conn, "3")
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
