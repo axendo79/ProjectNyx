@@ -9,6 +9,12 @@ follow an accepted contract. No recommendation is presented as decided.
 `design/2026-10-03-adr-0031-worksheet.md`. ADR Status and Implementation markers,
 including amendments, govern over their decision-time body text.
 
+**Dated update (2026-10-05):** ADR 0031 has since been accepted and its slice 1
+shipped; the S2 row citing it is updated. Valid-time choices (S2 option 2, S3
+option 2, S8 option 2) are expanded in
+[the valid-time worksheet](2026-10-05-valid-time-worksheet.md). No option here is
+selected by either update.
+
 ## Scope and completeness accounting
 
 Subject: a later statement explicitly superseding older ClaimCandidates, while
@@ -71,7 +77,7 @@ text need not make an earlier source-at-revision report false.
 |---|---|---|---|
 | Rectify an erroneous claim within the same decided claim scope | ADR 0018 requires explicit targets and a fresh candidate, not replacement by recency; ADR 0024 leaves ordinary reports intact. | Define the correction's claim scope and the evidence establishing error; encode explicit relations and targeted validation. | Incorrect C1 corrected by C2; unrelated C3 survives; same value is not implicit targeting; targets retain original report/source spans. |
 | Record a real change with temporal applicability | ADR 0005 leaves validity-time meaning open; ADR 0024 supplies no temporal resolution. This is not authorized by naming a correction. | Ratify validity fields/interval rules, overlap and cutoff semantics, and whether this uses correction or a separately decided operation. | 64GB valid yesterday and 128GB today; overlapping/gapped intervals; out-of-order arrival; historical answers remain reproducible. |
-| Preserve independent reports without supersession | ADRs 0023 §2 and 0024 authorize alternatives, not a current winner. Proposed ADR 0031 is not yet implementation authority. | Use accepted ordinary observation behavior; any future report importer preserves artifact/revision scope. | Revision R1 says Proposed and R2 says Accepted; both source reports can remain true; same-revision disagreement is shown separately without winner. |
+| Preserve independent reports without supersession | ADRs 0023 §2 and 0024 authorize alternatives, not a current winner. ADR 0031 (accepted 2026-10-04, slice 1 implemented) records reports as separate candidates and implements no correction or temporal resolution. | Use accepted ordinary observation behavior; any future report importer preserves artifact/revision scope. | Revision R1 says Proposed and R2 says Accepted; both source reports can remain true; same-revision disagreement is shown separately without winner. |
 
 Pure withdrawal without a replacement is not supplied by ADR 0018's fresh-candidate
 contract; it would need its own explicit amendment rather than an empty value
