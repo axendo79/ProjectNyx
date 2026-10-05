@@ -11,6 +11,8 @@ def test_windows_ci_contract():
     assert job['runs-on'] == 'windows-latest'
     steps = job['steps']
     assert steps[0]['uses'].startswith('actions/checkout@')
+    # ADR 0031 tests read pinned historical Git objects; a shallow clone lacks them.
+    assert steps[0].get('with', {}).get('fetch-depth') == 0
     assert steps[1]['uses'].startswith('actions/setup-python@')
     assert steps[1]['with']['python-version'] == '3.14'
     assert steps[2]['run'] == 'python -m pip install -e .[dev]'
