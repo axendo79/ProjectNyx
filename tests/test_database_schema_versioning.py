@@ -65,7 +65,7 @@ def test_fresh_initialization(path, existing):
     before = datetime.now(timezone.utc)
     with closing(storage.init_db(path, create=True)) as conn:
         row = conn.execute("SELECT * FROM schema_meta").fetchone()
-        assert row[:2] == (1, 4)
+        assert row[:2] == (1, 5)
         assert before <= datetime.fromisoformat(row[2]) <= datetime.now(timezone.utc)
         assert datetime.fromisoformat(row[2]).utcoffset().total_seconds() == 0
         assert row[3] == "nyx/0.0.0"
@@ -168,7 +168,7 @@ def test_multiple_metadata_rows(path):
 
 @pytest.mark.parametrize("version, reason", [
     (0, "zero_version"), (1, "unsupported_version"), (2, "unsupported_version"),
-    (3, "unsupported_version"), (5, "unsupported_version"),
+    (3, "unsupported_version"), (6, "unsupported_version"),
 ])
 def test_older_and_newer_versions(path, version, reason):
     # ADR 0025 extends refuse-and-preserve through version 3; no migration.
@@ -207,7 +207,7 @@ def test_failed_fresh_initialization(path, tmp_path, monkeypatch, failure):
 def test_repeated_init_detects_substitution(path, tmp_path):
     storage.init_db(path, create=True).close()
     replacement = tmp_path / "replacement.db"
-    metadata_fixture(replacement, (1, 5, "time", "software"))
+    metadata_fixture(replacement, (1, 6, "time", "software"))
     replacement.replace(path)
     refused_unchanged(path, "unsupported_version")
 
@@ -244,7 +244,7 @@ def test_ordinary_open_never_creates(path):
 
 
 def test_write_connection_validates_before_use(path):
-    metadata_fixture(path, (1, 5, "time", "software"))
+    metadata_fixture(path, (1, 6, "time", "software"))
     before = snapshot(path)
     with pytest.raises(storage.SchemaCompatibilityError):
         record_observation(path, {

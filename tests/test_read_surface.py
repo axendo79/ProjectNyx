@@ -30,7 +30,7 @@ def test_readonly_opener_reuses_validator_and_never_creates(store, tmp_path, mon
     monkeypatch.setattr(storage, "_validate_schema", validate)
     with closing(storage.open_readonly(path)) as reader:
         assert storage.read_store_metadata(reader) == {
-            "schema_version": 4, "event_count": 0, "projector_versions": []}
+            "schema_version": 5, "event_count": 0, "projector_versions": []}
     assert calls == [1]
     missing = tmp_path / "missing.db"
     with pytest.raises(sqlite3.OperationalError):
@@ -79,7 +79,7 @@ def test_metadata_and_freshness_before_and_after_publication(store, version):
         storage.materialize_pending(writer, T2, version)
     with closing(storage.open_readonly(path)) as reader:
         metadata = storage.read_store_metadata(reader)
-        assert metadata == {"schema_version": 4, "event_count": 2,
+        assert metadata == {"schema_version": 5, "event_count": 2,
                             "projector_versions": ["0"] if version == "0" else ["1", "2"]}
         assert storage.read_projection_status(reader, version)["stale"] is False
         assert storage.read_belief_status(reader, "b-a", version)["stale"] is False

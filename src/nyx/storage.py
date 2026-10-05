@@ -19,6 +19,7 @@ import re
 import sqlite3
 import warnings
 from functools import partial
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -41,7 +42,8 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-DATABASE_SCHEMA_VERSION = 4  # ADR 0025; older databases refuse unchanged.
+DATABASE_SCHEMA_VERSION = 5  # ADR 0035: legacy version 4 remains supported.
+_RELATION_DDL = "CREATE TABLE candidate_relations (\n    projector_version TEXT NOT NULL,\n    target_candidate_id TEXT NOT NULL,\n    event_id TEXT NOT NULL,\n    relation TEXT NOT NULL CHECK (relation IN ('corrected_by','replaced_by','expired_at')),\n    log_position INTEGER NOT NULL CHECK (log_position > 0),\n    PRIMARY KEY (projector_version, target_candidate_id, event_id)\n);"
 # Initialization diagnostics, not an identity or compatibility signal.
 CREATED_BY = "nyx/0.0.0"
 
@@ -125,7 +127,7 @@ def _validate_schema(conn: sqlite3.Connection) -> None:
         raise SchemaCompatibilityError("zero_version", "explicit schema version zero is unsupported")
     if version < 0:
         raise SchemaCompatibilityError("malformed_metadata", "schema version must be positive")
-    if version != DATABASE_SCHEMA_VERSION:
+    if version not in (4, 5):
         raise SchemaCompatibilityError("unsupported_version", f"unsupported schema version {version}")
     expected_columns = [("INTEGER", 0, 1), ("INTEGER", 1, 0), ("TEXT", 1, 0), ("TEXT", 1, 0)]
     if [(col[2].upper(), col[3], col[5]) for col in columns] != expected_columns:
@@ -1060,3 +1062,44 @@ def _read_legacy_belief_status(conn, belief_id):
     if stale is None:
         result["reason"] = "legacy materialization has no recorded applied progress"
     return result
+
+
+def require_projector_schema(conn, projector_version):
+    """ADR 0035: selecting 3 never migrates a legacy store."""
+    _validate_schema(conn)
+    if projector_version == "3":
+        if conn.execute("SELECT version FROM schema_meta").fetchone() != (5,):
+            raise SchemaCompatibilityError("unsupported_projector_schema", "projector 3 requires schema 5")
+        if conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='candidate_relations'").fetchone() is None:
+            raise SchemaCompatibilityError("missing_relations", "schema 5 requires candidate_relations")
+
+
+def migrate_working_copy(source_path, working_path):
+    """Explicitly migrate an exact, distinct working copy, never its source."""
+    source_path, working_path = Path(source_path).resolve(), Path(working_path).resolve()
+    if source_path == working_path or source_path.samefile(working_path):
+        raise ValueError("migration requires distinct source and working copy")
+    with closing(open_readonly(source_path)) as source:
+        if source.execute("SELECT version FROM schema_meta").fetchone() != (4,):
+            raise ValueError("migration source must be schema 4")
+        image = sqlite3.connect(":memory:")
+        try:
+            source.backup(image)
+            reference = tuple(image.iterdump())
+        finally:
+            image.close()
+    conn = init_db(working_path)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        if tuple(conn.iterdump()) != reference:
+            raise ValueError("working path must contain an exact copy of the source")
+        for statement in _schema_statements(_RELATION_DDL):
+            conn.execute(statement)
+        conn.execute("UPDATE schema_meta SET version=5 WHERE id=1")
+        require_projector_schema(conn, "3")
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
