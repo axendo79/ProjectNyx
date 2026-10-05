@@ -629,6 +629,12 @@ and metadata in one transaction; non-empty creation requests refuse. Missing,
 zero, unsupported, or malformed metadata refuses without repair or migration.
 The ADR acceptance tests cover refusal without mutation and rollback on failure.
 Automatic migrations remain outside scope; incompatible databases are rejected.
+[ADR 0035 section 1](decisions/0035-adr-0034-implementation-boundaries.md#1-schema-versions-4-and-5)
+is implemented: fresh creation uses 5, existing 4 opens unchanged, other versions
+refuse, and explicit migration validates a distinct exact copy before adding the
+relation table and updating metadata atomically. No ordinary path invokes it.
+[tests/test_forward_schema.py](tests/test_forward_schema.py) covers migration and
+source preservation; the existing schema/read suites cover versions and metadata.
 
 ### Timestamp canonicalization belongs at the ingestion boundary
 `src/nyx/immune.py` · follow-on from
@@ -700,13 +706,28 @@ eligibility, one-belief scope, explicit correction/replacement/expiry operations
 retained history and the forward timestamp rule. Shared integrity admission of
 the new event types is implemented, with frozen-reader coverage in
 [tests/test_forward_event_types.py](tests/test_forward_event_types.py).
-Projector "3" registration, schema 5 migration, transition handlers and reads
-remain unimplemented. ADR 0034 R9 requires an actual dependency check; ADR 0015
-sections 4–5 describe logical approval dependencies but do not identify the
-recorded stage-two relations that establish a transition target's dependents or
-necessary justification. That mapping remains decision-blocked. ADR 0034 section
-6 also requires report evidence in `basis` without defining its report-specific
-object shape; the ordinary `stated_error` shape cannot supply it by inference.
+[ADR 0035 section 2](decisions/0035-adr-0034-implementation-boundaries.md#2-dependency-check-for-transitions-adr-0034-r9)
+resolves the recorded dependency mapping. The standalone predicate ships in
+[transition_dependencies.py](src/nyx/transition_dependencies.py), with every
+refusal and ordinary-check witness in
+[test_transition_dependencies.py](tests/test_transition_dependencies.py).
+Integration awaits transition handlers. Section 3 defers all report corrections:
+no report basis or extractor admission is inferred. Schema 5 and explicit copy
+migration now ship; projector registration, handlers and reads remain blocked by
+the committed storage constraint below.
+
+### Projector 3 committed storage constraint
+
+**STUCK (Queue 12 C2):** `schema.sql` constrains both `committed_nodes` and
+`committed_roots` to `CHECK (projector_version = '2')`. A version-3 mention in the
+ADR 0025 committed representation fails publication with that CHECK constraint.
+ADR 0034 sections 1/8 require version-3 rows isolated by projector version;
+ADR 0035 section 1 defines schema 5 as version 4 plus the relation table and the
+explicit migration as adding that table and updating metadata. A contract for
+widening the existing committed-table constraints (including copies' migration)
+or for another version-3 committed table schema is not supplied. No such schema
+choice was implemented. Transition/retry/read/publication campaigns and the
+store-transition proof depend on that contract. Frozen versions remain unchanged.
 
 ### Existing-subject association and multi-user authority
 **Blocked:** admissible association bases remain unratified under
