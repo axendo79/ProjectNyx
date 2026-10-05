@@ -267,7 +267,7 @@ distinguishable in the return shape, or explicitly collapsed by decision.
 | Unselected option | Accepted constraints | Required implementation | Acceptance tests |
 |---|---|---|---|
 | For the new projector only, supersede ADR 0005's refusal for events carrying explicit validity; keep the event-time check | ADR 0025/0032 freeze "0"/"1"/"2". ADR 0005's anticipated deletion of all raise sites must be explicitly superseded. | Retain `BackdatedCorrectionError` and its tests for frozen projectors; new projector refuses E3 and accepts E2 per V6. | E2 accepted; E3 refused; projector-"0" fixtures unchanged. |
-| Keep ADR 0005's refusal in the new projector, forward validity only | ADR 0005 interim stance. | Define "forward" against event time; refuse earlier valid starts. | E2 refuses before append; E1 accepted. |
+| Keep ADR 0005's refusal in the new projector, forward validity only | ADR 0005 interim stance. | Define "forward" against event time; refuse earlier valid starts. | E1 and E2 refuse before append, since every valid start in them precedes its recording event (c-A 2026-01-01 vs 2026-02-01; c-B 2026-06-01 vs 2026-07-02); E1 restated with each valid start equal to its recording event is accepted. Any narrower scope for this restriction (particular event classes) needs its own ruling. |
 | Resolve ADR 0005's A/B question generally | Changes frozen projector semantics; forbidden by ADR 0025/0032 without explicit amendment. | Would require that amendment and historical replay treatment. | Not available under current authority. |
 
 **Decision:** Unselected.
