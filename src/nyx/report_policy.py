@@ -1,6 +1,7 @@
 """ADR 0031 immutable local report admission. Replay never imports this module."""
 from dataclasses import dataclass
 from collections.abc import Mapping
+from contextlib import closing
 import hashlib
 import json
 import math
@@ -205,26 +206,32 @@ class ReportDeployment:
         object.__setattr__(self, 'policy', load_policy(config_dir, repositories=repositories))
         self._inspect_history()
 
-    def _inspect_history(self):
+    def _inspect_history(self, conn=None):
         from . import storage
-        if not self.store.exists(): return
-        conn = storage.open_readonly(self.store)
-        try:
-            for event_id, raw in conn.execute('SELECT event_id,source FROM events'):
-                source = strict_json(raw.encode('utf-8'), f'historical event {event_id}')
-                config = source.get('config', {})
-                if 'report_vocabulary' in config:
-                    key = declaration(config['report_vocabulary'], f'historical event {event_id}')
-                    if key not in self.policy.definitions:
-                        refuse(f'historical event {event_id}', 'missing retained definition/binding')
-        finally:
-            conn.close()
+        if conn is None:
+            if not self.store.exists(): return
+            with closing(storage.open_readonly(self.store)) as readonly:
+                return self._inspect_history(readonly)
+        for event_id, raw in conn.execute('SELECT event_id,source FROM events'):
+            source = strict_json(raw.encode('utf-8'), f'historical event {event_id}')
+            config = source.get('config', {})
+            if 'report_vocabulary' in config:
+                key = declaration(config['report_vocabulary'], f'historical event {event_id}')
+                if key not in self.policy.definitions:
+                    refuse(f'historical event {event_id}', 'missing retained definition/binding')
 
     def open_writer(self, *, create=False, clock=None, threshold=None):
         from . import storage
-        self._inspect_history()
-        return storage.init_db(self.store, create=create, clock=clock, threshold=threshold,
+        conn = storage.init_db(self.store, create=create, clock=clock, threshold=threshold,
                                report_policy=self.policy)
+        try:
+            # Ownership excludes intervening ordinary appends until close.
+            # Inspect this connection before exposing it to any producer.
+            self._inspect_history(conn)
+            return conn
+        except BaseException:
+            conn.close()
+            raise
 
 
 def guard(conn, envelope, data, *, projector_version):

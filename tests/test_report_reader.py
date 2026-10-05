@@ -128,3 +128,49 @@ def test_ordered_sequence_input_and_named_slot_integrity(tmp_path, monkeypatch):
         original = storage.read_claim_candidate
         monkeypatch.setattr(storage, 'read_claim_candidate', lambda conn, name, projector_version: original(conn, ids[3], projector_version))
         with pytest.raises(integrity.IntegrityError): reports.read_report_details(conn, [ids[0]], projector_version='2')
+
+
+@pytest.mark.parametrize('projector_version', ['1', '2'])
+@pytest.mark.parametrize('kind,key_field', [
+    ('mentions', 'mention_id'), ('entity_links', 'mention_id'),
+    ('entities', 'subject_id'), ('beliefs', 'belief_id'),
+    ('claim_candidates', 'claim_candidate_id'),
+])
+def test_stored_record_identity_must_match_lookup_key(tmp_path, projector_version, kind, key_field):
+    from nyx import hashing, merkle, report_importer as importer, reports
+    d = deployment(tmp_path)
+    with closing(d.open_writer(create=True)) as conn:
+        importer.prepare_import(conn, REPOSITORY, REVISION, [PATH], 'one', projector_version=projector_version)
+        completed = importer.resume_import(conn, 'one', projector_version=projector_version)
+        candidate_id = completed['claim_candidate_ids'][0]
+        candidate = storage.read_claim_candidate(conn, candidate_id, projector_version)
+        identifier = candidate[key_field]
+        original = storage._read_record(conn, kind, identifier, projector_version)
+        log = storage.read_all_events(conn)
+        if projector_version == '1':
+            record = copy.deepcopy(original)
+            record[key_field] = 'different-embedded-id'
+            table, column = storage._RECORD_TABLES[kind]
+            with conn:
+                conn.execute(f'UPDATE {table} SET content=? WHERE projector_version=? AND {column}=?',
+                             (hashing.canonical_json(record), projector_version, identifier))
+        else:
+            snapshot = storage.read_snapshot(conn, projector_version)
+            record = snapshot.header(identifier) if kind == 'beliefs' else snapshot.record(kind, identifier)
+            record[key_field] = 'different-embedded-id'
+            written = {}
+            root = merkle.put(snapshot.roots[kind], identifier, record, written)
+            # Preserve valid native Merkle hashes so the adapter must reject
+            # the identity mismatch rather than relying on a hash failure.
+            with conn:
+                conn.executemany("INSERT INTO committed_nodes VALUES ('2',?,?)", written.items())
+                conn.execute("UPDATE committed_roots SET root_hash=? WHERE projector_version='2' AND kind=?",
+                             (merkle.digest(root), kind))
+                if kind == 'beliefs':
+                    conn.execute("UPDATE projected_beliefs SET content=? WHERE projector_version='2' AND belief_id=?",
+                                 (hashing.canonical_json(record), identifier))
+        stored = storage._read_record(conn, kind, identifier, projector_version)
+        assert stored == {**original, key_field: 'different-embedded-id'}
+        assert storage.read_all_events(conn) == log
+        with pytest.raises(integrity.IntegrityError):
+            reports.read_report_details(conn, [candidate_id], projector_version=projector_version)

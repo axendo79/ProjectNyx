@@ -191,7 +191,7 @@ def prepare_artifacts(conn, artifacts, run_id, *, projector_version):
         observed = {hashing.canonical_json(json.loads(r[0].source)['config']['report_artifact'])
                     for r in requests(manifest)}
         expected = {hashing.canonical_json(a.descriptor) for a in artifacts}
-        if (not observed.issubset(expected)
+        if (observed != expected
                 or {a['scope'] for a in manifest['associations']} != {a.descriptor['subject_scope'] for a in artifacts}):
             raise ReportPolicyError('run-id already retains different artifact requests')
         return path
