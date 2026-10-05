@@ -18,7 +18,7 @@ from time import monotonic
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from replay_campaign import build, publication
-from nyx import hashing, storage
+from nyx import hashing, storage, merkle
 from verify_store import FIELDS, verify_store
 
 
@@ -103,7 +103,23 @@ def mutate(path, projector_version, case):
             bad = json.loads(row[0])
             bad['left'], bad['right'] = bad['right'], bad['left']
             raw = hashing.canonical_json(bad)
-            conn.execute("INSERT INTO committed_nodes VALUES ('2',?,?)", (hashing._sha256_hex(raw), raw))
+            conn.execute("INSERT INTO committed_nodes VALUES (?,?,?)", (projector_version, hashing._sha256_hex(raw), raw))
+            return True
+        if case == 'candidates/live_status/rehash':
+            if not conn.in_transaction:
+                conn.execute('BEGIN')
+            candidates = storage.read_snapshot(conn, projector_version).records('claim_candidates')
+            cid = sorted(candidates)[0]
+            candidates[cid]['live_status'] = 'expired' if candidates[cid]['live_status'] == 'live' else 'live'
+            nodes = {}
+            root = None
+            for key, value in candidates.items():
+                root = merkle.put(root, key, value, nodes)
+            for key, raw in nodes.items():
+                conn.execute('INSERT INTO committed_nodes VALUES (?,?,?) ON CONFLICT DO NOTHING',
+                             (projector_version, key, raw))
+            conn.execute("UPDATE committed_roots SET root_hash=? WHERE projector_version=? AND kind='claim_candidates'",
+                         (merkle.digest(root), projector_version))
             return True
         if case == 'publication/delete':
             table = 'resolved_beliefs' if projector_version == '0' else 'projected_beliefs'
@@ -143,7 +159,9 @@ def cases(path, projector_version):
                ['projected_beliefs', 'identity_event_index', 'belief_event_index'])
     tables += (['projected_entities', 'projected_mentions', 'projected_entity_links',
                 'projected_claim_candidates', 'projected_events'] if projector_version == '1' else
-               ['committed_nodes', 'committed_roots'] if projector_version == '2' else [])
+               ['committed_nodes', 'committed_roots'] if projector_version in ('2', '3') else [])
+    if projector_version == '3':
+        tables += ['candidate_relations']
     result = []
     with closing(sqlite3.connect(path)) as conn:
         for table in tables:
@@ -154,8 +172,10 @@ def cases(path, projector_version):
     result += ['publication/delete', 'freshness/delete', 'freshness/swap']
     if projector_version == '0':
         result += ['legacy/idempotency_key/rehash', 'legacy/schema_version/rehash']
-    if projector_version == '2':
+    if projector_version in ('2', '3'):
         result += ['nodes/branch/rehash']
+    if projector_version == '3':
+        result += ['candidates/live_status/rehash']
     return result
 
 
@@ -163,7 +183,7 @@ def campaign(directory, seed=17, count=12, minutes=45):
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     results, started = [], monotonic()
-    for projector_version in ('0', '1', '2'):
+    for projector_version in ('0', '1', '2', '3'):
         base = directory / f'base-{projector_version}.db'
         build(base, projector_version, seed, count)
         assert verify_store(base, projector_version)['ok']

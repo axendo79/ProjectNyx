@@ -36,10 +36,14 @@ FIELDS = ('event_id', 'idempotency_key', 'schema_version', 'event_type',
 KINDS = ('beliefs', 'entities', 'mentions', 'entity_links', 'claim_candidates', 'events')
 COLLECTIONS = ('claim_candidates', 'event_dependencies', 'identity_records')
 CHECKS = ('envelope_hash', 'event_schema', 'chain', 'payload_hash', 'idempotency_key',
-          'recorded_at', 'coverage', 'freshness', 'merkle', 'lineage')
+          'recorded_at', 'coverage', 'freshness', 'merkle', 'lineage', 'relations')
 OBSERVATION = 'observation_recorded'
 MENTION = 'entity_mention_recorded'
 CORRECTION = 'correction_appended'
+REPLACEMENT = 'candidate_replaced'
+EXPIRY = 'candidate_expired'
+TRANSITIONS = {CORRECTION: ('corrected', 'corrected_by'),
+               REPLACEMENT: ('replaced', 'replaced_by'), EXPIRY: ('expired', 'expired_at')}
 
 
 def digest(value):
@@ -152,7 +156,8 @@ class Trees:
         self.route_bounds = {}
         self.hash_validity = {}
         report.data['merkle_inventory'] = dict(retained_nodes=0, distinct_roots_rebuilt=0, lineage_headers=0)
-        for row in conn.execute("SELECT node_hash,content FROM committed_nodes WHERE projector_version='2'"):
+        for row in conn.execute("SELECT node_hash,content FROM committed_nodes WHERE projector_version=?",
+                                (report.data['projector'],)):
             report.data['merkle_inventory']['retained_nodes'] += 1
             key, raw = row
             report.check('merkle', key, key not in self.nodes, 'duplicate stored node identity')
@@ -286,9 +291,9 @@ def load_projection(conn, version, report):
                     records[kind][row[1]] = record
                 except (TypeError, ValueError) as error:
                     report.check('coverage', row[1], False, f'invalid projected record: {error}')
-    elif version == '2':
+    elif version in ('2', '3'):
         trees = Trees(conn, report)
-        root_rows = conn.execute("SELECT kind,root_hash FROM committed_roots WHERE projector_version='2'").fetchall()
+        root_rows = conn.execute("SELECT kind,root_hash FROM committed_roots WHERE projector_version=?", (version,)).fetchall()
         roots = dict(root_rows)
         report.check('merkle', 'root inventory', len(root_rows) == len(roots), 'duplicate committed root kind')
         if roots:
@@ -302,7 +307,7 @@ def load_projection(conn, version, report):
             if node.get('kind') == 'leaf' and isinstance(value, dict) and 'collection_roots' in value:
                 headers.append((f'node/{key}', value))
         cache = {}
-        for bid, raw in conn.execute("SELECT belief_id,content FROM projected_beliefs WHERE projector_version='2'"):
+        for bid, raw in conn.execute("SELECT belief_id,content FROM projected_beliefs WHERE projector_version=?", (version,)):
             try:
                 report.check('coverage', bid, bid not in cache, 'duplicate cached header identity')
                 cache[bid] = json.loads(raw)
@@ -345,7 +350,7 @@ def lineage_record(version, envelope, prior_hash, belief):
     predecessors = [] if prior_hash is None else [{'belief_id': belief['belief_id'], 'view_version_hash': prior_hash}]
     if version == '1':
         return hashing.belief_lineage(version, envelope['event_id'], envelope['event_hash'], predecessors, belief)
-    return dict(lineage_format='nyx-belief-lineage/2', projector_version='2',
+    return dict(lineage_format='nyx-belief-lineage/' + version, projector_version=version,
                 producing_event={'event_id': envelope['event_id'], 'event_hash': envelope['event_hash']},
                 predecessors=hashing.canonical_set(predecessors),
                 result={k: v for k, v in belief.items() if k not in
@@ -365,6 +370,7 @@ class Replay:
         self.collections = {}
         self.history = {}
         self.belief_pairs = {}
+        self.relations = {}
 
     def append(self, envelope, payload):
         if not isinstance(payload, dict):
@@ -376,9 +382,11 @@ class Replay:
                 raise NotImplementedError(f'projector 0 has no {event_type} semantics')
             self.legacy(envelope, payload)
             return
-        if event_type not in (OBSERVATION, MENTION):
+        transition = self.version == '3' and event_type in TRANSITIONS
+        if event_type not in (OBSERVATION, MENTION) and not transition:
             raise NotImplementedError(f'stage two has no {event_type} semantics')
         records = self.records
+        target_belief, targets = self.transition_targets(envelope, payload) if transition else (None, [])
         if eid in records['events']:
             raise ValueError('duplicate event identity')
         dependency = dict(event_id=eid, event_hash=envelope['event_hash'], envelope=envelope, payload=payload)
@@ -393,13 +401,25 @@ class Replay:
             records['entity_links'][mid] = dict(mention_id=mid, subject_id=sid, link_state='constitutive',
                                               entity_link_confidence=None, event_id=eid)
             return
-        if envelope['origin_type'] != 'observed':
+        if envelope['origin_type'] != 'observed' and not (transition and event_type == EXPIRY):
             raise NotImplementedError('non-observed origin-to-state semantics are unimplemented')
         source = json.loads(envelope['source'])
         touched = set()
-        if not isinstance(payload.get('claims'), list) or not payload['claims']:
+        if transition:
+            claims = [] if event_type == EXPIRY else [payload['claim']]
+            touched.add(target_belief)
+            groups = self.collections[target_belief]
+            groups['event_dependencies'][eid] = dependency
+            for cid in targets:
+                candidate = deepcopy(records['claim_candidates'][cid])
+                candidate.update(live_status=TRANSITIONS[event_type][0], superseding_events=[eid])
+                records['claim_candidates'][cid] = groups['claim_candidates'][cid] = candidate
+                self.relations[(cid, eid)] = TRANSITIONS[event_type][1]
+        elif not isinstance(payload.get('claims'), list) or not payload['claims']:
             raise ValueError('observation has no claim collection')
-        for claim in payload['claims']:
+        else:
+            claims = payload['claims']
+        for claim in claims:
             bid, cid, sid, mid = (claim[k] for k in ('belief_id', 'claim_candidate_id', 'subject_id', 'mention_id'))
             if cid in records['claim_candidates'] or records['mentions'][mid]['subject_id'] != sid:
                 raise ValueError('candidate reused or mention/subject mismatch')
@@ -423,6 +443,8 @@ class Replay:
                 source_class=envelope['source_class'], origin_type=envelope['origin_type'],
                 provenance_paths=[[{'event_id': link['event_id'], 'mention_id': mid, 'subject_id': sid},
                                    {'event_id': eid, 'belief_id': bid, 'claim_candidate_id': cid}]])
+            if self.version == '3':
+                candidate['live_status'] = 'live'
             records['claim_candidates'][cid] = candidate
             groups = self.collections.setdefault(bid, {k: {} for k in COLLECTIONS})
             groups['claim_candidates'][cid] = candidate
@@ -449,6 +471,62 @@ class Replay:
             record = lineage_record(self.version, envelope, prior, belief)
             belief['view_version_hash'] = digest(record)
             self.history[(bid, eid)] = (prior, deepcopy(belief))
+
+    def transition_targets(self, envelope, payload):
+        """Closed ADR 0034/0035 validation independent of production handlers."""
+        expiry = envelope['event_type'] == EXPIRY
+        required = {'belief_id', 'targets', 'basis'} if expiry else {'claim', 'targets', 'basis'}
+        if set(payload) != required:
+            raise ValueError('invalid transition payload fields')
+        basis = payload['basis']
+        kind = 'stated_error' if envelope['event_type'] == CORRECTION else 'stated'
+        if (not isinstance(basis, dict) or set(basis) != {'kind', 'statement'}
+                or basis['kind'] != kind or not isinstance(basis['statement'], str) or not basis['statement']):
+            raise ValueError('invalid transition basis')
+        claim = None if expiry else payload['claim']
+        if claim is not None:
+            if (not isinstance(claim, dict) or set(claim) != {'mention_id', 'subject_id', 'property_id',
+                    'belief_id', 'claim_candidate_id', 'value', 'verifiability'}
+                    or any(not isinstance(claim[k], str) or not claim[k] for k in
+                           ('mention_id', 'subject_id', 'property_id', 'belief_id', 'claim_candidate_id'))
+                    or claim['verifiability'] not in ('externally_checkable', 'locally_checkable',
+                        'subjective', 'structurally_unverifiable')
+                    or claim['claim_candidate_id'] in self.records['claim_candidates']):
+                raise ValueError('invalid or reused transition claim')
+        bid = payload['belief_id'] if expiry else claim['belief_id']
+        belief = self.records['beliefs'].get(bid)
+        targets = payload['targets']
+        if (not isinstance(targets, list) or not targets
+                or any(not isinstance(cid, str) or not cid for cid in targets)
+                or targets != sorted(set(targets)) or belief is None
+                or belief['lifecycle_status'] != 'current'):
+            raise ValueError('invalid transition targets/belief')
+        if claim is not None and (claim['subject_id'], claim['property_id']) != (
+                belief['subject_id'], belief['property_id']):
+            raise ValueError('fresh claim scope differs from target belief')
+        if envelope['entity_refs'] is not None:
+            refs = json.loads(envelope['entity_refs'])
+            if (not isinstance(refs, list) or any(not isinstance(ref, str) for ref in refs)
+                    or set(refs) != {belief['subject_id']}):
+                raise ValueError('transition entity_refs differs from affected subject')
+        for cid in targets:
+            target = self.records['claim_candidates'][cid]
+            if (target['live_status'] != 'live' or target['belief_id'] != bid
+                    or (target['subject_id'], target['property_id']) != (belief['subject_id'], belief['property_id'])):
+                raise ValueError('target is non-live or outside exact scope')
+            if 'report_vocabulary' in target['source']['config']:
+                raise ValueError('report-scoped transition is deferred under ADR 0035')
+            if (target['verification_basis']['kind'] != 'direct_observation' or target['predecessors']
+                    or target['restrictions'] or target['opposing_events']):
+                raise ValueError('target dependency requires ADR 0015 section 5')
+            if envelope['event_type'] == CORRECTION:
+                recorded = self.records['events'][target['supporting_events'][0]]['envelope']
+                if instant(envelope['occurred_at']) < instant(recorded['occurred_at']):
+                    raise ValueError('backdated correction')
+        for candidate in self.records['claim_candidates'].values():
+            if any(cid in candidate[field] for cid in targets for field in ('predecessors', 'restrictions')):
+                raise ValueError('reverse dependency requires ADR 0015 section 5')
+        return bid, targets
 
     def legacy(self, envelope, payload):
         bid = payload['belief_id']
@@ -508,7 +586,7 @@ def check_headers(headers, trees, replay, entries, report):
                 report.skip('lineage', where, 'no independently reconstructible belief history for producing event')
                 continue
             prior, expected_header = expected
-            record = lineage_record('2', log[eid][1], prior, header)
+            record = lineage_record(replay.version, log[eid][1], prior, header)
             report.check('lineage', where, digest(record) == header['view_version_hash'], 'lineage does not commit to result and independently reconstructed predecessor')
             report.check('lineage', where, clean(header) == expected_header, 'header/collections differ from independently reconstructed event result')
         except (KeyError, TypeError, ValueError) as error:
@@ -537,6 +615,9 @@ def check_freshness(conn, projector_version, entries, report):
                 for claim in payload['claims']:
                     subjects[claim['subject_id']] = eid
                     associations[claim['belief_id']] = claim['subject_id']
+            elif projector_version == '3' and envelope['event_type'] in TRANSITIONS:
+                bid = payload['belief_id'] if envelope['event_type'] == EXPIRY else payload['claim']['belief_id']
+                subjects[associations[bid]] = eid
             else:
                 raise NotImplementedError('unsupported stage-two event for freshness reconstruction')
     except (KeyError, TypeError, NotImplementedError) as error:
@@ -572,9 +653,13 @@ def verify_connection(conn, version, report):
     conn.execute('BEGIN')  # One consistent snapshot for log, roots and progress.
     entries = read_log(conn, report)
     report.data['event_count'] = len(entries)
-    if version not in ('0', '1', '2'):
+    if version not in ('0', '1', '2', '3'):
         for kind in ('coverage', 'merkle', 'lineage'):
             report.skip(kind, version, 'unsupported projector contract')
+        return
+    if version == '3' and not report.check('coverage', 'schema',
+            conn.execute('SELECT version FROM schema_meta').fetchone()[0] == 5,
+            'projector 3 requires schema 5'):
         return
     check_freshness(conn, version, entries, report)
     records, headers, trees = load_projection(conn, version, report)
@@ -589,7 +674,7 @@ def verify_connection(conn, version, report):
                                     'progress does not identify a log prefix')
         if not prefix_valid:
             position = 0  # Only a loop bound; no publication position is inferred.
-    elif version in ('1', '2') and (any(records.values()) or (trees and trees.nodes)):
+    elif version in ('1', '2', '3') and (any(records.values()) or (trees and trees.nodes)):
         prefix_valid = False
         report.check('coverage', 'derived_progress', False, 'materialization exists without a publication checkpoint')
     elif version == '0' and records['beliefs']:
@@ -623,6 +708,7 @@ def verify_connection(conn, version, report):
                      'event missing from projection despite publication progress claiming it was applied')
     replay = Replay(version, conn)
     expected = deepcopy(replay.records)
+    expected_relations = {}
     complete = True
     for p, envelope, payload in entries:
         if not complete:
@@ -632,21 +718,44 @@ def verify_connection(conn, version, report):
             replay.append(envelope, payload)
             if p == position:
                 expected = deepcopy(replay.records)
+                expected_relations = dict(replay.relations)
         except NotImplementedError as error:
             complete = False
-            report.skip('coverage', envelope['event_id'], str(error))
+            if version == '3' and envelope['event_type'] in TRANSITIONS:
+                report.check('coverage', envelope['event_id'], False, str(error))
+            else:
+                report.skip('coverage', envelope['event_id'], str(error))
         except (KeyError, TypeError, ValueError) as error:
             complete = False
             report.check('coverage', envelope['event_id'], False, f'independent reconstruction failed: {error}')
     if complete and prefix_valid:
         for kind in KINDS:
             compare_maps(kind, expected[kind], records[kind], report)
-        if version == '2':
+        if version in ('2', '3'):
             pairs = {hashing.canonical_json([b['subject_id'], b['property_id']]): bid for bid, b in expected['beliefs'].items()}
             compare_maps('current_beliefs', pairs, records.get('current_beliefs', {}), report)
+        if version == '3':
+            event_positions = {e['event_id']: p for p, e, _ in entries}
+            expected_rows = {(cid, eid, relation, event_positions[eid])
+                             for (cid, eid), relation in expected_relations.items()}
+            rows = conn.execute("SELECT target_candidate_id,event_id,relation,log_position "
+                                "FROM candidate_relations WHERE projector_version='3'").fetchall()
+            report.check('relations', 'inventory', len(rows) == len(expected_rows) and
+                         {tuple(row) for row in rows} == expected_rows,
+                         'missing, extra, duplicate or altered relation relative to recorded transitions')
+            by_candidate = {cid: (eid, relation) for cid, eid, relation, _ in expected_rows}
+            for cid, candidate in records['claim_candidates'].items():
+                if not isinstance(candidate, dict):
+                    report.check('relations', cid, False, 'candidate is not a record')
+                    continue
+                ending = by_candidate.get(cid)
+                status = 'live' if ending is None else {rel: state for state, rel in TRANSITIONS.values()}[ending[1]]
+                report.check('relations', cid, candidate.get('live_status') == status and
+                             candidate.get('superseding_events') == ([] if ending is None else [ending[0]]),
+                             'candidate status/superseding events differ from relation and recorded event')
     else:
         report.skip('coverage', 'projection equality', 'complete reconstruction or valid publication prefix unavailable')
-    if version == '2':
+    if version in ('2', '3'):
         check_headers(headers, trees, replay, entries, report)
         # Publication retains immutable nodes (ADR 0025); checking only the
         # surviving current header would miss deletion of historical lineage.
