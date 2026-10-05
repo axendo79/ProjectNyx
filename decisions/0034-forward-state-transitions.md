@@ -94,13 +94,40 @@ None. Neither the rulings nor the draft choices authorize code.
 Projector "3" is registered alongside "0", "1" and "2" under ADR 0032's explicit
 selection rules: every new selector parameter is named `projector_version` with no
 default, and the AST guard covers new call sites. Projector "3" accepts every event
-type and payload that projector "2" accepts, with identical results for them, plus
-the three operations below. Version-"3" derived rows are isolated by
-`projector_version`, as ADR 0025 isolates "2".
+type and payload that projector "2" accepts, with semantically equivalent results
+for them as defined in section 1a, plus the three operations below. Version-"3"
+derived rows are isolated by `projector_version`, as ADR 0025 isolates "2".
 
 [DRAFT — maintainer to confirm] Version-"3" lineage uses the tag
 `nyx-belief-lineage/3` and otherwise follows ADR 0025's committed representation,
 extended to cover the fields in section 8.
+
+### 1a. Cross-version semantic equivalence
+
+Version-"3" results cannot be byte-identical to version "2": the lineage tag
+differs, `live_status` is added, and every derived hash and root therefore differs
+from the first event. Equality between the versions is defined here, not assumed.
+
+[DRAFT — maintainer to confirm] For a log containing no transition event, results
+under "2" and "3" at the same evaluation time and cutoff are **semantically
+equivalent** when, after removing the permitted differences, they are equal as
+complete canonical values:
+
+- **Must be equal:** every event, mention, subject, link and belief record and ID;
+  belief membership and lifecycle; every ClaimCandidate's recorded claim fields,
+  value, verifiability, support, opposing and superseding events, restrictions,
+  predecessors, verification state and basis, timestamps, source, source class,
+  origin and provenance paths; identity records; event dependencies; refusals; and
+  applied log progress.
+- **Permitted to differ, and only these:** the lineage tag and every value derived
+  from it (`view_version_hash`, lineage records, committed nodes and roots); the
+  added `live_status` field, which must equal `live` for every candidate; and
+  version-keyed storage rows.
+
+Each version's own lineage is still verified independently: "3" lineage is checked
+against "3" results, never against "2" hashes. A difference outside the permitted
+list is a failure. Once a log contains a transition event, version "2" refuses
+(section 10), so equivalence applies only to transition-free prefixes.
 
 ### 2. Operations and recorded event types
 
@@ -254,10 +281,11 @@ Store transition, for any existing store:
 
 1. hash and back up the original; it stays the projector-"2" reference;
 2. copy it to a working store and migrate the copy to schema version 5;
-3. prove projector-"3" full replay of the copied prefix equals projector-"2"
-   results for every pre-existing event, and that existing IDs are not reminted;
+3. prove projector-"3" full replay of the copied prefix is semantically equivalent
+   (section 1a) to projector-"2" results at every pre-existing position, that "3"
+   lineage verifies independently, and that existing IDs are not reminted;
 4. only then append transition events to the working copy;
-5. after acceptance (section 11) passes on the working copy, the maintainer names
+5. after the acceptance cases below pass on the working copy, the maintainer names
    which store is authoritative. Two writable stores never continue in parallel.
 
 ## Acceptance cases
@@ -299,7 +327,12 @@ questioned) and c-C (128).
 - **Frozen versions:** projector "0", "1" and "2" goldens and refusals are
   unchanged; an `as_of` read under "2" before the first transition works; one
   reaching it refuses.
-- **Store transition:** working-copy prefix equality, unchanged identities, backup
+- **Cross-version equivalence:** one mention and one observation replayed under "2"
+  and "3" at the same cutoff differ only in the section-1a permitted fields; every
+  candidate's `live_status` is `live`; altering any must-be-equal field, or a
+  `live_status` other than `live`, in either result fails the comparison; each
+  version's lineage verifies on its own results.
+- **Store transition:** working-copy prefix equivalence, unchanged identities, backup
   and restore of the working copy reproduce relations and live sets.
 
 ## Consequences
