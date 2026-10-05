@@ -229,3 +229,53 @@ def test_running_owner_ignores_retirement_and_bundle_is_deeply_frozen(tmp_path):
         ingestion.submit(conn, observation(conn, d.policy), AS_OF, '2')
         assert tip(conn)[0] == 2
         with pytest.raises(TypeError): d.policy.definitions[next(iter(d.policy.definitions))]['version'] = '2'
+
+
+@pytest.mark.parametrize('projector_version', ['1', '2'])
+def test_history_added_before_acquisition_refuses_and_releases_owner(tmp_path, monkeypatch, projector_version):
+    import sqlite3
+    from nyx.report_policy import ReportDeployment, ReportPolicyError, definition_digest
+    older = deployment(tmp_path)
+    with closing(older.open_writer(create=True)):
+        pass
+    config = policy_files(tmp_path / 'newer')
+    definition_file = next((config / 'report-vocabularies/sha256').glob('*.json'))
+    definition = json.loads(definition_file.read_bytes())
+    definition['version'] = '2'
+    digest = definition_digest(definition)
+    definition_file.with_name(digest + '.json').write_text(json.dumps(definition), encoding='utf-8')
+    newer_declaration = {**older.policy.declaration, 'version': '2', 'definition_digest': digest}
+    admission_file = config / 'report-admission.json'
+    admission = json.loads(admission_file.read_bytes())
+    admission['admitted'].append(newer_declaration)
+    admission_file.write_text(json.dumps(admission), encoding='utf-8')
+    newer = ReportDeployment(older.store, config, repositories={REPOSITORY: ROOT})
+    acquire, close = writer.acquire, writer.WriterConnection.close
+    committed, closed = [], []
+
+    def acquire_after_commit(path):
+        if not committed:
+            committed.append(None)  # Nested acquisition uses the real seam.
+            with closing(newer.open_writer()) as conn:
+                src = source(newer.policy)
+                src['config']['report_vocabulary'] = newer_declaration
+                committed[0] = ingestion.submit(conn, mention(conn, newer.policy, src), AS_OF, projector_version)
+        return acquire(path)
+
+    def record_close(conn):
+        if conn.report_policy is older.policy and conn.owner_lock is not None:
+            closed.append(conn)
+        close(conn)
+
+    monkeypatch.setattr(writer, 'acquire', acquire_after_commit)
+    monkeypatch.setattr(writer.WriterConnection, 'close', record_close)
+    with pytest.raises(ReportPolicyError, match='missing retained definition/binding'):
+        with closing(older.open_writer()):
+            pass
+    assert len(closed) == 1 and closed[0].owner_lock is None
+    with pytest.raises(sqlite3.ProgrammingError, match='closed'):
+        closed[0].execute('SELECT 1')
+    # A complete bundle can immediately reacquire ownership; refusal did not
+    # lose the intervening committed event or leak the writer lock.
+    with closing(newer.open_writer()) as conn:
+        assert tip(conn) == (1, committed[0][0].event_hash)
