@@ -1,12 +1,12 @@
 # ADR 0034: Forward State Transitions Under Projector "3"
 
-Status: Proposed
+Status: Accepted — ratified by the maintainer, 2026-10-05
 
 Date: 2026-10-05
 
 Implementation: None
 
-Supersedes on acceptance: [ADR 0023 section 5](0023-stage-two-contract.md#5-corrections-are-deferred-under-version-1), only under explicitly selected projector "3"; projectors "1" and "2" keep every refusal. [ADR 0024 section 1](0024-no-authoritative-head.md#1-no-authoritative-head-under-version-1), only to the extent that an explicit recorded transition ends a named candidate's live status under projector "3"; recency still selects nothing. [ADR 0031 section 8](0031-source-report-claims.md#8-exact-ratified-first-slice-contract), only its single-extractor admission, and only for report-correction evidence under section 6 below [DRAFT — maintainer to confirm].
+Supersedes: [ADR 0023 section 5](0023-stage-two-contract.md#5-corrections-are-deferred-under-version-1), only under explicitly selected projector "3"; projectors "1" and "2" keep every refusal. [ADR 0024 section 1](0024-no-authoritative-head.md#1-no-authoritative-head-under-version-1), only to the extent that an explicit recorded transition ends a named candidate's live status under projector "3"; recency still selects nothing. [ADR 0031 section 8](0031-source-report-claims.md#8-exact-ratified-first-slice-contract), only its single-extractor admission, and only for report-correction evidence under section 6 below.
 
 Related: [ADR 0001](0001-observation-recorded-resolves-to-verified.md), [ADR 0003](0003-genesis-sentinels-and-hash-material-delimiters.md), [ADR 0005](0005-backdated-corrections-fail-loud-pending-semantics.md), [ADR 0006](0006-occurred-at-comparison-is-instant-based-not-lexical.md), [ADR 0010](0010-projection-parameters.md), [ADR 0011](0011-database-schema-versioning.md), [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md), [ADR 0015](0015-candidate-scoped-verification.md), [ADR 0018](0018-correction-supersedes-candidates.md), [ADR 0020](0020-multi-user-authority-undecided.md), [ADR 0022](0022-belief-container-uniqueness.md), [ADR 0025](0025-incremental-result-commitment.md), [ADR 0030](0030-sole-writer-and-positional-fields.md), [ADR 0032](0032-explicit-stage-two-projector-selection.md), proposed [ADR 0027](0027-stage-three-authority-and-acceptance.md), proposed [ADR 0028](0028-redaction-and-crypto-shredding.md), [supersession worksheet](../design/2026-10-04-supersession-worksheet.md), [valid-time worksheet](../design/2026-10-05-valid-time-worksheet.md).
 
@@ -23,10 +23,8 @@ three questions that "newer" alone cannot answer: was the earlier record wrong;
 did the state it described stop being Nyx's live state; and what applied in the
 modelled world at an external time T. This ADR addresses the first two only.
 
-The maintainer's 2026-10-05 rulings below are recorded as a **proposed contract**,
-not acceptance. Mechanics not settled by those rulings are marked
-[DRAFT — maintainer to confirm]. Status remains Proposed and implementation remains
-None. Neither the rulings nor the draft choices authorize code.
+The maintainer's 2026-10-05 rulings below and the ratified mechanics that follow
+record the accepted contract. Implementation remains None.
 
 ## Maintainer rulings recorded 2026-10-05
 
@@ -87,7 +85,21 @@ None. Neither the rulings nor the draft choices authorize code.
   working copy of an existing store. The original store and its backup bundle stay
   the projector-"2" reference until acceptance testing passes (section 10).
 
-## Proposed contract
+## Ratification
+
+The maintainer ratified this ADR on 2026-10-05: rulings R1–R14 and every
+previously marked mechanic are confirmed. That includes the lineage tag
+`nyx-belief-lineage/3`; cross-version semantic equivalence as defined in section
+1a; the event types `candidate_replaced` and `candidate_expired` alongside
+`correction_appended`; the section 3 payloads and basis objects; retention of
+`BackdatedCorrectionError` for early corrections, leaving ADR 0005 in force;
+refusal of replacement and expiry for report-scoped targets; an initially empty
+extractor admission list for correction evidence; the live/retained read shape;
+the `superseding_events` and `live_status` fields, relation table and database
+schema version 5; and the section 10 frozen-reader compatibility statement,
+accepted knowingly as a change in where frozen readers refuse the new event types.
+
+## Ratified contract
 
 ### 1. Version and dispatch
 
@@ -98,7 +110,7 @@ type and payload that projector "2" accepts, with semantically equivalent result
 for them as defined in section 1a, plus the three operations below. Version-"3"
 derived rows are isolated by `projector_version`, as ADR 0025 isolates "2".
 
-[DRAFT — maintainer to confirm] Version-"3" lineage uses the tag
+Version-"3" lineage uses the tag
 `nyx-belief-lineage/3` and otherwise follows ADR 0025's committed representation,
 extended to cover the fields in section 8.
 
@@ -108,7 +120,7 @@ Version-"3" results cannot be byte-identical to version "2": the lineage tag
 differs, `live_status` is added, and every derived hash and root therefore differs
 from the first event. Equality between the versions is defined here, not assumed.
 
-[DRAFT — maintainer to confirm] For a log containing no transition event, results
+For a log containing no transition event, results
 under "2" and "3" at the same evaluation time and cutoff are **semantically
 equivalent** when, after removing the permitted differences, they are equal as
 complete canonical values:
@@ -138,8 +150,8 @@ record was wrong" from "the record was right and later changed" by event type al
 | Operation | Event type | Fresh candidate | Effect on targets |
 |---|---|---|---|
 | Correction | existing `correction_appended` | exactly one | no longer live; relation `corrected_by` |
-| Forward replacement | [DRAFT] new `candidate_replaced` | exactly one | no longer live from this position; relation `replaced_by` |
-| Expiry | [DRAFT] new `candidate_expired` | none | no longer live from this position; relation `expired_at` |
+| Forward replacement | new `candidate_replaced` | exactly one | no longer live from this position; relation `replaced_by` |
+| Expiry | new `candidate_expired` | none | no longer live from this position; relation `expired_at` |
 
 ADR 0018 governs correction only. Replacement and expiry are new semantics decided
 here; they do not reinterpret ADR 0018. Expiry records no fresh candidate, which is
@@ -148,7 +160,7 @@ stands in for expiry.
 
 ### 3. Payloads
 
-[DRAFT — maintainer to confirm] Correction and replacement payloads carry exactly
+Correction and replacement payloads carry exactly
 `{"claim": <one stage-two claim object>, "targets": [<candidate IDs>], "basis": <object>}`.
 The claim object has exactly the stage-two claim fields (`mention_id`, `subject_id`,
 `property_id`, `belief_id`, `claim_candidate_id`, `value`, `verifiability`) and is
@@ -161,7 +173,7 @@ targets, so every relation points from a newer event to strictly earlier candida
 and no cycle can form. `basis` is defined in section 6 for corrections. For
 replacement and expiry it is `{"kind": "stated", "statement": <nonempty string>}`
 recording the submitted reason as data, with no effect on eligibility
-[DRAFT — maintainer to confirm].
+.
 
 ### 4. Eligibility, checked at the locked pre-event snapshot
 
@@ -178,7 +190,7 @@ Any failure refuses the entire event before append with no change to event count
 tip, payloads or derived rows. Replay applies the same checks and refuses an invalid
 recorded event, so a log can never fold differently from its append-time validation.
 
-[DRAFT — maintainer to confirm] A correction whose occurred_at precedes a target's
+A correction whose occurred_at precedes a target's
 raises `BackdatedCorrectionError`, retaining ADR 0005's named error and its
 interim stance for corrections. ADR 0005 is therefore not superseded. Replacement
 and expiry never raise it.
@@ -193,7 +205,7 @@ and expiry never raise it.
   exact path, revision, blob, property and recorded source location. Two reports of
   different revisions are never in one correction scope; a later revision stating
   something else is another report.
-- [DRAFT — maintainer to confirm] **Replacement and expiry refuse report-scoped
+- **Replacement and expiry refuse report-scoped
   targets.** A report about an immutable revision is not a state that lapses or is
   replaced; only correction applies to it.
 
@@ -208,7 +220,7 @@ event's `source.config` and `basis`:
 4. the fresh literal differs from the target's recorded literal.
 
 A newer extractor version is not intrinsically more truthful; admission is the
-trust decision. [DRAFT — maintainer to confirm] The admission list for correction
+trust decision. The admission list for correction
 evidence starts empty. Admitting an extractor version (for example
 `nyx.adr-literal/2`) is a separate maintainer ruling recording its identifier and
 the defect it corrects. Until then report corrections refuse, because rerunning
@@ -228,7 +240,7 @@ independent verification script.
 
 ### 7. Reads
 
-[DRAFT — maintainer to confirm] For a belief at an explicit cutoff and projector
+For a belief at an explicit cutoff and projector
 "3":
 
 - `live`: candidates with no transition relation at or before the cutoff;
@@ -243,8 +255,7 @@ This ADR adds no scalar or common-value read.
 
 ### 8. Derived relations, lineage and schema
 
-The transition relation is a pure function of recorded events. [DRAFT — maintainer
-to confirm] Projector "3" populates each target's existing `superseding_events`
+The transition relation is a pure function of recorded events. Projector "3" populates each target's existing `superseding_events`
 candidate field with the transition event ID and adds a candidate field
 `live_status` with values `live`, `corrected`, `replaced` or `expired`, both covered
 by version-"3" lineage. A derived relation table, keyed by projector version, target
@@ -253,7 +264,7 @@ transaction as progress and verified by full replay and by the standalone verifi
 A missing or corrupted relation row is a verification failure, never a silent
 fallback to the candidate field or the reverse.
 
-[DRAFT — maintainer to confirm] The relation table requires database schema version
+The relation table requires database schema version
 5 under ADR 0011. Opening a version-4 store for projector "3" requires the explicit
 migration of section 10; no automatic migration occurs.
 
@@ -268,14 +279,14 @@ discriminator is added to evade that.
 
 ### 10. Event types, frozen readers and store transition
 
-[DRAFT — maintainer to confirm] The two new event types join the shared Layer-A
+The two new event types join the shared Layer-A
 event-type allowlist, so integrity validation accepts them in any store. Frozen
 reducers "1" and "2" refuse them at reduction, as they refuse `correction_appended`.
 Consequence: an `as_of` read under "2" whose cutoff precedes the first transition
 event keeps working, and a read or replay reaching it refuses. Projector "0" keeps
-its existing handling and refusals. The frozen-reader characterization tests
-(Sol queue 11) supply the pre-change behavior that this compatibility statement
-alters; it must be ratified knowingly.
+its existing handling and refusals. Frozen-reader characterization tests record
+the pre-change behavior that this compatibility statement alters; the maintainer
+ratified the alteration knowingly.
 
 Store transition, for any existing store:
 
