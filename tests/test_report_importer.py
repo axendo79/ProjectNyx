@@ -237,3 +237,60 @@ def test_existing_run_requires_exact_artifact_set_without_false_completion(tmp_p
                                       projector_version=projector_version)
         assert saved.read_bytes() == original_bytes
         assert tip(conn) == original_tip
+
+
+@pytest.fixture
+def zero_field_inputs(tmp_path):
+    from dataclasses import replace
+    import hashlib
+    from nyx import report_importer as importer
+    d = deployment(tmp_path)
+    old = importer.read_artifacts(d.policy, REPOSITORY, OLDER, [PATH])[0]
+    data = b'Implementation is separate work.\nStatus includes a notice.\n'
+    blob = hashlib.sha1(b'blob ' + str(len(data)).encode('ascii') + b'\0' + data).hexdigest()
+    empty = importer.Artifact(REPOSITORY, '1' * 40, PATH, blob, data)
+    new_path = importer.Artifact(REPOSITORY, '1' * 40, 'decisions/0099-no-literals.md', blob, data)
+    # Trusted TEST bindings for synthetic revisions, with native Git blob hashes.
+    policy = replace(d.policy, artifacts=d.policy.artifacts | {empty.binding, new_path.binding})
+    return policy, old, empty, new_path
+
+
+@pytest.mark.parametrize('projector_version', ['1', '2'])
+def test_zero_field_retained_path_identical_retry_appends_nothing(tmp_path, zero_field_inputs, projector_version):
+    from nyx import report_importer as importer
+    policy, old, empty, _ = zero_field_inputs
+    with closing(storage.init_db(tmp_path / 'store.db', create=True, report_policy=policy)) as conn:
+        importer.prepare_artifacts(conn, [old], 'first', projector_version=projector_version)
+        first = importer.resume_import(conn, 'first', projector_version=projector_version)
+        assert len(first['claim_candidate_ids']) == 3
+        original_tip = tip(conn)
+        saved = importer.prepare_artifacts(conn, [empty], 'empty', projector_version=projector_version)
+        manifest = importer.read_manifest(saved, projector_version=projector_version)
+        assert set(manifest) == {'format', 'projector_version', 'associations', 'requests'}
+        assert manifest['requests'] == []
+        assert {a['scope'] for a in manifest['associations']} == {empty.descriptor['subject_scope']}
+        complete = importer.resume_import(conn, 'empty', projector_version=projector_version)
+        assert complete['claim_candidate_ids'] == []
+        assert complete['publication'] == first['publication']
+        original_bytes = saved.read_bytes()
+        assert importer.prepare_artifacts(conn, [empty], 'empty', projector_version=projector_version) == saved
+        assert importer.resume_import(conn, 'empty', projector_version=projector_version) == complete
+        assert saved.read_bytes() == original_bytes
+        assert tip(conn) == original_tip
+
+
+@pytest.mark.parametrize('projector_version', ['1', '2'])
+def test_existing_run_refuses_new_zero_field_path_scope(tmp_path, zero_field_inputs, projector_version):
+    from nyx import report_importer as importer
+    from nyx.report_policy import ReportPolicyError
+    policy, old, _, new_path = zero_field_inputs
+    with closing(storage.init_db(tmp_path / 'store.db', create=True, report_policy=policy)) as conn:
+        saved = importer.prepare_artifacts(conn, [old], 'same-run', projector_version=projector_version)
+        importer.resume_import(conn, 'same-run', projector_version=projector_version)
+        manifest = importer.read_manifest(saved, projector_version=projector_version)
+        assert new_path.descriptor['subject_scope'] not in {a['scope'] for a in manifest['associations']}
+        original_bytes, original_tip = saved.read_bytes(), tip(conn)
+        with pytest.raises(ReportPolicyError, match='^run-id already retains different artifact requests$'):
+            importer.prepare_artifacts(conn, [old, new_path], 'same-run', projector_version=projector_version)
+        assert saved.read_bytes() == original_bytes
+        assert tip(conn) == original_tip
