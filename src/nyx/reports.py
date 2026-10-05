@@ -73,7 +73,9 @@ def _detail(conn, candidate, position, projector_version):
         link = storage._read_record(conn, 'entity_links', ids['mention_id'], projector_version)
         subject = storage._read_record(conn, 'entities', ids['subject_id'], projector_version)
         _require(mention is not None and link is not None and subject is not None, 'missing mention/link/subject')
-        _require(mention['subject_id'] == link['subject_id'] == ids['subject_id']
+        _require(mention['mention_id'] == link['mention_id'] == ids['mention_id']
+                 and subject['subject_id'] == ids['subject_id']
+                 and mention['subject_id'] == link['subject_id'] == ids['subject_id']
                  and mention['text'] == artifact['subject_scope']
                  and subject['constituting_mention_id'] == ids['mention_id']
                  and mention['event_id'] == link['event_id'] == subject['event_id']
@@ -84,7 +86,8 @@ def _detail(conn, candidate, position, projector_version):
                                             'text': artifact['subject_scope'], 'link_state': 'constitutive'}, 'bootstrap mismatch')
         status = storage.read_belief_status(conn, ids['belief_id'], projector_version)
         belief = status['belief']
-        _require(belief is not None and belief['subject_id'] == ids['subject_id']
+        _require(belief is not None and belief['belief_id'] == ids['belief_id']
+                 and belief['subject_id'] == ids['subject_id']
                  and belief['property_id'] == ids['property_id'], 'containing belief mismatch')
         members = [c for c in belief['claim_candidates'] if c['claim_candidate_id'] == ids['claim_candidate_id']]
         _require(members == [candidate], 'named candidate differs from containing belief')
