@@ -3,10 +3,11 @@ from dataclasses import asdict, dataclass, field
 from copy import deepcopy
 
 from . import committed, hashing, integrity, merkle, transition_dependencies
-from .events import CORRECTION_APPENDED
+from .events import CORRECTION_APPENDED, CANDIDATE_REPLACED
 from .reducer import ReducerProjector, _fields, _string, _required, _fresh, _entity_refs
 
-TRANSITIONS = {CORRECTION_APPENDED: ("corrected", "corrected_by")}
+TRANSITIONS = {CORRECTION_APPENDED: ("corrected", "corrected_by"),
+               CANDIDATE_REPLACED: ("replaced", "replaced_by")}
 
 
 @dataclass(frozen=True)
@@ -37,8 +38,9 @@ def reduce_transition(snapshot, envelope, payload, as_of):
     belief_id = _string(claim, "belief_id")
     _fresh(snapshot, "claim_candidates", _string(claim, "claim_candidate_id"), {})
     _fields(payload["basis"], ("kind", "statement"))
-    if payload["basis"]["kind"] != "stated_error":
-        raise ValueError("correction requires stated_error basis")
+    basis_kind = "stated_error" if envelope.event_type == CORRECTION_APPENDED else "stated"
+    if payload["basis"]["kind"] != basis_kind:
+        raise ValueError(f"transition requires {basis_kind} basis")
     _string(payload["basis"], "statement")
     targets = payload["targets"]
     if (not isinstance(targets, list) or not targets
@@ -58,9 +60,10 @@ def reduce_transition(snapshot, envelope, payload, as_of):
             raise ValueError("targets must share the exact belief scope")
         if "report_vocabulary" in candidate["source"]["config"]:
             raise NotImplementedError("report-scoped transitions refuse under ADR 0035 section 3")
-        recorded = _required(snapshot, "events", candidate["supporting_events"][0])
-        if occurred < _instant(recorded["envelope"]["occurred_at"]):
-            raise BackdatedCorrectionError("correction occurred_at precedes target recording event")
+        if envelope.event_type == CORRECTION_APPENDED:
+            recorded = _required(snapshot, "events", candidate["supporting_events"][0])
+            if occurred < _instant(recorded["envelope"]["occurred_at"]):
+                raise BackdatedCorrectionError("correction occurred_at precedes target recording event")
         candidates.append(candidate)
     transition_dependencies.check_transition_dependencies(snapshot, targets)
     dependency = {"event_id": envelope.event_id, "event_hash": envelope.event_hash,
