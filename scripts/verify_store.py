@@ -498,7 +498,7 @@ class Replay:
         targets = payload['targets']
         if (not isinstance(targets, list) or not targets
                 or any(not isinstance(cid, str) or not cid for cid in targets)
-                or targets != sorted(set(targets)) or belief is None
+                or targets != hashing.canonical_set(targets) or belief is None
                 or belief['lifecycle_status'] != 'current'):
             raise ValueError('invalid transition targets/belief')
         if claim is not None and (claim['subject_id'], claim['property_id']) != (
@@ -514,7 +514,7 @@ class Replay:
             if (target['live_status'] != 'live' or target['belief_id'] != bid
                     or (target['subject_id'], target['property_id']) != (belief['subject_id'], belief['property_id'])):
                 raise ValueError('target is non-live or outside exact scope')
-            if 'report_vocabulary' in target['source']['config']:
+            if 'report_vocabulary' in target['source'].get('config', {}):
                 raise ValueError('report-scoped transition is deferred under ADR 0035')
             if (target['verification_basis']['kind'] != 'direct_observation' or target['predecessors']
                     or target['restrictions'] or target['opposing_events']):

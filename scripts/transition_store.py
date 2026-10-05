@@ -9,6 +9,7 @@ from contextlib import closing
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import sqlite3
 import sys
 
@@ -22,6 +23,18 @@ from verify_store import verify_store
 def file_hash(path):
     with Path(path).open('rb') as stream:
         return hashlib.file_digest(stream, 'sha256').hexdigest()
+
+
+def imports_of(store):
+    # ADR 0031: retained import request manifests live beside the store.
+    return store.with_name(store.name + '.imports')
+
+
+def tree_hashes(root):
+    if not root.exists():
+        return {}
+    return {path.relative_to(root).as_posix(): file_hash(path)
+            for path in sorted(root.rglob('*')) if path.is_file()}
 
 
 def logical_image(source):
@@ -38,12 +51,15 @@ def transition_store(source_path, working_path, projector_version):
     source_path, working_path = Path(source_path).resolve(), Path(working_path).resolve()
     backup_path = working_path.with_name(working_path.name + '.source-backup.db')
     manifest_path = working_path.with_name(working_path.name + '.transition.json')
-    outputs = (working_path, backup_path, manifest_path)
-    if source_path in outputs or len(set(outputs)) != 3:
+    outputs = (working_path, backup_path, manifest_path,
+               imports_of(working_path), imports_of(backup_path))
+    if source_path in outputs or imports_of(source_path) in outputs or len(set(outputs)) != 5:
         raise ValueError('source and new output paths must be distinct')
     if any(path.exists() for path in outputs):
         raise ValueError('all output paths must be new; an output already exists')
     source_digest = file_hash(source_path)
+    source_imports = imports_of(source_path)
+    imports = tree_hashes(source_imports)
     with closing(storage.open_readonly(source_path)) as source:
         source.execute('BEGIN')
         version, created_at = source.execute('SELECT version,created_at FROM schema_meta').fetchone()
@@ -57,6 +73,11 @@ def transition_store(source_path, working_path, projector_version):
                 pass
             with closing(sqlite3.connect(path)) as destination:
                 source.backup(destination)
+    if source_imports.exists():
+        for copy in (backup_path, working_path):
+            shutil.copytree(source_imports, imports_of(copy))
+            if tree_hashes(imports_of(copy)) != imports:
+                raise ValueError('copied import manifests differ from the source')
     if version == 4:
         storage.migrate_working_copy(backup_path, working_path)
     with closing(storage.init_db(working_path)) as working:
@@ -77,13 +98,14 @@ def transition_store(source_path, working_path, projector_version):
     if not audit['ok']:
         raise ValueError('independent working-copy verification failed: ' + json.dumps(audit['failures']))
     with closing(storage.open_readonly(source_path)) as source:
-        if logical_image(source) != reference or file_hash(source_path) != source_digest:
+        if (logical_image(source) != reference or file_hash(source_path) != source_digest
+                or tree_hashes(source_imports) != imports):
             raise ValueError('source changed during transition proof')
     result = dict(format='nyx-store-transition/1', projector_version=projector_version,
         source=str(source_path), source_schema=version, source_sha256=source_digest,
         backup=str(backup_path), backup_sha256=file_hash(backup_path),
         working=str(working_path), working_sha256=file_hash(working_path),
-        as_of=at, positions_verified=len(log), identities_unchanged=True,
+        imports=imports, as_of=at, positions_verified=len(log), identities_unchanged=True,
         independent_verification=audit['checked'])
     with manifest_path.open('x', encoding='utf-8', newline='\n') as stream:
         stream.write(json.dumps(result, indent=2, ensure_ascii=False) + '\n')

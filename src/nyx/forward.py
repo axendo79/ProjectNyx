@@ -96,7 +96,7 @@ def reduce_transition(snapshot, envelope, payload, as_of):
     targets = payload["targets"]
     if (not isinstance(targets, list) or not targets
             or any(not isinstance(target, str) or not target for target in targets)
-            or targets != sorted(set(targets))):
+            or targets != hashing.canonical_set(targets)):
         raise ValueError("targets require nonempty distinct canonically sorted IDs")
     belief = snapshot.header(belief_id)
     if belief is None or belief["lifecycle_status"] != "current":

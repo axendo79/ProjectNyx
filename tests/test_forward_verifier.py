@@ -59,3 +59,29 @@ def test_forward_process_crash_campaign(tmp_path, point):
     result = crash_harness().exercise(tmp_path, '3', 17, point)
     assert result['events_after_retry'] == 7
     assert result['retries'] == 8
+
+
+def test_independent_audit_accepts_transition_target_without_config(tmp_path):
+    # source.config is optional; the independent audit must agree with production.
+    from test_forward_correction import initial_log
+    from test_forward_replacement import replacement
+    from test_reducer_boundary import event
+    from nyx import events
+    path = tmp_path / 'store.db'
+    log = initial_log({'actor_id': 'user'})
+    pair = event(events.CANDIDATE_REPLACED, replacement(['c-A']), 3, log[-1])
+    with closing(storage.init_db(path, create=True)) as conn:
+        for item in log + [pair]:
+            append(conn, item)
+    report = verifier['verify_store'](path, '3')
+    assert report['ok'], report
+
+
+def test_independent_audit_requires_canonical_target_order(tmp_path):
+    from test_forward_expiry import canonical_order_log
+    path = tmp_path / 'store.db'
+    with closing(storage.init_db(path, create=True)) as conn:
+        for item in canonical_order_log(canonical=True):
+            append(conn, item)
+    report = verifier['verify_store'](path, '3')
+    assert report['ok'], report

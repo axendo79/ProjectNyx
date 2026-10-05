@@ -80,3 +80,25 @@ def test_every_transition_checks_dependencies(tmp_path, monkeypatch, kind, data,
         with pytest.raises(NotImplementedError, match="ADR 0015 section 5"):
             storage.safe_append_event(conn, *pair, "3")
         assert tuple(conn.iterdump()) == before
+
+
+def canonical_order_log(*, canonical):
+    # ADR 0014: set order is canonical JSON UTF-8 bytes. "\n" serializes as
+    # backslash-n, so canonical order is ["A", "\n"]; raw string order reverses it.
+    from nyx import events, hashing
+    from test_reducer_boundary import claim, mention
+    first = event(events.ENTITY_MENTION_RECORDED, mention())
+    second = event(events.OBSERVATION_RECORDED,
+                   {"claims": [claim("A", value="1"), claim("\n", value="2")]}, 2, first)
+    targets = hashing.canonical_set(["A", "\n"])
+    assert targets == ["A", "\n"] and sorted(targets) == ["\n", "A"]
+    if not canonical:
+        targets = sorted(targets)
+    return [first, second, event(events.CANDIDATE_EXPIRED, expiry(targets), 3, second)]
+
+
+def test_expiry_targets_use_canonical_set_order():
+    accepted = projection.project_snapshot(decoded(canonical_order_log(canonical=True)), T2, "3")
+    assert {accepted.record("claim_candidates", cid)["live_status"] for cid in ("A", "\n")} == {"expired"}
+    with pytest.raises(ValueError, match="canonical"):
+        projection.project_snapshot(decoded(canonical_order_log(canonical=False)), T2, "3")

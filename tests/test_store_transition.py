@@ -127,3 +127,32 @@ def test_cli_requires_explicit_projector_and_reports_proof(tmp_path, capsys):
                         '--projector-version', '3']) == 0
     import json
     assert json.loads(capsys.readouterr().out)['identities_unchanged'] is True
+
+
+def test_transition_carries_retained_import_manifests(tmp_path):
+    # ADR 0031: <store>.imports/<run-id>/requests.json is durable data that
+    # travels with backups; the working copy and source backup keep exact copies.
+    import hashlib
+    source, working = tmp_path / 'source.db', tmp_path / 'working.db'
+    schema_four(source)
+    manifest = source.with_name(source.name + '.imports') / 'run-1' / 'requests.json'
+    manifest.parent.mkdir(parents=True)
+    manifest.write_bytes(b'{"format": "nyx.adr-import-requests/1"}\n')
+    before = manifest.read_bytes()
+    result = tool().transition_store(source, working, '3')
+    digest = hashlib.sha256(before).hexdigest()
+    assert result['imports'] == {'run-1/requests.json': digest}
+    for copy in (working, Path(result['backup'])):
+        assert (copy.with_name(copy.name + '.imports') / 'run-1' / 'requests.json').read_bytes() == before
+    assert manifest.read_bytes() == before
+
+
+def test_transition_without_imports_records_none_and_refuses_existing_output(tmp_path):
+    source, working = tmp_path / 'source.db', tmp_path / 'working.db'
+    schema_four(source)
+    working.with_name(working.name + '.imports').mkdir()
+    with pytest.raises(ValueError, match='already exists'):
+        tool().transition_store(source, working, '3')
+    other = tmp_path / 'other.db'
+    assert tool().transition_store(source, other, '3')['imports'] == {}
+    assert not other.with_name(other.name + '.imports').exists()
