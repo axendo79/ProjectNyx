@@ -191,7 +191,11 @@ def prepare_artifacts(conn, artifacts, run_id, *, projector_version):
         observed = {hashing.canonical_json(json.loads(r[0].source)['config']['report_artifact'])
                     for r in requests(manifest)}
         expected = {hashing.canonical_json(a.descriptor) for a in artifacts}
-        if (observed != expected
+        # A retained path's zero-field revision produces no request. Every
+        # field-bearing revision must still be represented, with no extras.
+        required = {hashing.canonical_json(a.descriptor)
+                    for a, literals in zip(artifacts, extracted) if literals}
+        if (not observed.issubset(expected) or not required.issubset(observed)
                 or {a['scope'] for a in manifest['associations']} != {a.descriptor['subject_scope'] for a in artifacts}):
             raise ReportPolicyError('run-id already retains different artifact requests')
         return path
