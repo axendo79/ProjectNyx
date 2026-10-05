@@ -1,9 +1,12 @@
 """Explicit projector 3 (ADR 0034 as bounded by ADR 0035)."""
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from copy import deepcopy
 
-from . import committed, hashing
-from .reducer import ReducerProjector
+from . import committed, hashing, integrity, merkle, transition_dependencies
+from .events import CORRECTION_APPENDED
+from .reducer import ReducerProjector, _fields, _string, _required, _fresh, _entity_refs
+
+TRANSITIONS = {CORRECTION_APPENDED: ("corrected", "corrected_by")}
 
 
 @dataclass(frozen=True)
@@ -13,7 +16,72 @@ class Snapshot(committed.Snapshot):
 
 class Projector(ReducerProjector):
     def reduce(self, snapshot, envelope, payload, as_of):
+        if envelope.event_type in TRANSITIONS:
+            return reduce_transition(snapshot, envelope, payload, as_of)
         return committed.reduce_ordinary(snapshot, envelope, payload, as_of, "3")
+
+
+def reduce_transition(snapshot, envelope, payload, as_of):
+    from .projection import _instant, BackdatedCorrectionError
+    if not isinstance(snapshot, Snapshot) or snapshot.projector_version != "3":
+        raise ValueError("snapshot projector version does not match reducer")
+    integrity.validate_event(envelope, payload)
+    _instant(as_of, "as_of")
+    _instant(envelope.recorded_at, "recorded_at")
+    occurred = _instant(envelope.occurred_at)
+    _fresh(snapshot, "events", envelope.event_id, {})
+    _fields(payload, ("claim", "targets", "basis"))
+    claim = payload["claim"]
+    _fields(claim, ("mention_id", "subject_id", "property_id", "belief_id",
+                    "claim_candidate_id", "value", "verifiability"))
+    belief_id = _string(claim, "belief_id")
+    _fresh(snapshot, "claim_candidates", _string(claim, "claim_candidate_id"), {})
+    _fields(payload["basis"], ("kind", "statement"))
+    if payload["basis"]["kind"] != "stated_error":
+        raise ValueError("correction requires stated_error basis")
+    _string(payload["basis"], "statement")
+    targets = payload["targets"]
+    if (not isinstance(targets, list) or not targets
+            or any(not isinstance(target, str) or not target for target in targets)
+            or targets != sorted(set(targets))):
+        raise ValueError("targets require nonempty distinct canonically sorted IDs")
+    belief = snapshot.header(belief_id)
+    if belief is None or belief["lifecycle_status"] != "current":
+        raise ValueError("targets require one current belief")
+    candidates = []
+    for target in targets:
+        candidate = _required(snapshot, "claim_candidates", target)
+        if candidate["live_status"] != "live":
+            raise ValueError("target candidate is no longer live")
+        if (candidate["belief_id"], candidate["subject_id"], candidate["property_id"]) != (
+                belief_id, belief["subject_id"], belief["property_id"]):
+            raise ValueError("targets must share the exact belief scope")
+        if "report_vocabulary" in candidate["source"]["config"]:
+            raise NotImplementedError("report-scoped transitions refuse under ADR 0035 section 3")
+        recorded = _required(snapshot, "events", candidate["supporting_events"][0])
+        if occurred < _instant(recorded["envelope"]["occurred_at"]):
+            raise BackdatedCorrectionError("correction occurred_at precedes target recording event")
+        candidates.append(candidate)
+    transition_dependencies.check_transition_dependencies(snapshot, targets)
+    dependency = {"event_id": envelope.event_id, "event_hash": envelope.event_hash,
+                  "envelope": asdict(envelope), "payload": deepcopy(payload)}
+    delta = committed.Delta(envelope.event_id, events={envelope.event_id: dependency})
+    delta = committed.reduce_claims(snapshot, envelope, [claim], as_of, "3", delta)
+    # Start from this event's fresh candidate tree, then change only target leaves.
+    trees = Snapshot(delta.roots).collection_trees(belief_id)
+    status, relation = TRANSITIONS[envelope.event_type]
+    for candidate in candidates:
+        candidate.update(live_status=status, superseding_events=[envelope.event_id])
+        cid = candidate["claim_candidate_id"]
+        delta.claim_candidates[cid] = candidate
+        trees["claim_candidates"] = merkle.put(trees["claim_candidates"], cid, candidate, delta.nodes)
+    header = delta.beliefs[belief_id]
+    header["collection_roots"] = {k: merkle.digest(v) for k, v in trees.items()}
+    header["result_root"] = committed.result_root(header["collection_roots"])
+    predecessors = [{"belief_id": belief_id, "view_version_hash": belief["view_version_hash"]}]
+    header["view_version_hash"] = hashing._sha256_hex(hashing.canonical_json(
+        committed.lineage_for(envelope.event_id, envelope.event_hash, predecessors, header, "3")))
+    return committed._finish(snapshot, delta, {belief_id: trees})
 
 
 def assert_semantically_equivalent_values(old, new):

@@ -1,8 +1,7 @@
 """ADR 0035 section 2's closed, read-only recorded dependency check.
 
 Transition handlers must call this on the locked pre-event snapshot at append
-and replay. Eligibility and live-status checks belong to those handlers. No
-transition handler is registered yet; the committed schema boundary is STUCK.
+and replay. Eligibility and live-status checks belong to those handlers.
 """
 from .reducer import _required
 

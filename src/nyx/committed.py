@@ -227,12 +227,21 @@ def reduce_ordinary(snapshot, envelope, payload, as_of, projector_version):
         _entity_refs(envelope, [subject_id])
         return _finish(snapshot, delta, {})
 
-    state = _state_for_origin(envelope.origin_type)
+    _state_for_origin(envelope.origin_type)
     _fields(payload, ("claims",))
     if not isinstance(payload["claims"], list) or not payload["claims"]:
         raise ValueError("observation requires nonempty explicitly scoped claims")
+    return reduce_claims(snapshot, envelope, payload["claims"], as_of, projector_version, delta)
+
+
+def reduce_claims(snapshot, envelope, claims, as_of, projector_version, delta):
+    """Shared claim mechanics after the caller validates the recorded event."""
+    from .projection import _state_for_origin
+    state = _state_for_origin(envelope.origin_type)
+    source = json.loads(envelope.source)
+    dependency = delta.events[envelope.event_id]
     belief_trees = {}
-    for claim in payload["claims"]:
+    for claim in claims:
         _fields(claim, ("mention_id", "subject_id", "property_id", "belief_id",
                         "claim_candidate_id", "value", "verifiability"))
         for name in ("mention_id", "subject_id", "property_id", "belief_id", "claim_candidate_id"):

@@ -500,7 +500,8 @@ def _append_stage_two_locked(conn, envelope, payload, projector_version, before_
     data = integrity.decode_payload(envelope, payload)
     from .report_policy import guard
     guard(conn, envelope, data, projector_version=projector_version)
-    if envelope.event_type not in SUPPORTED_EVENTS:
+    if envelope.event_type not in SUPPORTED_EVENTS and not (
+            projector_version == "3" and envelope.event_type in forward.TRANSITIONS):
         raise NotImplementedError(f"stage two refuses {envelope.event_type!r}")
     tip = conn.execute(
         "SELECT rowid,event_id,event_hash,recorded_at FROM events ORDER BY rowid DESC LIMIT 1"
