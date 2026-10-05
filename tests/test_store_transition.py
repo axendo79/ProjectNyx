@@ -156,3 +156,62 @@ def test_transition_without_imports_records_none_and_refuses_existing_output(tmp
     other = tmp_path / 'other.db'
     assert tool().transition_store(source, other, '3')['imports'] == {}
     assert not other.with_name(other.name + '.imports').exists()
+
+
+def interrupted_report_store(tmp_path):
+    """A real ADR 0031 store, interrupted after its mention, plus its backup bundle."""
+    from nyx import report_importer as importer, report_backup, report_policy
+    from test_report_admission import AS_OF, deployment
+    from test_report_importer import PATH, REVISION
+    from test_report_policy import REPOSITORY, ROOT, policy_files
+    config = policy_files(tmp_path)
+    d = deployment(tmp_path, config)
+    revision = report_policy.git(ROOT, 'rev-parse', 'HEAD').decode().strip()
+    with closing(d.open_writer(create=True)) as conn:
+        manifest = importer.prepare_import(conn, REPOSITORY, REVISION, [PATH], 'one', projector_version='2')
+        mention_request, _ = importer.requests(importer.read_manifest(manifest, projector_version='2'))
+        ingestion.submit(conn, mention_request, AS_OF, '2')
+        bundle = report_backup.backup_bundle(conn, tmp_path / 'bundle', projector_version='2',
+                                             software_revision=revision, policy_revision=revision)
+    return d, config, bundle
+
+
+def test_report_store_transition_requires_its_bundle_and_resumes_on_working_copy(tmp_path):
+    # ADR 0031 BACKUP BUNDLE row and ADR 0034 section 10 step 1: a report store's
+    # backup is its ADR 0031 bundle (policy, definitions, revisions, manifests).
+    from nyx import report_importer as importer, reports
+    from nyx.report_policy import ReportDeployment
+    from test_report_policy import REPOSITORY, ROOT
+    d, config, bundle = interrupted_report_store(tmp_path)
+    with pytest.raises(ValueError, match='report bundle'):
+        tool().transition_store(d.store, tmp_path / 'unbundled.db', '3')
+    with closing(storage.open_readonly(d.store)) as conn:
+        source_tip = storage.last_event_hash(conn)
+    working = tmp_path / 'working.db'
+    result = tool().transition_store(d.store, working, '3', report_bundle=bundle)
+    assert result['report_bundle']['tip_hash'] == source_tip
+    assert result['report_bundle']['projector_version'] == '2'
+    assert len(result['report_bundle']['bundle_sha256']) == 64
+    resumed = ReportDeployment(working, config, repositories={REPOSITORY: ROOT})
+    with closing(resumed.open_writer()) as conn:
+        count = conn.execute('SELECT count(*) FROM events').fetchone()[0]
+        out = importer.resume_import(conn, 'one', projector_version='2')
+        assert conn.execute('SELECT count(*) FROM events').fetchone()[0] == count + 1
+        details = reports.read_report_details(conn, out['claim_candidate_ids'], projector_version='2')
+        assert len(details['reports']) == 3
+        tip_after = storage.last_event_hash(conn)
+        importer.resume_import(conn, 'one', projector_version='2')
+        assert storage.last_event_hash(conn) == tip_after
+    # Reading the bundle during transition left it intact and restorable.
+    from nyx import report_backup
+    report_backup.restore_bundle(bundle, tmp_path / 'restored.db', repositories={REPOSITORY: ROOT},
+                                 projector_version='2')
+
+
+def test_report_store_transition_refuses_a_stale_bundle(tmp_path):
+    from nyx import report_importer as importer
+    d, _, bundle = interrupted_report_store(tmp_path)
+    with closing(d.open_writer()) as conn:
+        importer.resume_import(conn, 'one', projector_version='2')
+    with pytest.raises(ValueError, match='report bundle'):
+        tool().transition_store(d.store, tmp_path / 'working.db', '3', report_bundle=bundle)

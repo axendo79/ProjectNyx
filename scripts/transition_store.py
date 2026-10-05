@@ -12,6 +12,7 @@ from pathlib import Path
 import shutil
 import sqlite3
 import sys
+import tempfile
 
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
@@ -37,6 +38,38 @@ def tree_hashes(root):
             for path in sorted(root.rglob('*')) if path.is_file()}
 
 
+def report_bundle_record(bundle, log, tip, imports):
+    """ADR 0031 BACKUP BUNDLE: a report store's backup is its validated bundle.
+
+    The bundle must capture exactly this source: same Layer A log and tip, and
+    the same retained import manifests. Policy, definitions and revisions are
+    validated by report_backup's own bundle check, not re-implemented here.
+    """
+    from nyx import report_backup
+    root = Path(bundle).resolve()
+    try:
+        version = json.loads((root / 'bundle.json').read_bytes()).get('projector_version')
+        if version not in ('1', '2'):
+            raise ValueError(f'unsupported bundle projector_version {version!r}')
+        root, metadata = report_backup._bundle(root, version)
+        # Read a temporary copy: opening the bundle's own database could leave
+        # SQLite side files that break the bundle's exact file inventory.
+        with tempfile.TemporaryDirectory() as scratch:
+            copy = Path(scratch) / 'store.sqlite3'
+            shutil.copyfile(root / 'store.sqlite3', copy)
+            with closing(storage.open_readonly(copy)) as conn:
+                bundled_log = storage.read_all_events(conn)
+    except (OSError, ValueError) as error:
+        raise ValueError(f'report bundle is invalid: {error}') from error
+    bundled_imports = {name[len('imports/'):]: digest for name, digest in metadata['files'].items()
+                       if name.startswith('imports/')}
+    if metadata['tip_hash'] != tip or bundled_log != log or bundled_imports != imports:
+        raise ValueError('report bundle does not match the source store (tip, log or import manifests)')
+    return dict(path=str(root), bundle_sha256=file_hash(root / 'bundle.json'),
+                projector_version=version, software_revision=metadata['software_revision'],
+                policy_revision=metadata['policy_revision'], tip_hash=tip)
+
+
 def logical_image(source):
     # iterdump performs PRAGMAs denied by the source's read-only authorizer.
     # Dump an isolated backup instead, leaving that authorizer intact.
@@ -45,7 +78,7 @@ def logical_image(source):
         return tuple(image.iterdump())
 
 
-def transition_store(source_path, working_path, projector_version):
+def transition_store(source_path, working_path, projector_version, report_bundle=None):
     if projector_version != '3':
         raise ValueError('store transition requires explicitly selected projector 3')
     source_path, working_path = Path(source_path).resolve(), Path(working_path).resolve()
@@ -65,6 +98,12 @@ def transition_store(source_path, working_path, projector_version):
         version, created_at = source.execute('SELECT version,created_at FROM schema_meta').fetchone()
         reference = logical_image(source)
         log = storage.read_all_events(source)
+        has_reports = any('report_vocabulary' in json.loads(envelope.source).get('config', {})
+                          for envelope, _ in log)
+        if has_reports and report_bundle is None:
+            raise ValueError('source contains report-scoped events; supply its ADR 0031 report bundle')
+        bundle_record = (None if report_bundle is None else
+                         report_bundle_record(report_bundle, log, storage.last_event_hash(source), imports))
         at = log[-1][0].recorded_at if log else created_at
         # SQLite backup captures WAL-resident committed data too; no file copy
         # can silently omit it. Both outputs use this same pinned read snapshot.
@@ -105,7 +144,7 @@ def transition_store(source_path, working_path, projector_version):
         source=str(source_path), source_schema=version, source_sha256=source_digest,
         backup=str(backup_path), backup_sha256=file_hash(backup_path),
         working=str(working_path), working_sha256=file_hash(working_path),
-        imports=imports, as_of=at, positions_verified=len(log), identities_unchanged=True,
+        imports=imports, report_bundle=bundle_record, as_of=at, positions_verified=len(log), identities_unchanged=True,
         independent_verification=audit['checked'])
     with manifest_path.open('x', encoding='utf-8', newline='\n') as stream:
         stream.write(json.dumps(result, indent=2, ensure_ascii=False) + '\n')
@@ -117,9 +156,11 @@ def main(argv=None):
     parser.add_argument('--source', required=True, type=Path)
     parser.add_argument('--working', required=True, type=Path)
     parser.add_argument('--projector-version', required=True, choices=['3'])
+    parser.add_argument('--report-bundle', type=Path, default=None,
+                        help='ADR 0031 backup bundle; required when the source holds report events')
     args = parser.parse_args(argv)
     try:
-        result = transition_store(args.source, args.working, args.projector_version)
+        result = transition_store(args.source, args.working, args.projector_version, args.report_bundle)
     except (OSError, sqlite3.Error, ValueError, NotImplementedError) as error:
         print(str(error), file=sys.stderr)
         return 1
