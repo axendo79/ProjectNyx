@@ -236,3 +236,27 @@ def test_report_store_transition_refuses_an_unrestorable_bundle(tmp_path):
         tool().transition_store(d.store, tmp_path / 'working.db', '3', report_bundle=bundle,
                                 repositories=repositories())
     assert not (tmp_path / 'working.db').exists()
+
+
+def test_transition_of_a_previously_restored_report_store(tmp_path):
+    # restore_bundle leaves bundle.json beside the restored requests; a fresh
+    # bundle of that restored store captures it too, and must still match.
+    from nyx import report_backup, report_importer as importer, report_policy
+    from nyx.report_policy import ReportDeployment
+    from test_report_policy import ROOT
+    _, config, first = interrupted_report_store(tmp_path)
+    restored = report_backup.restore_bundle(first, tmp_path / 'restored.db', repositories=repositories(),
+                                            projector_version='2')
+    assert (tmp_path / 'restored.db.imports' / 'bundle.json').is_file()
+    revision = report_policy.git(ROOT, 'rev-parse', 'HEAD').decode().strip()
+    with closing(restored.open_writer()) as conn:
+        second = report_backup.backup_bundle(conn, tmp_path / 'second', projector_version='2',
+                                             software_revision=revision, policy_revision=revision)
+    working = tmp_path / 'working.db'
+    result = tool().transition_store(restored.store, working, '3', report_bundle=second,
+                                     repositories=repositories())
+    assert 'bundle.json' in result['imports']
+    resumed = ReportDeployment(working, config, repositories=repositories())
+    with closing(resumed.open_writer()) as conn:
+        importer.resume_import(conn, 'one', projector_version='2')
+        assert conn.execute('SELECT count(*) FROM events').fetchone()[0] == 2

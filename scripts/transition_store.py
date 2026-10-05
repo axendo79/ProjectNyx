@@ -45,7 +45,7 @@ def report_bundle_record(bundle, log, tip, imports, repositories):
     report_backup.restore_bundle runs from a temporary copy of the bundle
     (restoring in place could leave SQLite side files that break its exact
     inventory). The restored store must hold this source's Layer A log and tip,
-    and its import manifests must equal the source's.
+    and the bundle's verified import inventory must equal the source's files.
     """
     from nyx import report_backup
     root = Path(bundle).resolve()
@@ -64,12 +64,14 @@ def report_bundle_record(bundle, log, tip, imports, repositories):
             with closing(storage.open_readonly(trial)) as conn:
                 restored_log = storage.read_all_events(conn)
                 restored_tip = storage.last_event_hash(conn)
-            restored_imports = tree_hashes(imports_of(trial))
-            # restore_bundle retains its bundle.json beside the restored requests.
-            restored_imports.pop('bundle.json', None)
     except (OSError, ValueError) as error:
         raise ValueError(f'report bundle is not restorable: {error}') from error
-    if restored_tip != tip or restored_log != log or restored_imports != imports:
+    # Compare captured import files with the bundle's own hash-verified
+    # inventory (restore_bundle checked every digest), not the trial restore's
+    # directory: restore deliberately adds its bundle.json there.
+    bundled_imports = {name[len('imports/'):]: digest for name, digest in metadata['files'].items()
+                       if name.startswith('imports/')}
+    if restored_tip != tip or restored_log != log or bundled_imports != imports:
         raise ValueError('report bundle does not match the source store (tip, log or import manifests)')
     return dict(path=str(root), bundle_sha256=file_hash(root / 'bundle.json'),
                 projector_version=version, software_revision=metadata['software_revision'],
