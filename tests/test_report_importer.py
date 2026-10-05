@@ -216,3 +216,24 @@ def test_malformed_trusted_binding_fails_before_store(tmp_path, binding):
         ReportDeployment(tmp_path / 'new.db', ROOT / 'config', repositories=binding)
     assert not (tmp_path / 'new.db').exists()
     assert not (tmp_path / 'new.db.lock').exists()
+
+
+@pytest.mark.parametrize('projector_version', ['1', '2'])
+def test_existing_run_requires_exact_artifact_set_without_false_completion(tmp_path, projector_version):
+    from nyx import report_importer as importer
+    from nyx.report_policy import ReportPolicyError
+    d = deployment(tmp_path)
+    with closing(d.open_writer(create=True)) as conn:
+        artifacts = [a for revision in (OLDER, REVISION)
+                     for a in importer.read_artifacts(d.policy, REPOSITORY, revision, [PATH])]
+        saved = importer.prepare_artifacts(conn, artifacts[:1], 'same-run', projector_version=projector_version)
+        importer.resume_import(conn, 'same-run', projector_version=projector_version)
+        original_bytes, original_tip = saved.read_bytes(), tip(conn)
+        with pytest.raises(ReportPolicyError, match='^run-id already retains different artifact requests$'):
+            retained = importer.prepare_artifacts(conn, artifacts, 'same-run', projector_version=projector_version)
+            # The old manifest's successful completion must not stand in for
+            # the newly requested OLD+NEW artifact set.
+            importer.check_completion(conn, importer.read_manifest(retained, projector_version=projector_version),
+                                      projector_version=projector_version)
+        assert saved.read_bytes() == original_bytes
+        assert tip(conn) == original_tip
