@@ -1,6 +1,6 @@
 # ADR 0034: Forward State Transitions Under Projector "3"
 
-Status: Accepted — ratified by the maintainer, 2026-10-05
+Status: Accepted — ratified by the maintainer, 2026-10-05; implementation boundaries for the schema version, the R9 dependency check and section 6 report corrections are set by [ADR 0035](0035-adr-0034-implementation-boundaries.md).
 
 Date: 2026-10-05
 

@@ -1,6 +1,6 @@
 # ADR 0025: Incremental Result Commitment
 
-Status: Accepted; section 1's API-default guarantee is superseded in part by [ADR 0032](0032-explicit-stage-two-projector-selection.md). All other guarantees remain in force.
+Status: Accepted; section 1's API-default guarantee is superseded in part by [ADR 0032](0032-explicit-stage-two-projector-selection.md), and its single supported database schema version by [ADR 0035](0035-adr-0034-implementation-boundaries.md) section 1. All other guarantees remain in force.
 
 Date: 2026-09-12
 
