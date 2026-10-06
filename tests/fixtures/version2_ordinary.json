@@ -1,0 +1,102 @@
+{
+  "baseline_commit": "5313653ebfebf9f54946f4f495d522d773e2c3d8",
+  "as_of": "2026-07-14T00:00:00Z",
+  "events": [
+    [
+      {
+        "event_id": "e-1",
+        "idempotency_key": "ac86d6eedf350b2fd615771cf9f319bae9e31b9a81c9aae3bf42279421261661",
+        "schema_version": "0",
+        "event_type": "entity_mention_recorded",
+        "occurred_at": "2026-07-13T00:00:00Z",
+        "recorded_at": "2026-07-13T00:00:01Z",
+        "source": "{\"actor_id\":\"sensor\",\"config\":{}}",
+        "source_class": "direct_observation",
+        "origin_type": "observed",
+        "payload_hash": "cb75f1397b6a524f941aa75bcccba25856c82623340dea34c835ab11f4a1ca87",
+        "entity_refs": null,
+        "prev_event_hash": null,
+        "event_hash": "adaa10d3e90c0c1e0d2c94979b0b491dfa29814b7f69e4b388171b0c57cfffb9"
+      },
+      {
+        "link_state": "constitutive",
+        "mention_id": "m-a",
+        "subject_id": "s-a",
+        "text": "the device"
+      }
+    ],
+    [
+      {
+        "event_id": "e-2",
+        "idempotency_key": "311bf7cff1a6ce84fb2961479ebb01204dc547f82d56b87a2b55343c8e8f51df",
+        "schema_version": "0",
+        "event_type": "observation_recorded",
+        "occurred_at": "2026-07-13T00:00:00Z",
+        "recorded_at": "2026-07-13T00:00:02Z",
+        "source": "{\"actor_id\":\"sensor\",\"config\":{}}",
+        "source_class": "direct_observation",
+        "origin_type": "observed",
+        "payload_hash": "1574f9b4b35983fd855e35e4ef5d9419b0b591e40b8cb0c46b59a8bdffea577c",
+        "entity_refs": null,
+        "prev_event_hash": "adaa10d3e90c0c1e0d2c94979b0b491dfa29814b7f69e4b388171b0c57cfffb9",
+        "event_hash": "13f88fe59cbeb25150a02699c5037a373f722257566862c843aa65fbefe61dba"
+      },
+      {
+        "claims": [
+          {
+            "belief_id": "b-a",
+            "claim_candidate_id": "c-a",
+            "mention_id": "m-a",
+            "property_id": "RAM",
+            "subject_id": "s-a",
+            "value": "64GB",
+            "verifiability": "externally_checkable"
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "event_id": "e-3",
+        "idempotency_key": "6457b9f77c81eedd101926328e1a80b69e265d0bef5349e36200917825d73247",
+        "schema_version": "0",
+        "event_type": "observation_recorded",
+        "occurred_at": "2026-07-13T00:00:00Z",
+        "recorded_at": "2026-07-13T00:00:03Z",
+        "source": "{\"actor_id\":\"sensor\",\"config\":{}}",
+        "source_class": "direct_observation",
+        "origin_type": "observed",
+        "payload_hash": "28dcdaf44fb6adbbdfa2a85a3f190e22b40e1868bebea98c45053f3ae691e6bc",
+        "entity_refs": null,
+        "prev_event_hash": "13f88fe59cbeb25150a02699c5037a373f722257566862c843aa65fbefe61dba",
+        "event_hash": "d65425c7c79838dd5af6ee0fd7c9947fd8657f8196010869d898bf1c11e1d045"
+      },
+      {
+        "claims": [
+          {
+            "belief_id": "b-a",
+            "claim_candidate_id": "c-next",
+            "mention_id": "m-a",
+            "property_id": "RAM",
+            "subject_id": "s-a",
+            "value": "64GB",
+            "verifiability": "externally_checkable"
+          }
+        ]
+      }
+    ]
+  ],
+  "expected_canonical": "{\"beliefs\":{\"b-a\":{\"belief_id\":\"b-a\",\"claim_candidates\":[{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-a\",\"mention_id\":\"m-a\",\"occurred_at\":\"2026-07-13T00:00:00Z\",\"opposing_events\":[],\"origin_type\":\"observed\",\"predecessors\":[],\"property_id\":\"RAM\",\"provenance_paths\":[[{\"event_id\":\"e-1\",\"mention_id\":\"m-a\",\"subject_id\":\"s-a\"},{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-a\",\"event_id\":\"e-2\"}]],\"recorded_at\":\"2026-07-13T00:00:02Z\",\"restrictions\":[],\"source\":{\"actor_id\":\"sensor\",\"config\":{}},\"source_class\":\"direct_observation\",\"subject_id\":\"s-a\",\"superseding_events\":[],\"supporting_events\":[\"e-2\"],\"value\":\"64GB\",\"verifiability\":\"externally_checkable\",\"verification_basis\":{\"event_ids\":[\"e-2\"],\"kind\":\"direct_observation\"},\"verification_state\":\"verified\"},{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-next\",\"mention_id\":\"m-a\",\"occurred_at\":\"2026-07-13T00:00:00Z\",\"opposing_events\":[],\"origin_type\":\"observed\",\"predecessors\":[],\"property_id\":\"RAM\",\"provenance_paths\":[[{\"event_id\":\"e-1\",\"mention_id\":\"m-a\",\"subject_id\":\"s-a\"},{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-next\",\"event_id\":\"e-3\"}]],\"recorded_at\":\"2026-07-13T00:00:03Z\",\"restrictions\":[],\"source\":{\"actor_id\":\"sensor\",\"config\":{}},\"source_class\":\"direct_observation\",\"subject_id\":\"s-a\",\"superseding_events\":[],\"supporting_events\":[\"e-3\"],\"value\":\"64GB\",\"verifiability\":\"externally_checkable\",\"verification_basis\":{\"event_ids\":[\"e-3\"],\"kind\":\"direct_observation\"},\"verification_state\":\"verified\"}],\"event_dependencies\":[{\"envelope\":{\"entity_refs\":null,\"event_hash\":\"13f88fe59cbeb25150a02699c5037a373f722257566862c843aa65fbefe61dba\",\"event_id\":\"e-2\",\"event_type\":\"observation_recorded\",\"idempotency_key\":\"311bf7cff1a6ce84fb2961479ebb01204dc547f82d56b87a2b55343c8e8f51df\",\"occurred_at\":\"2026-07-13T00:00:00Z\",\"origin_type\":\"observed\",\"payload_hash\":\"1574f9b4b35983fd855e35e4ef5d9419b0b591e40b8cb0c46b59a8bdffea577c\",\"prev_event_hash\":\"adaa10d3e90c0c1e0d2c94979b0b491dfa29814b7f69e4b388171b0c57cfffb9\",\"recorded_at\":\"2026-07-13T00:00:02Z\",\"schema_version\":\"0\",\"source\":\"{\\\"actor_id\\\":\\\"sensor\\\",\\\"config\\\":{}}\",\"source_class\":\"direct_observation\"},\"event_hash\":\"13f88fe59cbeb25150a02699c5037a373f722257566862c843aa65fbefe61dba\",\"event_id\":\"e-2\",\"payload\":{\"claims\":[{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-a\",\"mention_id\":\"m-a\",\"property_id\":\"RAM\",\"subject_id\":\"s-a\",\"value\":\"64GB\",\"verifiability\":\"externally_checkable\"}]}},{\"envelope\":{\"entity_refs\":null,\"event_hash\":\"adaa10d3e90c0c1e0d2c94979b0b491dfa29814b7f69e4b388171b0c57cfffb9\",\"event_id\":\"e-1\",\"event_type\":\"entity_mention_recorded\",\"idempotency_key\":\"ac86d6eedf350b2fd615771cf9f319bae9e31b9a81c9aae3bf42279421261661\",\"occurred_at\":\"2026-07-13T00:00:00Z\",\"origin_type\":\"observed\",\"payload_hash\":\"cb75f1397b6a524f941aa75bcccba25856c82623340dea34c835ab11f4a1ca87\",\"prev_event_hash\":null,\"recorded_at\":\"2026-07-13T00:00:01Z\",\"schema_version\":\"0\",\"source\":\"{\\\"actor_id\\\":\\\"sensor\\\",\\\"config\\\":{}}\",\"source_class\":\"direct_observation\"},\"event_hash\":\"adaa10d3e90c0c1e0d2c94979b0b491dfa29814b7f69e4b388171b0c57cfffb9\",\"event_id\":\"e-1\",\"payload\":{\"link_state\":\"constitutive\",\"mention_id\":\"m-a\",\"subject_id\":\"s-a\",\"text\":\"the device\"}},{\"envelope\":{\"entity_refs\":null,\"event_hash\":\"d65425c7c79838dd5af6ee0fd7c9947fd8657f8196010869d898bf1c11e1d045\",\"event_id\":\"e-3\",\"event_type\":\"observation_recorded\",\"idempotency_key\":\"6457b9f77c81eedd101926328e1a80b69e265d0bef5349e36200917825d73247\",\"occurred_at\":\"2026-07-13T00:00:00Z\",\"origin_type\":\"observed\",\"payload_hash\":\"28dcdaf44fb6adbbdfa2a85a3f190e22b40e1868bebea98c45053f3ae691e6bc\",\"prev_event_hash\":\"13f88fe59cbeb25150a02699c5037a373f722257566862c843aa65fbefe61dba\",\"recorded_at\":\"2026-07-13T00:00:03Z\",\"schema_version\":\"0\",\"source\":\"{\\\"actor_id\\\":\\\"sensor\\\",\\\"config\\\":{}}\",\"source_class\":\"direct_observation\"},\"event_hash\":\"d65425c7c79838dd5af6ee0fd7c9947fd8657f8196010869d898bf1c11e1d045\",\"event_id\":\"e-3\",\"payload\":{\"claims\":[{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-next\",\"mention_id\":\"m-a\",\"property_id\":\"RAM\",\"subject_id\":\"s-a\",\"value\":\"64GB\",\"verifiability\":\"externally_checkable\"}]}}],\"identity_records\":[{\"entity\":{\"constituting_mention_id\":\"m-a\",\"event_id\":\"e-1\",\"lifecycle_status\":\"current\",\"predecessors\":[],\"subject_id\":\"s-a\"},\"link\":{\"entity_link_confidence\":null,\"event_id\":\"e-1\",\"link_state\":\"constitutive\",\"mention_id\":\"m-a\",\"subject_id\":\"s-a\"},\"mention\":{\"event_id\":\"e-1\",\"mention_id\":\"m-a\",\"subject_id\":\"s-a\",\"text\":\"the device\"}}],\"lifecycle_status\":\"current\",\"predecessors\":[],\"projected_as_of\":\"2026-07-14T00:00:00Z\",\"property_id\":\"RAM\",\"resolution_status\":\"no_authoritative_head\",\"subject_id\":\"s-a\",\"updated_at\":\"2026-07-13T00:00:03Z\",\"view_version_hash\":\"c160cc2b0eead2d169cc66230c8bda15f1164d6d6a5597899380c092b472c6f4\"}},\"claim_candidates\":{\"c-a\":{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-a\",\"mention_id\":\"m-a\",\"occurred_at\":\"2026-07-13T00:00:00Z\",\"opposing_events\":[],\"origin_type\":\"observed\",\"predecessors\":[],\"property_id\":\"RAM\",\"provenance_paths\":[[{\"event_id\":\"e-1\",\"mention_id\":\"m-a\",\"subject_id\":\"s-a\"},{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-a\",\"event_id\":\"e-2\"}]],\"recorded_at\":\"2026-07-13T00:00:02Z\",\"restrictions\":[],\"source\":{\"actor_id\":\"sensor\",\"config\":{}},\"source_class\":\"direct_observation\",\"subject_id\":\"s-a\",\"superseding_events\":[],\"supporting_events\":[\"e-2\"],\"value\":\"64GB\",\"verifiability\":\"externally_checkable\",\"verification_basis\":{\"event_ids\":[\"e-2\"],\"kind\":\"direct_observation\"},\"verification_state\":\"verified\"},\"c-next\":{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-next\",\"mention_id\":\"m-a\",\"occurred_at\":\"2026-07-13T00:00:00Z\",\"opposing_events\":[],\"origin_type\":\"observed\",\"predecessors\":[],\"property_id\":\"RAM\",\"provenance_paths\":[[{\"event_id\":\"e-1\",\"mention_id\":\"m-a\",\"subject_id\":\"s-a\"},{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-next\",\"event_id\":\"e-3\"}]],\"recorded_at\":\"2026-07-13T00:00:03Z\",\"restrictions\":[],\"source\":{\"actor_id\":\"sensor\",\"config\":{}},\"source_class\":\"direct_observation\",\"subject_id\":\"s-a\",\"superseding_events\":[],\"supporting_events\":[\"e-3\"],\"value\":\"64GB\",\"verifiability\":\"externally_checkable\",\"verification_basis\":{\"event_ids\":[\"e-3\"],\"kind\":\"direct_observation\"},\"verification_state\":\"verified\"}},\"entities\":{\"s-a\":{\"constituting_mention_id\":\"m-a\",\"event_id\":\"e-1\",\"lifecycle_status\":\"current\",\"predecessors\":[],\"subject_id\":\"s-a\"}},\"entity_links\":{\"m-a\":{\"entity_link_confidence\":null,\"event_id\":\"e-1\",\"link_state\":\"constitutive\",\"mention_id\":\"m-a\",\"subject_id\":\"s-a\"}},\"events\":{\"e-1\":{\"envelope\":{\"entity_refs\":null,\"event_hash\":\"adaa10d3e90c0c1e0d2c94979b0b491dfa29814b7f69e4b388171b0c57cfffb9\",\"event_id\":\"e-1\",\"event_type\":\"entity_mention_recorded\",\"idempotency_key\":\"ac86d6eedf350b2fd615771cf9f319bae9e31b9a81c9aae3bf42279421261661\",\"occurred_at\":\"2026-07-13T00:00:00Z\",\"origin_type\":\"observed\",\"payload_hash\":\"cb75f1397b6a524f941aa75bcccba25856c82623340dea34c835ab11f4a1ca87\",\"prev_event_hash\":null,\"recorded_at\":\"2026-07-13T00:00:01Z\",\"schema_version\":\"0\",\"source\":\"{\\\"actor_id\\\":\\\"sensor\\\",\\\"config\\\":{}}\",\"source_class\":\"direct_observation\"},\"event_hash\":\"adaa10d3e90c0c1e0d2c94979b0b491dfa29814b7f69e4b388171b0c57cfffb9\",\"event_id\":\"e-1\",\"payload\":{\"link_state\":\"constitutive\",\"mention_id\":\"m-a\",\"subject_id\":\"s-a\",\"text\":\"the device\"}},\"e-2\":{\"envelope\":{\"entity_refs\":null,\"event_hash\":\"13f88fe59cbeb25150a02699c5037a373f722257566862c843aa65fbefe61dba\",\"event_id\":\"e-2\",\"event_type\":\"observation_recorded\",\"idempotency_key\":\"311bf7cff1a6ce84fb2961479ebb01204dc547f82d56b87a2b55343c8e8f51df\",\"occurred_at\":\"2026-07-13T00:00:00Z\",\"origin_type\":\"observed\",\"payload_hash\":\"1574f9b4b35983fd855e35e4ef5d9419b0b591e40b8cb0c46b59a8bdffea577c\",\"prev_event_hash\":\"adaa10d3e90c0c1e0d2c94979b0b491dfa29814b7f69e4b388171b0c57cfffb9\",\"recorded_at\":\"2026-07-13T00:00:02Z\",\"schema_version\":\"0\",\"source\":\"{\\\"actor_id\\\":\\\"sensor\\\",\\\"config\\\":{}}\",\"source_class\":\"direct_observation\"},\"event_hash\":\"13f88fe59cbeb25150a02699c5037a373f722257566862c843aa65fbefe61dba\",\"event_id\":\"e-2\",\"payload\":{\"claims\":[{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-a\",\"mention_id\":\"m-a\",\"property_id\":\"RAM\",\"subject_id\":\"s-a\",\"value\":\"64GB\",\"verifiability\":\"externally_checkable\"}]}},\"e-3\":{\"envelope\":{\"entity_refs\":null,\"event_hash\":\"d65425c7c79838dd5af6ee0fd7c9947fd8657f8196010869d898bf1c11e1d045\",\"event_id\":\"e-3\",\"event_type\":\"observation_recorded\",\"idempotency_key\":\"6457b9f77c81eedd101926328e1a80b69e265d0bef5349e36200917825d73247\",\"occurred_at\":\"2026-07-13T00:00:00Z\",\"origin_type\":\"observed\",\"payload_hash\":\"28dcdaf44fb6adbbdfa2a85a3f190e22b40e1868bebea98c45053f3ae691e6bc\",\"prev_event_hash\":\"13f88fe59cbeb25150a02699c5037a373f722257566862c843aa65fbefe61dba\",\"recorded_at\":\"2026-07-13T00:00:03Z\",\"schema_version\":\"0\",\"source\":\"{\\\"actor_id\\\":\\\"sensor\\\",\\\"config\\\":{}}\",\"source_class\":\"direct_observation\"},\"event_hash\":\"d65425c7c79838dd5af6ee0fd7c9947fd8657f8196010869d898bf1c11e1d045\",\"event_id\":\"e-3\",\"payload\":{\"claims\":[{\"belief_id\":\"b-a\",\"claim_candidate_id\":\"c-next\",\"mention_id\":\"m-a\",\"property_id\":\"RAM\",\"subject_id\":\"s-a\",\"value\":\"64GB\",\"verifiability\":\"externally_checkable\"}]}}},\"mentions\":{\"m-a\":{\"event_id\":\"e-1\",\"mention_id\":\"m-a\",\"subject_id\":\"s-a\",\"text\":\"the device\"}}}",
+  "expected_roots": {
+    "beliefs": "6f3cb9f668abdbc4aab728a2f72b67092062c8dccdbc6136ae9f911b8883ac0d",
+    "entities": "6be623077a3041b37b26f070203260693247b10c78d7d204c31fac7e51990822",
+    "mentions": "567f8c23da9ff071a5a09b5d40bd89d487a879d362f94b8a4f470062f85894cb",
+    "entity_links": "ab84556261920022bf1dd8a63ab2badd8ed7c02afe92628c65b0ea577c3b38c6",
+    "claim_candidates": "8988667c9285b630bcd501d1f73db537f82ed64d9013e41f74122ebab9933962",
+    "events": "192c97669cb648af47a6ba03cc2544656f9eb8a3d73352e29ab639be89f7bf84",
+    "current_beliefs": "e6f8afe559e7eb4bc5fff32e7531f626adfa29fc48d944d989044959fae3cb9d"
+  },
+  "expected_headers": {
+    "b-a": "{\"belief_id\":\"b-a\",\"collection_roots\":{\"claim_candidates\":\"8988667c9285b630bcd501d1f73db537f82ed64d9013e41f74122ebab9933962\",\"event_dependencies\":\"192c97669cb648af47a6ba03cc2544656f9eb8a3d73352e29ab639be89f7bf84\",\"identity_records\":\"509f2a1561f9d8cde9c53152ccde300cb12a85c08a401cd5d3b66310d5b95f43\"},\"lifecycle_status\":\"current\",\"predecessors\":[],\"projected_as_of\":\"2026-07-14T00:00:00Z\",\"property_id\":\"RAM\",\"resolution_status\":\"no_authoritative_head\",\"result_root\":\"a20e74b73351df839ca853032b7717175238ed4a2b7f1cfb1c124879f7a8a7cd\",\"subject_id\":\"s-a\",\"updated_at\":\"2026-07-13T00:00:03Z\",\"view_version_hash\":\"c160cc2b0eead2d169cc66230c8bda15f1164d6d6a5597899380c092b472c6f4\"}"
+  }
+}
