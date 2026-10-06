@@ -432,7 +432,9 @@ owning connection's SQLite backup API and includes saved requests, frozen policy
 retained definitions, caller-supplied software/policy revision labels and exact
 file digests. Restore validates the bundle and historical vocabulary bindings
 before creating a fresh destination; the restored policy is beside the store
-at `<store>.policy`. Keep the bundle with the corresponding software release.
+at `<store>.policy`. Restore inspects an isolated temporary copy so SQLite's
+WAL side files cannot change the captured bundle inventory. Keep the bundle with
+the corresponding software release.
 
 [tests/test_report_acceptance.py](tests/test_report_acceptance.py) exercises the
 finish line for both projectors. The frozen R092 fixture proves renamed paths
@@ -546,8 +548,11 @@ rebuilds declared roots from leaves and checks retained historical headers
 against independently reconstructed predecessor lineage. Projector "3" additionally
 reconstructs transitions and checks relation rows against retained candidate
 status, ending event and log position. Counts and all
-failures are reported; failures return exit status 1. Events beyond validated
-stored publication progress are reported as pending without failing verification;
+failures are reported; failures return exit status 1.
+The independent log audit also checks the shared origin enum, including expiry;
+recognized non-observed expiry origins keep their existing treatment. Coverage:
+[test_queue13_origin.py](tests/test_queue13_origin.py).
+Events beyond validated stored publication progress are reported as pending without failing verification;
 the projector-2 seed passes with one pending event. A missing event that progress
 claims was applied, or a projected reference absent from the log, fails coverage.
 Publication freshness is disclosed separately. Unsupported semantics,
@@ -555,6 +560,14 @@ evaluation-only `projected_as_of`, and unavailable historical lineage checks
 are explicitly unchecked; this is not an audit of world truth. Coverage is in
 [test_verify_store.py](tests/test_verify_store.py) and
 [test_forward_verifier.py](tests/test_forward_verifier.py).
+
+Queue 13's `tests/test_queue13_*.py` adds disposable-store coverage for mixed
+target sets, report coexistence, timestamps, retries, recovery and version
+isolation. [Complete equivalence mutations](tests/test_queue13_ag5.py) exercise
+both sides of ADR 0034 §1a; the [projector-2 golden](tests/fixtures/version2_ordinary.json)
+freezes a small ordinary log's bytes and roots. [Candidate naming checks](tests/test_queue13_ag10.py)
+cover snapshot, storage and CLI reads. These fixtures do not designate a real
+store or attest report writer policy or extraction truth.
 
 ## Repository layout
 

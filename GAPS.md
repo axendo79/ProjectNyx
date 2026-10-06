@@ -715,6 +715,14 @@ publication/replay. The origin-mapping decision remains open; no mapping or
 historical replay rule is added.
 
 ### Candidate corrections and target eligibility
+**A-G1 verifier origin taxonomy resolved (queue 13):** the independent log audit
+checks the same five allowed origin labels as Layer A integrity, including expiry
+and pending events. A consistently rehashed unknown-origin expiry fails schema
+audit even when all derived commitments agree; recognized non-observed expiry
+keeps its existing treatment. No origin-to-standing mapping is added. Coverage:
+[test_queue13_origin.py](tests/test_queue13_origin.py), ADR 0034 sections 1/10
+and the V0 section-4 envelope enum.
+
 **Deferred:** [ADR 0018](decisions/0018-correction-supersedes-candidates.md) governs
 candidate supersession; [ADR 0023 §5](decisions/0023-stage-two-contract.md#5-corrections-are-deferred-under-version-1)
 governs the frozen stage boundary. Version "1" and "2" refuse corrections before
@@ -875,6 +883,13 @@ The implemented candidate records and constitutive links do not supply those dec
 ---
 
 ## Noted, not acted on
+
+- **RESOLVED (queue 13 B14): report restore mutated its input bundle.** Even a
+  read-only SQLite connection can create WAL side files beside a WAL-mode main
+  file. Restore now inspects an isolated copy, preserving the original bundle's
+  complete byte inventory. [Mixed working-copy lifecycle coverage](tests/test_queue13_b14.py)
+  checks tied prefixes, retained manifests, ordinary transitions and restored
+  projector-3 relations/live sets under [ADR 0034 §10](decisions/0034-forward-state-transitions.md#10-event-types-frozen-readers-and-store-transition).
 
 - **`idempotency_key` omits `event_type`.** V0 §1 defines it as
   `SHA256(source_id || occurred_at || canonicalize(payload))`. An observation and a

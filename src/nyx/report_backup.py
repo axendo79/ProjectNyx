@@ -5,6 +5,7 @@ from pathlib import Path, PurePosixPath
 import re
 import shutil
 import sqlite3
+import tempfile
 
 from . import hashing, integrity, report_importer, storage, writer
 from .report_policy import ReportDeployment, fields, strict_json
@@ -85,25 +86,31 @@ def restore_bundle(bundle, store, *, repositories, projector_version):
     if destination.exists() or Path(str(destination) + '.imports').exists() or Path(str(destination) + '.policy').exists():
         raise FileExistsError(destination)
     root, metadata = _bundle(bundle, projector_version)
-    snapshot = ReportDeployment(root / 'store.sqlite3', root / 'policy', repositories=repositories).policy
-    expected_bindings = hashing.canonical_set([dict(zip(
-        ('identity', 'version', 'digest_algorithm', 'canonicalization_profile', 'definition_digest'), key))
-        for key in snapshot.definitions])
-    if metadata['vocabulary_bindings'] != expected_bindings:
-        raise integrity.IntegrityError('backup historical vocabulary bindings differ from preserved definitions')
-    with closing(storage.open_readonly(root / 'store.sqlite3')) as source:
-        storage.read_all_events(source)
-        if storage.last_event_hash(source) != metadata['tip_hash']:
-            raise integrity.IntegrityError('backup tip mismatch')
-        if storage.read_projection_status(source, projector_version)['derived_progress'] != metadata['progress']:
-            raise integrity.IntegrityError('backup progress mismatch')
-        # Validate every retained request before exposing a restored writer.
-        for file in (root / 'imports').glob('*/requests.json'):
-            raw = strict_json(file.read_bytes(), file)
-            report_importer.read_manifest(file, projector_version=raw['projector_version'])
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        with closing(sqlite3.connect(destination)) as restored:
-            source.backup(restored)
+    # A read-only SQLite connection to a WAL-mode main file can create -wal
+    # and -shm files beside it. Preserve the verified bundle's exact inventory
+    # by reading an isolated copy, including any captured SQLite side files.
+    with tempfile.TemporaryDirectory(prefix='nyx-restore-bundle-') as scratch:
+        image = Path(scratch) / 'bundle'
+        shutil.copytree(root, image)
+        snapshot = ReportDeployment(image / 'store.sqlite3', image / 'policy', repositories=repositories).policy
+        expected_bindings = hashing.canonical_set([dict(zip(
+            ('identity', 'version', 'digest_algorithm', 'canonicalization_profile', 'definition_digest'), key))
+            for key in snapshot.definitions])
+        if metadata['vocabulary_bindings'] != expected_bindings:
+            raise integrity.IntegrityError('backup historical vocabulary bindings differ from preserved definitions')
+        with closing(storage.open_readonly(image / 'store.sqlite3')) as source:
+            storage.read_all_events(source)
+            if storage.last_event_hash(source) != metadata['tip_hash']:
+                raise integrity.IntegrityError('backup tip mismatch')
+            if storage.read_projection_status(source, projector_version)['derived_progress'] != metadata['progress']:
+                raise integrity.IntegrityError('backup progress mismatch')
+            # Validate every retained request before exposing a restored writer.
+            for file in (image / 'imports').glob('*/requests.json'):
+                raw = strict_json(file.read_bytes(), file)
+                report_importer.read_manifest(file, projector_version=raw['projector_version'])
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with closing(sqlite3.connect(destination)) as restored:
+                source.backup(restored)
     shutil.copytree(root / 'imports', Path(str(destination) + '.imports'))
     restored_policy = Path(str(destination) + '.policy')
     shutil.copytree(root / 'policy', restored_policy)

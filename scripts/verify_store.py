@@ -26,7 +26,7 @@ import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 
-from nyx import SCHEMA_VERSION, hashing, merkle
+from nyx import SCHEMA_VERSION, events, hashing, merkle
 from nyx.storage import open_readonly
 
 
@@ -42,6 +42,9 @@ MENTION = 'entity_mention_recorded'
 CORRECTION = 'correction_appended'
 REPLACEMENT = 'candidate_replaced'
 EXPIRY = 'candidate_expired'
+ORIGINS = frozenset((events.ORIGIN_OBSERVED, events.ORIGIN_USER_STATED,
+                    events.ORIGIN_VERIFIED_EXTERNAL, events.ORIGIN_DERIVED,
+                    events.ORIGIN_PERSONAL))
 TRANSITIONS = {CORRECTION: ('corrected', 'corrected_by'),
                REPLACEMENT: ('replaced', 'replaced_by'), EXPIRY: ('expired', 'expired_at')}
 
@@ -89,6 +92,8 @@ def read_log(conn, report):
         eid = envelope['event_id']
         report.check('event_schema', eid, envelope['schema_version'] == SCHEMA_VERSION,
                      'unsupported event envelope schema version')
+        report.check('event_schema', eid, envelope['origin_type'] in ORIGINS,
+                     'unknown origin_type')
         report.check('event_schema', eid, eid not in seen_ids and envelope['idempotency_key'] not in seen_keys,
                      'duplicate event identity or idempotency key')
         seen_ids.add(eid)
