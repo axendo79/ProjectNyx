@@ -884,6 +884,13 @@ The implemented candidate records and constitutive links do not supply those dec
 
 ## Noted, not acted on
 
+- **RESOLVED (queue 13 B14): report restore mutated its input bundle.** Even a
+  read-only SQLite connection can create WAL side files beside a WAL-mode main
+  file. Restore now inspects an isolated copy, preserving the original bundle's
+  complete byte inventory. [Mixed working-copy lifecycle coverage](tests/test_queue13_b14.py)
+  checks tied prefixes, retained manifests, ordinary transitions and restored
+  projector-3 relations/live sets under [ADR 0034 §10](decisions/0034-forward-state-transitions.md#10-event-types-frozen-readers-and-store-transition).
+
 - **`idempotency_key` omits `event_type`.** V0 §1 defines it as
   `SHA256(source_id || occurred_at || canonicalize(payload))`. An observation and a
   correction with identical source, time, and payload still have the same key.

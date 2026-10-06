@@ -432,7 +432,9 @@ owning connection's SQLite backup API and includes saved requests, frozen policy
 retained definitions, caller-supplied software/policy revision labels and exact
 file digests. Restore validates the bundle and historical vocabulary bindings
 before creating a fresh destination; the restored policy is beside the store
-at `<store>.policy`. Keep the bundle with the corresponding software release.
+at `<store>.policy`. Restore inspects an isolated temporary copy so SQLite's
+WAL side files cannot change the captured bundle inventory. Keep the bundle with
+the corresponding software release.
 
 [tests/test_report_acceptance.py](tests/test_report_acceptance.py) exercises the
 finish line for both projectors. The frozen R092 fixture proves renamed paths
