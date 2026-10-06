@@ -561,6 +561,14 @@ are explicitly unchecked; this is not an audit of world truth. Coverage is in
 [test_verify_store.py](tests/test_verify_store.py) and
 [test_forward_verifier.py](tests/test_forward_verifier.py).
 
+Queue 13's `tests/test_queue13_*.py` adds disposable-store coverage for mixed
+target sets, report coexistence, timestamps, retries, recovery and version
+isolation. [Complete equivalence mutations](tests/test_queue13_ag5.py) exercise
+both sides of ADR 0034 §1a; the [projector-2 golden](tests/fixtures/version2_ordinary.json)
+freezes a small ordinary log's bytes and roots. [Candidate naming checks](tests/test_queue13_ag10.py)
+cover snapshot, storage and CLI reads. These fixtures do not designate a real
+store or attest report writer policy or extraction truth.
+
 ## Repository layout
 
 | Path | Contents |
