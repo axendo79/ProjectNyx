@@ -715,6 +715,14 @@ publication/replay. The origin-mapping decision remains open; no mapping or
 historical replay rule is added.
 
 ### Candidate corrections and target eligibility
+**A-G1 verifier origin taxonomy resolved (queue 13):** the independent log audit
+checks the same five allowed origin labels as Layer A integrity, including expiry
+and pending events. A consistently rehashed unknown-origin expiry fails schema
+audit even when all derived commitments agree; recognized non-observed expiry
+keeps its existing treatment. No origin-to-standing mapping is added. Coverage:
+[test_queue13_origin.py](tests/test_queue13_origin.py), ADR 0034 sections 1/10
+and the V0 section-4 envelope enum.
+
 **Deferred:** [ADR 0018](decisions/0018-correction-supersedes-candidates.md) governs
 candidate supersession; [ADR 0023 §5](decisions/0023-stage-two-contract.md#5-corrections-are-deferred-under-version-1)
 governs the frozen stage boundary. Version "1" and "2" refuse corrections before

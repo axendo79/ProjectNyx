@@ -546,8 +546,11 @@ rebuilds declared roots from leaves and checks retained historical headers
 against independently reconstructed predecessor lineage. Projector "3" additionally
 reconstructs transitions and checks relation rows against retained candidate
 status, ending event and log position. Counts and all
-failures are reported; failures return exit status 1. Events beyond validated
-stored publication progress are reported as pending without failing verification;
+failures are reported; failures return exit status 1.
+The independent log audit also checks the shared origin enum, including expiry;
+recognized non-observed expiry origins keep their existing treatment. Coverage:
+[test_queue13_origin.py](tests/test_queue13_origin.py).
+Events beyond validated stored publication progress are reported as pending without failing verification;
 the projector-2 seed passes with one pending event. A missing event that progress
 claims was applied, or a projected reference absent from the log, fails coverage.
 Publication freshness is disclosed separately. Unsupported semantics,
