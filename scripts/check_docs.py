@@ -75,6 +75,78 @@ def plain(text):
     return re.sub(r'[*_`]', '', text)
 
 
+def unfenced_lines(text):
+    """Yield literal Markdown lines outside code fences."""
+    fence = None
+    for line in text.splitlines():
+        marker = re.match(r'^ {0,3}(`{3,}|~{3,})(.*)$', line)
+        if fence:
+            if marker and marker[1][0] == fence[0] and len(marker[1]) >= fence[1] and not marker[2].strip():
+                fence = None
+        elif marker:
+            fence = marker[1][0], len(marker[1])
+        else:
+            yield line
+
+
+def adr_markers(text, field):
+    """Recognize the plain and bold bullet header formats without reading prose."""
+    pattern = re.compile(rf'^(?:{field}: |- \*\*{field}:\*\* )(\S.*)$')
+    return [match[1].rstrip() for line in unfenced_lines(text)
+            if (match := pattern.fullmatch(line))]
+
+
+def status_index(root=ROOT):
+    """Build a fresh navigation view using only literal headers and headings."""
+    root = Path(root)
+    groups = {'Accepted': [], 'Proposed': [], 'Superseded': []}
+    for path in sorted((root / 'decisions').glob('[0-9][0-9][0-9][0-9]-*.md')):
+        text = path.read_text(encoding='utf-8')
+        statuses = adr_markers(text, 'Status')
+        implementations = adr_markers(text, 'Implementation')
+        title = next((line[2:].strip() for line in unfenced_lines(text)
+                      if line.startswith('# ')), '')
+        if not statuses or not implementations:
+            raise ValueError(f'{path.name}: expected at least one Status and one Implementation line')
+        status = statuses[0]
+        for prefix, entries in groups.items():
+            if status.startswith(prefix):
+                summary = re.split(r'(?<=[.!?])\s+', status, maxsplit=1)[0]
+                implementation = implementations[0][:100]
+                if len(implementations[0]) > 100:
+                    implementation += '...'
+                entries.append(f'{path.name[:4]} | {title} | {summary} | {implementation}')
+                break
+    output = []
+    for prefix, label in (('Accepted', 'ACCEPTED ADRS'),
+                          ('Proposed', 'PROPOSED ADRS (DO NOT IMPLEMENT)'),
+                          ('Superseded', 'SUPERSEDED')):
+        output.extend([label, *groups[prefix], ''])
+
+    gaps = {'open': [], 'resolved': []}
+    section = ''
+    for line in unfenced_lines((root / 'GAPS.md').read_text(encoding='utf-8')):
+        heading = re.fullmatch(r'(##|###)\s+(.+?)(?:\s+#+\s*)?', line)
+        if not heading:
+            continue
+        if heading[1] == '##':
+            section = heading[2]
+        else:
+            category = 'resolved' if 'resolved' in heading[2].lower() else 'open'
+            gaps[category].append((section, heading[2]))
+    for category, label in (('open', 'OPEN GAPS'),
+                            ('resolved', 'RESOLVED OR PARTLY RESOLVED (headings only)')):
+        output.append(label)
+        previous = None
+        for section, title in gaps[category]:
+            if section != previous:
+                output.append(section)
+                previous = section
+            output.append(f'  {title}')
+        output.append('')
+    return '\n'.join(output).rstrip() + '\n'
+
+
 def slug(text):
     text = re.sub(r'!?\[([^]]+)\]\([^)]*\)', r'\1', text)
     text = re.sub(r'\[([^]]+)\]\[[^]]*\]', r'\1', text)
@@ -260,14 +332,14 @@ def check_navigation(root, docs, parsed, report):
 
 def check_authority(docs, parsed, report):
     proposed = set()
-    for path, (body, _) in parsed.items():
-        if not re.fullmatch(r'decisions/\d{4}-[^/]+\.md', path):
+    for path, text in docs.items():
+        if not re.fullmatch(r'decisions/[0-9]{4}-[^/]+\.md', path):
             continue
         fields = {}
         for field in ('Status', 'Implementation'):
-            markers = re.findall(rf'^\s*(?:-\s+)?{field}:\s*(\S[^\n]*)', plain(body), re.M | re.I)
-            if len(markers) != 1:
-                report.add('adr_markers', path, 1, f'Expected one {field} marker; found {len(markers)}')
+            markers = adr_markers(text, field)
+            if not markers:
+                report.add('adr_markers', path, 1, f'Expected at least one {field} marker; found 0')
             else:
                 fields[field] = markers[0]
                 report.checked['adr_markers'] += 1
@@ -515,7 +587,14 @@ def main(argv=None):
     parser.add_argument('--fix-none', action='store_true', default=True,
                         help='Read only (default and only mode)')
     parser.add_argument('--json', action='store_true', help='Emit structured results')
+    parser.add_argument('--status', action='store_true',
+                        help='Print the literal ADR and gap status index')
     args = parser.parse_args(argv)
+    if args.status:
+        if hasattr(sys.stdout, 'reconfigure'):
+            sys.stdout.reconfigure(encoding='utf-8', newline='\n')
+        print(status_index(), end='')
+        return 0
     result = check_repository()
     if args.json:
         print(json.dumps(result, ensure_ascii=True, indent=2))
