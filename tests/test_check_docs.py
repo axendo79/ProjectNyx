@@ -1,9 +1,12 @@
 """Documentation checks use isolated fixtures; the real docs need not be clean."""
 
 import json
+import os
 from pathlib import Path
 import runpy
 import shutil
+import subprocess
+import sys
 
 import pytest
 
@@ -108,12 +111,115 @@ def test_missing_adr_markers(tree, field):
     assert any(field in f['message'] for f in failures(tree, 'adr_markers'))
 
 
-def test_bold_markers_and_duplicate_markers(tree):
+def test_bold_markers(tree):
     edit(tree, 'decisions/0001-test.md', 'Status: Accepted', '- **Status:** Accepted')
     edit(tree, 'decisions/0001-test.md', 'Implementation: Implemented', '- **Implementation:** Implemented')
     assert not failures(tree, 'adr_markers')
-    edit(tree, 'decisions/0001-test.md', '# 0001', '# 0001\n\nStatus: Accepted')
-    assert failures(tree, 'adr_markers')
+
+
+@pytest.mark.parametrize('bold', [False, True])
+def test_status_header_formats_and_literal_values(tree, bold):
+    status = 'Accepted as an **INTERIM STANCE**. Body says Proposed.'
+    implementation = '`src/nyx/hashing.py` implements ' + 'x' * 120
+    status_prefix = '- **Status:** ' if bold else 'Status: '
+    (tree / 'decisions/0001-test.md').write_text(
+        '# Fixture title\n\n' + status_prefix + status + '\n\n'
+        + 'Implementation: ' + implementation + '\n', encoding='utf-8')
+    assert not failures(tree, 'adr_markers')
+    output = checker['status_index'](tree)
+    assert ('0001 | Fixture title | Accepted as an **INTERIM STANCE**. | '
+            + implementation[:100] + '...\n') in output
+    assert 'Body says Proposed' not in output
+
+
+@pytest.mark.parametrize('field', ['Status', 'Implementation'])
+def test_missing_adr_header_names_file(tree, field):
+    value = 'Accepted' if field == 'Status' else 'Implemented'
+    marker = f'{field}: {value}\n'
+    edit(tree, 'decisions/0001-test.md', marker, '')
+    findings = failures(tree, 'adr_markers')
+    assert any(f['path'] == 'decisions/0001-test.md'
+               and f'Expected at least one {field} marker' in f['message'] for f in findings)
+
+
+@pytest.mark.parametrize('bold', [False, True])
+@pytest.mark.parametrize('status,implementation', [
+    ('Accepted', 'Implemented'),
+    ('Proposed', 'None'),
+    ('Superseded by ADR 0002', 'No separate handler'),
+])
+def test_repeated_body_headers_use_first_occurrence(tree, bold, status, implementation):
+    status_prefix = '- **Status:** ' if bold else 'Status: '
+    (tree / 'decisions/0001-test.md').write_text(
+        '# Fixture title\n\n' + status_prefix + status + '\n'
+        + 'Implementation: ' + implementation + '\n\n## Body\n'
+        'Status: Proposed\nStatus: Accepted\nImplementation: Wrong body value\n',
+        encoding='utf-8')
+    assert not failures(tree, 'adr_markers')
+    rows = [line for line in checker['status_index'](tree).splitlines()
+            if line.startswith('0001 |')]
+    assert rows == [f'0001 | Fixture title | {status} | {implementation}']
+
+
+def test_status_groups_follow_only_status_prefix(tree):
+    (tree / 'decisions/0008-test.md').write_text(
+        '# Superseded title\n- **Status:** Superseded by ADR 0014. Accepted historically.\n'
+        'Implementation: No separate handler\n', encoding='utf-8')
+    edit(tree, 'decisions/0001-test.md', 'Status: Accepted',
+         'Status: Accepted; superseded in part by ADR 0008')
+    edit(tree, 'decisions/0027-test.md', '# 0027',
+         '# Proposal title\n\nBody: Accepted and implemented.')
+    output = checker['status_index'](tree)
+    accepted, remaining = output.split('PROPOSED ADRS (DO NOT IMPLEMENT)\n')
+    proposed, superseded = remaining.split('SUPERSEDED\n')
+    superseded = superseded.split('OPEN GAPS\n')[0]
+    assert '\n0001 |' in accepted and '\n0008 |' not in accepted and '\n0027 |' not in accepted
+    assert '0027 | Proposal title | Proposed | None' in proposed
+    assert '0008 | Superseded title | Superseded by ADR 0014. |' in superseded
+
+
+def test_status_gaps_classified_only_by_subheading(tree):
+    (tree / 'GAPS.md').write_text(
+        '# Gaps\n## First section\n### Still open\nBody: resolved.\n'
+        '### Partly resolved\nBody: unresolved work remains.\n'
+        '## Resolved section name\n### Another open heading\n'
+        '### RESOLVED issue\n### Unresolved literally contains resolved\n'
+        '```text\n### resolved example\n```\n', encoding='utf-8')
+    output = checker['status_index'](tree)
+    opened, resolved = output.split('OPEN GAPS\n')[1].split(
+        'RESOLVED OR PARTLY RESOLVED (headings only)\n')
+    assert opened == ('First section\n  Still open\nResolved section name\n'
+                      '  Another open heading\n\n')
+    assert resolved == ('First section\n  Partly resolved\nResolved section name\n'
+                        '  RESOLVED issue\n  Unresolved literally contains resolved\n')
+    assert 'Body:' not in output and 'resolved example' not in output
+
+
+def test_status_cli_exits_zero_without_running_checker(tree, monkeypatch, capsys):
+    main = checker['main']
+    original = checker['status_index']
+    monkeypatch.setitem(main.__globals__, 'status_index', lambda: original(tree))
+    def must_not_run():
+        pytest.fail('status mode must not run the normal checker')
+    monkeypatch.setitem(main.__globals__, 'check_repository', must_not_run)
+    before = {p.relative_to(tree): p.read_bytes() for p in tree.rglob('*') if p.is_file()}
+    assert main(['--status']) == 0
+    assert capsys.readouterr().out == original(tree)
+    assert before == {p.relative_to(tree): p.read_bytes() for p in tree.rglob('*') if p.is_file()}
+
+
+def test_real_repository_status_matches_adr_files_and_identical_bytes():
+    command = [sys.executable, '-B', str(ROOT / 'scripts/check_docs.py'), '--status']
+    first = subprocess.run(command, cwd=ROOT, capture_output=True, check=True)
+    second = subprocess.run(command, cwd=ROOT, capture_output=True, check=True,
+                            env={**os.environ, 'PYTHONIOENCODING': 'cp1252'})
+    assert first.stdout == second.stdout
+    assert first.stderr == second.stderr == b''
+    output = first.stdout.decode('utf-8')
+    rows = [line for line in output.splitlines() if line[:4].isdigit() and ' | ' in line]
+    paths = sorted((ROOT / 'decisions').glob('[0-9][0-9][0-9][0-9]-*.md'))
+    assert len(rows) == len(paths)
+    assert sorted(line[:4] for line in rows) == [path.name[:4] for path in paths]
 
 
 def test_proposed_markers_and_reference_classification(tree):
