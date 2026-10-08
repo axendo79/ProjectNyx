@@ -353,7 +353,7 @@ same repo-path scope; new paths bootstrap separate subjects and retain old
 candidates. **Open / deferred:** Git-report ingestion/capture is slice 1b;
 rename/similarity supplies no identity merge or association authority.
 
-### Standalone replay verifier — implemented for shipped contracts
+### Standalone replay verifier — resolved for shipped contracts
 
 [scripts/verify_store.py](scripts/verify_store.py), covered by
 [tests/test_verify_store.py](tests/test_verify_store.py), independently checks
@@ -764,7 +764,7 @@ including a report-scoped target to refuse at append and replay. Those refusals
 ship. No report basis, extractor admission or correction-evidence mechanism is
 inferred; their decision remains deferred.
 
-### Projector 3 committed storage constraint
+### Projector 3 committed storage constraint — resolved
 
 **RESOLVED (Queue 12 C2):** the accepted ADR 0035 section-1 committed-table
 amendment supplies `CHECK (projector_version IN ('2', '3'))` for schema 5 and
