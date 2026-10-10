@@ -457,6 +457,13 @@ py -3.14 -m venv .venv
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
+Before using the inspection commands below, activate the environment in each new
+PowerShell session:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
 Runtime code uses the Python standard library; the development extra installs
 pytest. Run from a checkout: storage currently locates `schema.sql` at the
 repository root. The tests create temporary databases and need no model service.
@@ -500,9 +507,10 @@ nyx status --db store.db
 nyx events --since 2026-09-12T00:00:00Z --limit 20 --db store.db --json
 ```
 
-`python -m nyx.cli` exposes the same commands. Projector selection defaults to
-`"0"`; typed subject/mention reads require `"1"` or `"2"`. Beliefs expose their
-complete record, including stage-two candidates, without selecting a scalar head.
+`python -m nyx.cli` exposes the same commands in the activated environment.
+Projector selection defaults to `"0"`; typed subject/mention reads require `"1"`,
+`"2"` or `"3"`. Beliefs expose their complete record, including stage-two candidates,
+without selecting a scalar head.
 `belief` and `subject` accept `--as-of` for explicit historical replay; `replay`
 reports a newly projected view and samples the current time once if omitted.
 Cutoffs and `events --since` compare offset-bearing recording instants inclusively.
