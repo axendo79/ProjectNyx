@@ -39,7 +39,7 @@ def _parser():
         command.add_argument("--json", action="store_true", help="emit machine-readable JSON")
         if name not in ("events", "status"):
             command.add_argument("--projector", default="0", choices=sorted(projection.PROJECTORS),
-                                 help='projector version (default: "0"; identity reads require "1"/"2")')
+                                 help='projector version (default: "0"; identity reads require "1", "2" or "3")')
         if name in ("belief", "subject", "replay"):
             command.add_argument("--as-of", type=_timestamp, help="inclusive recorded_at cutoff")
         if name in ("belief", "subject", "mention"):
