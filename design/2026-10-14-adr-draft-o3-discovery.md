@@ -22,23 +22,27 @@ of recorded associations, never a canonical identity or winning claim.
 Josh's 2026-10-14 ruling in
 `D:\ProjectNyx\scratch\nyx-ruling-2026-10-14-c-b.md` selects worksheet option B,
 for Proposed drafting only: a public same-database index published with the
-complete derived delta. Unapproved worksheet answers remain recommendations.
-MUST clauses below define the proposed acceptance contract, not authority to code.
+complete derived delta. In the recorded follow-up on the same date, Josh answered
+all seven remaining O3 questions with the recommended answers: **Yes, Text, Yes,
+All, Label, Yes (100/1,000), Yes**. The recorded answers below confirm the drafting
+choices. MUST clauses remain a Proposed contract, not ratification or authority
+to code.
 
 ## Maintainer rulings carried into this draft
 
 1. **R-O1 — Total order and stable pagination:** include an explicit tie-breaker
    and define continuation. O5-O6; acceptance A4.
 2. **R-O2 — Projection changes:** invalidate cursors or retain a real snapshot;
-   never silently skip or duplicate. Recommend restart on changed publication,
+   never silently skip or duplicate. The confirmed proposal restarts on changed publication,
    with no retained snapshots. O6; A4/A5.
 3. **R-O3 — Unavailable versus empty:** missing index is unavailable; a valid
    zero-match search is empty. O3/O7/O9; A3/A7.
 4. **R-O4 — Replay:** index construction is deterministic/verifiable; identical
    input and projector yield logically identical results at the same index format.
    O8-O10 and shared V5; A6/A7.
-5. **R-O5 — Page limits:** 100 default, 1,000 maximum, explicitly subject to
-   worksheet confirmation. O5 and conflict Q12; A3. They remain proposed limits.
+5. **R-O5 — Page limits:** the initial ruling left 100 default and 1,000 maximum
+   subject to confirmation. Follow-up O3 answer 6 confirms both limits for the
+   Proposed contract. O5 and conflict Q12; acceptance A3.
 6. **R-O6 — Preserve every matching mention:** no canonical entity, deduplication
    by text/value or truth selection. O1-O4; A1/A2/A8.
 7. **R-O7 — No read side effects:** no usage/exposure records or other search
@@ -51,7 +55,7 @@ MUST clauses below define the proposed acceptance contract, not authority to cod
 
 Adopt the **single shared section V1-V9** in the
 [strict-payload draft](2026-10-14-adr-draft-strict-payload-keys.md#shared-version-boundary).
-This is the same recommended contract S1 references there, not a second version.
+This is the same confirmed proposed contract S1 references there, not a second version.
 It separates the index format from belief-projector semantics, proposes schema 6
 and isolated "2"/"3"/"4" rows, and specifies ingestion, enrollment, atomic
 publication, mixed-log refusal, replay, working-copy migration and recovery.
@@ -108,7 +112,7 @@ proposed API contract. Any new CLI mirrors these semantics, requires
 
 A supplied scope ID/property must be a nonempty string in its declared scope;
 `None` means unfiltered, never a wildcard. No trimming or alias resolution.
-`lifecycle` accepts exactly `all` or `current`; recommend `all` as default.
+`lifecycle` accepts exactly `all` or `current`; the confirmed default is `all`.
 This is subject/belief lifecycle, never a ClaimCandidate "current" flag.
 
 - Subjects include every recorded subject, including mention-only subjects.
@@ -178,7 +182,7 @@ silently given this new argument/behavior. Specialized report-reader guards stay
 
 ### O5. Total ordering and limits
 
-**Recommended ordering change from worksheet Q9, requiring confirmation:**
+**Ordering change confirmed by follow-up O3 answer 2 (Text):**
 listings sort by ascending UTF-8 bytes of their relevant ID (subject, mention,
 property or belief). Matching search sorts by `(mention_text_utf8, mention_id_utf8)`.
 The mention ID is the explicit final tie-breaker for equal text, never subject,
@@ -191,7 +195,7 @@ Thus the search key is unique, even with equal text/timestamps. Row identity is
 Property listing emits distinct property IDs before pagination. No sort changes
 canonical candidate collections, evidence order or recorded identity.
 
-Recommend `page_size=100`; maximum 1,000, still subject to worksheet confirmation.
+Use `page_size=100` and maximum 1,000, confirmed by follow-up O3 answer 6.
 Require an actual integer 1..1,000 (booleans are not sizes). Oversized, fractional,
 zero, negative or malformed sizes refuse; never silently clamp. Fetch one extra
 eligible row to determine continuation; return at most page_size rows. Page size
@@ -382,7 +386,7 @@ a discovery fact or alteration of envelope bytes/triggers/hash material.
 No build timestamp, random generation ID, read count or clock enters logical
 membership. Disabling an index removes only its own ready/row set atomically.
 Retained tree nodes and all old version rows stay untouched. Exact addition
-layout and identifiers require confirmation with V6; ordinary opens never install
+layout and identifiers are confirmed for drafting with V6; ordinary opens never install
 these tables or index.
 
 ### O9. Publication, explicit migration and history
@@ -435,7 +439,7 @@ return restart_required. An append beyond the cutoff may change tip/staleness wh
 the same resolved prefix remains valid. Live publication alone does not invalidate
 a replay cursor. Never accept live/replay cursors interchangeably or claim to retain
 an old index snapshot. Frozen full-log refusals remain V5; "4" handles supported
-mixed historical replay. These mechanics remain subject to confirmation.
+mixed historical replay. Follow-up O3 answer 7 confirms these proposed mechanics.
 
 ### O10. Determinism, completeness and independent verification
 
@@ -490,44 +494,43 @@ an accidental whole-snapshot scan; they do not establish universal constant work
 
 ## Conflict review of all 19 O3 worksheet answers
 
-These are recommended answers, not approvals. **Consistent** identifies alignment
-with the ruling/accepted authority; **Open** identifies a real maintainer choice;
-**Conflicting** identifies a difference and concrete resolution options. Only the
-ruling's repeated requirements are already binding for drafting.
+This table retains each original recommendation and records the 2026-10-14
+follow-up. **Consistent** means aligned with the ruling/accepted constraints;
+**Resolved for drafting** closes a former Open choice. **Conflict resolved for
+drafting** records a difference and the maintainer's chosen resolution. These
+are confirmed Proposed choices, not ADR ratification.
 
-| Q | Worksheet recommendation | Classification and resolution |
+| Q | Worksheet recommendation | Classification and recorded resolution |
 |---|---|---|
-| 1 | B | Consistent; explicitly selected for drafting. Same-database atomic derived index, not a sidecar. |
-| 2 | 2+3 initially | Consistent for the initial old-profile release. **Conflicting if treated as a closed lifetime set:** strict "4" would lack O3. Options: extend the same format to "4" at strict adoption (recommended V1-V9), or keep 2/3-only and defer mixed-store O3 until a separately ratified extension. Never relabel "4" rows as "3". Extension remains Open. |
-| 3 | Yes: admitted public corpus only | Consistent with ADR 0031/R4; the restriction remains binding, not newly approved privacy machinery. |
-| 4 | Mention only | Open copy-scope mechanic, consistent with the permitted inventory. Recommend O1/O4/O8; no values/snippets/source text. Expanded text needs explicit copy/privacy/scope review. |
-| 5 | Exact+prefix | Open mode choice. Recommend both under O3. FTS/semantic ranking is separate and unapproved. |
-| 6 | Exact case/Unicode, no normalization | Consistent with exact recorded identity and the narrow discovery role; confirm O3's exact grammar, empty refusal and literal operators. |
-| 7 | Yes: mention-only/every mention ID | Consistent; every match is expressly required by R-O6. Include subject membership without a belief join. |
-| 8 | All lifecycle default | Open; recommend all, with explicit current-container/subject filter. Current-only can be chosen but cannot erase retained candidate detail or invent candidate "current". |
-| 9 | Ascending relevant UTF-8 ID | **Conflicting with O5 search order:** listings retain ID order, but search proposes text then mention-ID tie-breaker for a direct prefix access path. Both meet R-O1 if fixed in the contract. Choose `Text` (recommended), or `ID` and revise search cursor/order/access-cost cases to ID-only, potentially sorting/scanning the match range. No hidden relevance/recency alternative. |
-| 10 | Label valid older publication | Open freshness service choice. Recommend labeled stale O4/O7; explicit Refuse is compatible but sacrifices pending-prefix access. An unsupported/corrupt index is unavailable in either choice, not stale success. |
-| 11 | Restart on prefix advance | Consistent with R-O2's required explicit behavior. Snapshot retention is an alternative only with a separately specified implementation/storage contract. Recommend O6 restart. |
-| 12 | 100/1000 | Open, explicitly withheld from final approval by the ruling. Recommend those limits in O5; reject rather than clamp invalid sizes. Confirm separately below. |
-| 13 | Replay-only historical discovery | Open; recommend O9 explicit raw replay, never today's index at an old cutoff. Historical pagination must use its own query binding. |
-| 14 | Atomic rows/delta/progress | Consistent with selected B and accepted atomic publication. O8/O9/V4 include format/prefix metadata and relations. No after-publication update posing as complete. |
-| 15 | Explicit working-copy migration/backfill | Open operational choice, consistent with freeze/no-auto-migration. Recommend V6/V7/O9. Alternative requires an equally explicit database contract, not silent installation. |
-| 16 | Yes: no durable read usage | Consistent; required by R-O7 and usage/evidence boundary. No other search side effects either. |
-| 17 | Yes: complete candidates/retained relations | Consistent; required by no-winner ruling and ADRs 0024/0034. Discovery does not extend specialized report-reader versions. |
-| 18 | Unavailable missing/invalid readiness | Consistent; missing is expressly ruled unavailable, detected invalidity cannot masquerade as empty. No per-query full-audit claim. |
-| 19 | Yes: ready 0/null distinct from unbuilt | Consistent; necessary to distinguish R-O3 states without violating positive-only derived_progress. Exact O8 representation remains a proposed mechanic. |
+| 1 | B | Consistent; the initial ruling selects the same-database atomic index. |
+| 2 | 2+3 initially | Conflict resolved for drafting: O3 answer 1 confirms V1-V9 extension to "4" at strict adoption. Initial old-profile discovery remains "2"/"3". The alternative 2/3-only lifetime set with deferred mixed-store O3 was not selected; never relabel "4" rows as "3". |
+| 3 | Yes: admitted public corpus only | Consistent with ADR 0031/R4; O3 answer 3 confirms the scoped package, not new privacy machinery. |
+| 4 | Mention only | Resolved for drafting: O3 answer 3 confirms O1-O4/O8's copy scope. No values/snippets/source text; expanded copies were not selected. |
+| 5 | Exact+prefix | Resolved for drafting: O3 answer 3 confirms both literal modes. FTS/semantic ranking remains outside the contract. |
+| 6 | Exact case/Unicode, no normalization | Consistent; O3 answer 3 confirms exact grammar, empty-query refusal and literal metacharacters. |
+| 7 | Yes: mention-only/every mention ID | Consistent with R-O6; subject membership does not require a belief join. |
+| 8 | All lifecycle default | Resolved for drafting: O3 answer 4 is All, with an explicit current-subject/container filter. Current-only default was not selected; candidate "current" remains invalid terminology. |
+| 9 | Ascending relevant UTF-8 ID | Conflict resolved for drafting: O3 answer 2 is Text. Listings retain ID order; search uses O5 text bytes then mention-ID tie-breaker. ID-only search with match-range sorting/scanning was not selected. No relevance or recency order is introduced. |
+| 10 | Label valid older publication | Resolved for drafting: O3 answer 5 is Label. Serve a valid stale prefix with disclosure; unavailable/corrupt/unsupported indexes still refuse. Refusing every lagged publication was not selected. |
+| 11 | Restart on prefix advance | Consistent with R-O2; O3 answer 7 confirms O6 restart, without snapshot retention. |
+| 12 | 100/1000 | Resolved for drafting: O3 answer 6 is Yes (100/1,000). O5 rejects invalid sizes rather than clamping. |
+| 13 | Replay-only historical discovery | Resolved for drafting: O3 answer 7 confirms explicit raw replay and distinct historical cursor binding, never today's index at an old cutoff. |
+| 14 | Atomic rows/delta/progress | Consistent with B/accepted publication; O3 answer 7 confirms metadata/relations in the same transaction, not an update afterward. |
+| 15 | Explicit working-copy migration/backfill | Resolved for drafting: O3 answers 1 and 7 confirm V6/V7/O9. No silent table installation or alternate database contract is selected. |
+| 16 | Yes: no durable read usage | Consistent with R-O7/ADR 0026; O3 answer 7 also confirms no other search side effects. |
+| 17 | Yes: complete candidates/retained relations | Consistent with the no-winner ruling and ADRs 0024/0034. The confirmed query/recovery package does not extend specialized report-reader versions. |
+| 18 | Unavailable missing/invalid readiness | Consistent with R-O3; O3 answer 7 confirms detected invalidity is unavailable, not empty. There is no per-query exhaustive-audit claim. |
+| 19 | Yes: ready 0/null distinct from unbuilt | Consistent with R-O3 and positive-only derived_progress; O3 answer 3 confirms O8's exact representation. |
 
-The two conditional/actual conflicts are scope extension (Q2) and search order
-(Q9), not changes to the ruling. The recommended resolutions form one coherent
-V1-V9/O5 design. All Open choices are pending; adoption of B does not ratify
-page limits, mode/lifecycle/copy policies or schema by implication.
+The Q2 scope and Q9 ordering tensions are resolved by explicit follow-up answers,
+not by inferring approval from the selection of option B. All former Open choices
+are answered for drafting. The selected V1-V9/O5 design remains unratified.
 
 All 12 payload worksheet answers are separately classified in the
 [strict draft's conflict review](2026-10-14-adr-draft-strict-payload-keys.md#conflict-review-of-all-12-payload-worksheet-answers).
-Together the two reviews cover all 31 questions, including each selected option.
-None of the other 29 answers is automatically approved. No unreviewed answer is
-used as authority; proposed mechanics are grouped into the final word-answer
-questions for review.
+Together the reviews cover all 31 worksheet questions. Every formerly unapproved
+mechanic is now tied to the recorded follow-up package or a binding initial rule;
+other Proposed contracts are not approved by association.
 
 ## Prospective acceptance cases
 
@@ -539,7 +542,7 @@ oracles must not use the new index or production query to prove themselves.
 |---|---|---|
 | A1 — Discovery/traversal | Public ordinary and ADR-report stores; start with text rather than opaque IDs; traverse subjects -> properties -> beliefs -> named details | Complete typed traversal, scoped artifact/revision/report meaning, all candidates/provenance. No new report-reader version or truth assertion. |
 | A2 — Membership/identity | Mention-only prefixes, identical text across subjects, multiple properties, identical spelling across ID kinds, agreeing/disagreeing candidates, frozen R092 rename/later Python ADR fixture | Every matching mention once; mention-only subjects retained; exact properties/scoped paths distinct; no join multiplication, text/value coalescing or identity inference. |
-| A3 — Grammar/empty/limits | Case/NFC/NFD/supplementary Unicode, literal `%`/`_`/quotes/backslash, exact vs prefix, empty query, 1/100/1000 sizes and invalid boolean/zero/1001/fraction; unknown subject vs mention-only subject | Literal byte-preserving matches and all validation reasons; zero-match ready search is empty, absent scope distinguished, page count/end/continuation correct. Default/max remain subject to approval. |
+| A3 — Grammar/empty/limits | Case/NFC/NFD/supplementary Unicode, literal `%`/`_`/quotes/backslash, exact vs prefix, empty query, 1/100/1000 sizes and invalid boolean/zero/1001/fraction; unknown subject vs mention-only subject | Literal byte-preserving matches and all validation reasons; zero-match ready search is empty, absent scope distinguished, page count/end/continuation correct. Confirmed default/max are 100/1,000. |
 | A4 — Order/cursors | Enough equal-text and equal-timestamp hits for multiple pages; vary insertion/SQL plan; changed mode/query/size/filter/scope/projector/format/order/genesis/key, malformed/extra/duplicate token fields | Total order with ID tie-breaker; concatenated pages equal independent full result without omissions/duplicates. Invalid bindings refuse. Prefix advance returns restart, no implicit snapshot. Same-prefix deterministic rebuild can continue. |
 | A5 — Freshness/concurrency | Append unrelated new subject without publication; continue an old page, then publish; real concurrent read transaction across publication; detail read after advance | Global stale metadata changes on append even when every hit is fresh; before/after pages each coherent. Unpublished matching mention not falsely absent at tip. After publication old cursor/detail handle restarts. Equal timestamps still invalidate by position. |
 | A6 — Replay/history | Every tested position/time/version, including genesis, mention-only, multi-claim, ordinary reports, "3" transitions and "4" mixed old/strict histories; varied insertion order | Full logical rows/joins/query results equal independently enumerated replay; own-version lineage verified. Inclusive historical cutoff excludes later rows/relations; full-log unknown/invalid suffix refusal preserved. Historical/live cursors never cross-resolve. |
@@ -565,21 +568,27 @@ Sharing the strict semantic boundary would unnecessarily remove O3 from "2"/"3";
 the single referenced V1-V9 section separates those versions while making joint
 "4" publication explicit.
 
-Before implementation the maintainer must ratify this draft, the shared bundle
-and every remaining choice, number the ADRs and commit authority through
+All seven remaining O3 drafting questions are answered. Before implementation
+the maintainer must ratify this contract and shared bundle, number the ADRs
+and commit authority through
 [AGENTS.md](../AGENTS.md#adr-commit-protocol). Separate implementation and
 maintainer completion-marker commits follow. This design work closes no gap and
 updates no authority/status marker.
 
-## Remaining maintainer questions
+## Recorded maintainer answers
 
-Each is answerable in one word; recommended answers are in parentheses. Mechanics
-approval is explicit review of the cited package, not approval of other proposals.
+Source: Josh's 2026-10-14 follow-up at the end of
+`D:\ProjectNyx\scratch\nyx-ruling-2026-10-14-c-b.md`: "all recommended."
+These are the seven remaining O3 questions, now answered:
 
-1. Approve the referenced V1-V9 version/schema/mixed-store/adoption bundle, extending O3 to "4" at strict adoption? **Yes/No** (`Yes`).
-2. For search order, use O5 text bytes then mention-ID tie-breaker, or worksheet ID-only order? **Text/ID** (`Text`).
-3. Approve O1-O4/O8's mention-only copy, exact+prefix query, typed scope/result and schema mechanics? **Yes/No** (`Yes`).
-4. Default lifecycle scope to all recorded subjects/containers or current only? **All/Current** (`All`).
-5. Serve a valid older index labeled stale, or refuse lagged results? **Label/Refuse** (`Label`).
-6. Confirm default 100 and maximum 1,000 page sizes? **Yes/No** (`Yes`).
-7. Approve O6-O12's restart cursors, explicit historical replay, enrollment/recovery, read-only/copy and verification mechanics? **Yes/No** (`Yes`).
+1. **Yes** - approve V1-V9's version/schema/mixed-store/adoption bundle and extend O3 to "4" at strict adoption.
+2. **Text** - order search by text bytes then mention ID; retain ID ordering for listings.
+3. **Yes** - approve O1-O4/O8's mention-only copy, exact+prefix query, typed scope/result and schema mechanics.
+4. **All** - default to all recorded subject/container lifecycles, with an explicit current filter.
+5. **Label** - serve a valid older index with global stale disclosure.
+6. **Yes (100/1,000)** - confirm default page size 100 and maximum 1,000.
+7. **Yes** - approve O6-O12's restart cursors, explicit historical replay, enrollment/recovery, read-only/copy and verification mechanics.
+
+No unanswered maintainer drafting questions remain in this scope. This design
+record remains Proposed and unratified; the follow-up authorizes preparation of
+Proposed ADR files only, not implementation or acceptance of other Proposed ADRs.
