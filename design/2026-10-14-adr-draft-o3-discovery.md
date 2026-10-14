@@ -1,4 +1,4 @@
-# ADR TBD: O3 Public Mention Discovery in a Same-Database Derived Index
+# Design record for Proposed ADR 0037: O3 Public Mention Discovery in a Same-Database Derived Index
 
 Status: Proposed draft, not ratified, does not authorize implementation
 
@@ -9,6 +9,8 @@ Implementation: None. No listing API, search index, schema migration, test or us
 Supersedes on acceptance: Nothing yet. Proposed database compatibility amendments are limited by the shared V6 contract. Frozen projector semantics, hashes and existing APIs remain unchanged.
 
 Related: [O3 worksheet](2026-10-14-o3-listing-search-worksheet.md), [strict-payload draft](2026-10-14-adr-draft-strict-payload-keys.md), [ADR 0010](../decisions/0010-projection-parameters.md), [ADR 0011](../decisions/0011-database-schema-versioning.md), [ADR 0012](../decisions/0012-whole-view-equality.md), [ADR 0013](../decisions/0013-cross-belief-identity-semantics.md), [ADR 0014](../decisions/0014-cross-belief-reducer-and-hash-lineage.md), [ADR 0015](../decisions/0015-candidate-scoped-verification.md), [ADR 0019](../decisions/0019-identity-bootstrap.md), [ADR 0021](../decisions/0021-bootstrap-link-treatment.md), [ADR 0022](../decisions/0022-belief-container-uniqueness.md), [ADR 0023](../decisions/0023-stage-two-contract.md), [ADR 0024](../decisions/0024-no-authoritative-head.md), [ADR 0025](../decisions/0025-incremental-result-commitment.md), [ADR 0026](../decisions/0026-usage-is-not-evidence.md), [ADR 0030](../decisions/0030-sole-writer-and-positional-fields.md), [ADR 0031](../decisions/0031-source-report-claims.md), [ADR 0032](../decisions/0032-explicit-stage-two-projector-selection.md), [ADR 0034](../decisions/0034-forward-state-transitions.md), [ADR 0035](../decisions/0035-adr-0034-implementation-boundaries.md).
+
+Proposed record: Proposed [ADR 0037](../decisions/0037-o3-mention-discovery.md). This finalized design source records the drafting history; the numbered Proposed ADR is the review record. Neither is ratified.
 
 ## Context
 
@@ -54,7 +56,7 @@ to code.
 ## Shared version boundary by reference
 
 Adopt the **single shared section V1-V9** in the
-[strict-payload draft](2026-10-14-adr-draft-strict-payload-keys.md#shared-version-boundary).
+Proposed [ADR 0036](../decisions/0036-strict-payload-keys.md#shared-version-boundary).
 This is the same confirmed proposed contract S1 references there, not a second version.
 It separates the index format from belief-projector semantics, proposes schema 6
 and isolated "2"/"3"/"4" rows, and specifies ingestion, enrollment, atomic
@@ -527,7 +529,7 @@ not by inferring approval from the selection of option B. All former Open choice
 are answered for drafting. The selected V1-V9/O5 design remains unratified.
 
 All 12 payload worksheet answers are separately classified in the
-[strict draft's conflict review](2026-10-14-adr-draft-strict-payload-keys.md#conflict-review-of-all-12-payload-worksheet-answers).
+Proposed [ADR 0036 conflict review](../decisions/0036-strict-payload-keys.md#conflict-review-of-all-12-payload-worksheet-answers).
 Together the reviews cover all 31 worksheet questions. Every formerly unapproved
 mechanic is now tied to the recorded follow-up package or a binding initial rule;
 other Proposed contracts are not approved by association.
@@ -569,8 +571,8 @@ the single referenced V1-V9 section separates those versions while making joint
 "4" publication explicit.
 
 All seven remaining O3 drafting questions are answered. Before implementation
-the maintainer must ratify this contract and shared bundle, number the ADRs
-and commit authority through
+the maintainer must ratify this contract and shared bundle and commit the
+numbered authority records through
 [AGENTS.md](../AGENTS.md#adr-commit-protocol). Separate implementation and
 maintainer completion-marker commits follow. This design work closes no gap and
 updates no authority/status marker.
