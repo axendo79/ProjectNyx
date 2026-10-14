@@ -415,3 +415,72 @@ def test_cli_reports_all_failures_json_text_and_exit_code(tree, monkeypatch, cap
     with pytest.raises(SystemExit) as refused:
         main(['--fix'])
     assert refused.value.code == 2
+
+
+@pytest.fixture
+def cli_report(monkeypatch):
+    report = checker['Report']()
+    report.checked['links'] = 2
+    report.add('proposed_references', 'GAPS.md', 3,
+               'ADR 0027 reference requires human authority/context review', unchecked=True)
+    report.add('serialization', 'src/nyx/hashing.py', 1,
+               'Finite compatibility samples only', unchecked=True)
+    report.add('proposed_references', 'design/nested/brief.md', 5,
+               'ADR 0027 reference requires human authority/context review', unchecked=True)
+    monkeypatch.setitem(checker['main'].__globals__, 'check_repository', report.result)
+    return report
+
+
+@pytest.mark.parametrize('failing', [False, True])
+@pytest.mark.parametrize('flags', [[], ['--fix-none']])
+def test_cli_quiet_prints_all_failures_and_only_summary(cli_report, capsys, failing, flags):
+    if failing:
+        cli_report.add('links', 'README.md', 7, 'Missing local target: one.md')
+        cli_report.add('links', 'design/brief.md', 9, 'Missing heading/anchor: two.md#missing')
+    main = checker['main']
+    normal_code = main(flags)
+    capsys.readouterr()
+    assert main([*flags, '--quiet']) == normal_code == int(failing)
+    captured = capsys.readouterr()
+    expected = ('FAILURES README.md:7 [links] Missing local target: one.md\n'
+                'FAILURES design/brief.md:9 [links] Missing heading/anchor: two.md#missing\n'
+                if failing else '')
+    expected += (f'{2 if failing else 0} failures; 2 unchecked baseline; '
+                 '1 unchecked in design/ (3 total)\n')
+    assert captured.out.encode('utf-8') == expected.encode('utf-8')
+    assert captured.err == ''
+
+
+@pytest.mark.parametrize('failing', [False, True])
+@pytest.mark.parametrize('flags', [[], ['--fix-none']])
+def test_cli_non_quiet_output_matches_existing_bytes(cli_report, capsys, failing, flags):
+    if failing:
+        cli_report.add('links', 'README.md', 7, 'Missing local target: one.md')
+    assert checker['main'](flags) == int(failing)
+    expected = 'FAILURES README.md:7 [links] Missing local target: one.md\n' if failing else ''
+    expected += (
+        'Baseline unchecked (outside design/): 2\n'
+        'UNCHECKED GAPS.md:3 [proposed_references] '
+        'ADR 0027 reference requires human authority/context review\n'
+        'UNCHECKED src/nyx/hashing.py:1 [serialization] Finite compatibility samples only\n'
+        'Design unchecked (in design/): 1\n'
+        'UNCHECKED design/nested/brief.md:5 [proposed_references] '
+        'ADR 0027 reference requires human authority/context review\n'
+        f'{int(failing)} failures; 2 unchecked baseline; 1 unchecked in design/ (3 total)\n'
+        'Checked: links=2, adr_markers=0, proposed_references=0, invariants=0, '
+        'hash_formulas=0, legacy_schema=0, fences=0, readme_map=0, serialization=0\n'
+    )
+    captured = capsys.readouterr()
+    assert captured.out.encode('utf-8') == expected.encode('utf-8')
+    assert captured.err == ''
+
+
+@pytest.mark.parametrize('failing', [False, True])
+def test_cli_quiet_keeps_json_output_and_exit_code(cli_report, capsys, failing):
+    if failing:
+        cli_report.add('links', 'README.md', 7, 'Missing local target: one.md')
+    main = checker['main']
+    assert main(['--json']) == int(failing)
+    normal = capsys.readouterr()
+    assert main(['--json', '--quiet']) == int(failing)
+    assert capsys.readouterr() == normal

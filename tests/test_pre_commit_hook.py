@@ -54,7 +54,7 @@ def hook_repo(tmp_path):
     # This checker double records invocation, exact flags and interpreter mode.
     (tmp_path / 'scripts/check_docs.py').write_text(
         'from pathlib import Path\nimport sys\n'
-        'assert sys.argv[1:] == ["--fix-none"]\n'
+        'assert sys.argv[1:] == ["--fix-none", "--quiet"]\n'
         'assert sys.dont_write_bytecode\n'
         'Path("checked").write_text("checked")\n'
         'sys.exit(1 if Path("docs-fail").exists() else 0)\n', encoding='utf-8')
