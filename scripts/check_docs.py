@@ -587,6 +587,8 @@ def main(argv=None):
     parser.add_argument('--fix-none', action='store_true', default=True,
                         help='Read only (default and only mode)')
     parser.add_argument('--json', action='store_true', help='Emit structured results')
+    parser.add_argument('--quiet', action='store_true',
+                        help='Print only failures and the summary in text mode')
     parser.add_argument('--status', action='store_true',
                         help='Print the literal ADR and gap status index')
     args = parser.parse_args(argv)
@@ -601,16 +603,18 @@ def main(argv=None):
     else:
         for item in result['failures']:
             print(f"FAILURES {item['path']}:{item['line']} [{item['check']}] {item['message']}")
-        labels = {'baseline': 'Baseline unchecked (outside design/)',
-                  'design': 'Design unchecked (in design/)'}
-        for name, items in unchecked_sections(result['unchecked']).items():
-            print(f'{labels[name]}: {len(items)}')
-            for item in items:
-                print(f"UNCHECKED {item['path']}:{item['line']} [{item['check']}] {item['message']}")
+        if not args.quiet:
+            labels = {'baseline': 'Baseline unchecked (outside design/)',
+                      'design': 'Design unchecked (in design/)'}
+            for name, items in unchecked_sections(result['unchecked']).items():
+                print(f'{labels[name]}: {len(items)}')
+                for item in items:
+                    print(f"UNCHECKED {item['path']}:{item['line']} [{item['check']}] {item['message']}")
         counts = result['unchecked_counts']
         print(f"{len(result['failures'])} failures; {counts['baseline']} unchecked baseline; "
               f"{counts['design']} unchecked in design/ ({len(result['unchecked'])} total)")
-        print('Checked: ' + ', '.join(f'{k}={v}' for k, v in result['checked'].items()))
+        if not args.quiet:
+            print('Checked: ' + ', '.join(f'{k}={v}' for k, v in result['checked'].items()))
     return 0 if result['ok'] else 1
 
 

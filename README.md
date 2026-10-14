@@ -469,6 +469,15 @@ pytest. Run from a checkout: storage currently locates `schema.sql` at the
 repository root. The tests create temporary databases and need no model service.
 All tests must pass; the suite size is not a fixed acceptance threshold.
 
+The [tracked pre-commit hook](.githooks/pre-commit) runs
+`python -B scripts/check_docs.py --fix-none --quiet`. It prints every failure in
+full, then one summary line with the failure count, unchecked baseline count,
+unchecked count in `design/`, and total unchecked count. With zero failures,
+only the summary is printed. Failures block the commit; unchecked findings need
+human authority/context review and do not block it. Run the checker without
+`--quiet` to see individual unchecked findings and checked totals. `--json` and
+`--status` retain their output when combined with `--quiet`.
+
 For a fresh database, call `nyx.storage.init_db(path, create=True)` and close the
 returned connection. Ordinary `init_db(path)` calls validate an existing database;
 they never create or auto-stamp one. `nyx.skeleton.record_observation` and
