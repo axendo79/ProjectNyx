@@ -1,4 +1,4 @@
-# ADR TBD: Strict Payload Keys Under a New Explicit Projector
+# Design record for Proposed ADR 0036: Strict Payload Keys Under a New Explicit Projector
 
 Status: Proposed draft, not ratified, does not authorize implementation
 
@@ -9,6 +9,8 @@ Implementation: None. Design draft only; no parser, projector, schema, diagnosti
 Supersedes on acceptance: Nothing yet. Proposed additive envelope/projector dispatch and database compatibility amendments are enumerated below. No frozen projector is tightened.
 
 Related: [payload worksheet](2026-10-14-duplicate-key-payloads-worksheet.md), [ADR 0002](../decisions/0002-payload-stored-plaintext-in-v0.md), [ADR 0003](../decisions/0003-genesis-sentinels-and-hash-material-delimiters.md), [ADR 0007](../decisions/0007-payloads-keyed-by-event-id-not-payload-hash.md), [ADR 0010](../decisions/0010-projection-parameters.md), [ADR 0011](../decisions/0011-database-schema-versioning.md), [ADR 0012](../decisions/0012-whole-view-equality.md), [ADR 0014](../decisions/0014-cross-belief-reducer-and-hash-lineage.md), [ADR 0015](../decisions/0015-candidate-scoped-verification.md), [ADR 0023](../decisions/0023-stage-two-contract.md), [ADR 0024](../decisions/0024-no-authoritative-head.md), [ADR 0025](../decisions/0025-incremental-result-commitment.md), [ADR 0026](../decisions/0026-usage-is-not-evidence.md), [ADR 0030](../decisions/0030-sole-writer-and-positional-fields.md), [ADR 0031](../decisions/0031-source-report-claims.md), [ADR 0032](../decisions/0032-explicit-stage-two-projector-selection.md), [ADR 0034](../decisions/0034-forward-state-transitions.md), [ADR 0035](../decisions/0035-adr-0034-implementation-boundaries.md).
+
+Proposed record: Proposed [ADR 0036](../decisions/0036-strict-payload-keys.md). This finalized design source records the drafting history; the numbered Proposed ADR is the review record. Neither is ratified.
 
 ## Context
 
@@ -214,6 +216,9 @@ rulings. This plaintext profile neither implements its private codec nor relaxes
 canonical private input or resolves numeric/resource blockers. No gap is closed.
 
 ## Shared version boundary
+
+Numbered shared contract: Proposed [ADR 0036 V1-V9](../decisions/0036-strict-payload-keys.md#shared-version-boundary).
+The complete design copy below is retained for drafting history. Proposed [ADR 0037](../decisions/0037-o3-mention-discovery.md) references that numbered section.
 
 This is the **single shared section V1-V9** for this draft and the companion O3
 ADR draft. S1 references it here; O3 references this same section rather than
@@ -455,7 +460,7 @@ choices above now have recorded drafting answers. The separate B2 private-codec
 boundary and frozen unknown-envelope cutoff refusals remain S4/S8/V5; the follow-up
 does not alter those limits or ratify other Proposed contracts.
 
-The companion O3 draft individually reviews all 19 O3 answers and records the
+Proposed [ADR 0037](../decisions/0037-o3-mention-discovery.md) individually reviews all 19 O3 answers and records the
 follow-up resolutions of its scope/order tensions. Together the reviews cover all
 31 worksheet questions. Choices are supported by the initial ruling or explicit
 follow-up packages, never by treating consistency alone as approval.
@@ -495,8 +500,9 @@ V1 instead versions the index separately and integrates storage/publication.
 
 All five remaining strict-payload drafting questions are answered. Implementation
 remains blocked until this contract and the shared bundle are explicitly ratified.
-ADR numbering and the maintainer authority commit are administrative prerequisites;
-recording the answers does not grant implementation authority.
+The numbered Proposed records are prepared. Maintainer authority commits and
+ratification remain prerequisites; recording the answers does not grant
+implementation authority.
 
 ## Recorded maintainer answers
 
