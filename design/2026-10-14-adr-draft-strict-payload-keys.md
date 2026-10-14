@@ -21,10 +21,11 @@ canonical-content commitment.
 
 This draft transcribes Josh's binding-for-drafting ruling in
 `D:\ProjectNyx\scratch\nyx-ruling-2026-10-14-c-b.md`, dated 2026-10-14. It selects
-worksheet option C and grants drafting authority only. Remaining worksheet
-recommendations are individually reviewed below; consistency does not mean
-approval. MUST clauses make the proposal testable, not implementable before
-ratification. Historical text and interpretation remain protected.
+worksheet option C and grants drafting authority only. In the recorded follow-up
+on the same date, Josh answered all five remaining strict-payload questions with
+the recommended answers: **Yes, Permissive, Yes, Yes, Yes**. The recorded answers
+below confirm the drafting choices, not ADR ratification or implementation. MUST
+clauses remain prospective. Historical text and interpretation stay protected.
 
 ## Maintainer rulings carried into this draft
 
@@ -47,9 +48,9 @@ ratification. Historical text and interpretation remain protected.
 
 ### S1. Recorded profile and explicit selection
 
-Recommend a new plaintext profile selected by recorded envelope
+The confirmed proposed contract uses a new plaintext profile selected by recorded envelope
 `schema_version = "1"` and explicitly selected `projector_version = "4"`.
-These are **proposed, unreserved identifiers**, subject to maintainer confirmation.
+These identifiers are **confirmed for this Proposed contract**, not shipped or ratified.
 Today's envelope version is `"0"`, distinct from database schema 4/5.
 [Shared version boundary](#shared-version-boundary) supplies the single V1-V9
 contract referenced by both ADR drafts.
@@ -120,7 +121,7 @@ cannot undo caller allocation but must allocate nothing itself and mutate nothin
 
 ### S4. Commitment, retained text and errors
 
-**Recommended mechanic, awaiting confirmation:** otherwise valid unique-key
+**Confirmed drafting choice:** otherwise valid unique-key
 whitespace/member-order/escape variants remain admissible. Retain supplied
 plaintext `ciphertext` unchanged; hash decoded canonical content with the existing
 serializer and ADR 0003 formula. The envelope hash covers the recorded schema;
@@ -154,7 +155,7 @@ A committed retry is retrieval, not new admission. Verify the stored pair under
 its recorded profile and compare every ADR 0030 caller-owned semantic field,
 including schema, exact ciphertext and source.config. Exact old-profile retries
 return the original pair under their original supported writer contract.
-Recommend also permitting "4" to return an exact committed schema-"0" pair,
+The confirmed proposed contract also permits "4" to return an exact committed schema-"0" pair,
 using old decoding solely to identify/verify that record. If no exact committed
 match exists, the old-schema submission to "4" refuses. This exception never
 admits a new old-format event as strict.
@@ -185,8 +186,8 @@ skip, truncate, substitute a sentinel or fall back.
 
 ### S7. Optional diagnostic is independent
 
-**Recommended inclusion, awaiting confirmation:** an independently invoked
-read-only audit reports event ID, recorded schema, object path and decoded
+**Confirmed drafting choice:** include an independently invoked
+read-only audit that reports event ID, recorded schema, object path and decoded
 repeated key in log order, then deterministic member order. It may report every
 duplicate occurrence. Syntax/unavailable-content failures are separate and never
 a clean scan. Old duplicates are findings, not newly invalid old events; strict
@@ -216,13 +217,14 @@ canonical private input or resolves numeric/resource blockers. No gap is closed.
 
 This is the **single shared section V1-V9** for this draft and the companion O3
 ADR draft. S1 references it here; O3 references this same section rather than
-copying a second version. All V clauses are one recommendation awaiting
-ratification, not additional maintainer rulings. The future authority changes
-must carry this shared contract with both decisions.
+copying a second version. Josh confirmed the complete V1-V9 bundle for Proposed
+drafting in both sets of follow-up answers on 2026-10-14. These confirmed choices
+remain unratified; the future authority records must carry this shared contract
+with both decisions.
 
 ### V1. Separate semantic and index versions
 
-Recommend **separate version boundaries with integrated publication**. Strict
+Use **separate version boundaries with integrated publication** in the Proposed contract. Strict
 payload support needs a new belief projector; discovery alone changes no frozen
 belief semantics/Merkle formats. O3 initially serves "2"/"3" on supported
 old-envelope histories and additionally "4" when strict adoption is authorized.
@@ -230,7 +232,7 @@ Do not make "3" strict or renumber "2"/"3" for O3.
 
 Proposed bundle: projector `"4"`, strict envelope schema `"1"`, lineage
 `nyx-belief-lineage/4`, database schema `6`, index `nyx-o3-index/1`, response
-`nyx-o3-page/1`, cursor `nyx-o3-cursor/1`. Names are unreserved proposals.
+`nyx-o3-page/1`, cursor `nyx-o3-cursor/1`. The follow-up confirms this proposed identifier bundle; runtime support still awaits ratification and implementation.
 Database/envelope/projector/index versions are independent axes. Schema 6 has
 one layout containing the strict committed-table amendment and O3 tables;
 there cannot be two different layouts called 6. Implementing this bundle requires
@@ -305,7 +307,7 @@ Compatible old-envelope appends can make multiple projections stale; strict
 appends manufacture no old-projector publication and do not change their frozen
 freshness-row rules. Discovery compares to the global tip directly.
 
-**Mixed-log recommendation:** after the first strict-schema event commits,
+**Confirmed proposed mixed-log contract:** after the first strict-schema event commits,
 O3 selected as "2"/"3" returns `unavailable`, reason `unsupported_log_profile`,
 even if old rows remain. Preserve those rows as derivatives; do not silently
 serve them as the mixed-store discovery view. Query checks the recorded schema
@@ -355,7 +357,7 @@ Cursors are query state, not evidence or a durable replay obligation.
 | Proposed 6 | Frozen outputs/refusals on supported logs preserved | Explicit ready builds for supported "2"/"3"/"4" | Explicit "4", V2 profiles. |
 | Other/missing/malformed | ADR 0011 refusal/preservation | No repair/fallback | No repair/fallback. |
 
-Recommend fresh 6 after joint acceptance; retain existing 4/5 without open-time
+The confirmed proposal uses fresh 6 after joint acceptance; retain existing 4/5 without open-time
 migration. Narrowly supersede ADR 0035 section 1 only to admit 6, choose fresh 6
 and define explicit working-copy migration. Keep ADR 0011 exact metadata checks.
 Today's software refuses 6; this is not a claim of present support.
@@ -417,7 +419,9 @@ claim of tamper-proof readiness is implied.
 ### V9. Ratification and delivery dependency
 
 Shared bundle, strict clauses and O3 schema/query clauses remain proposed.
-Confirm identifiers, mechanics and conflict resolutions before implementation.
+The 2026-10-14 follow-up confirms their identifiers, mechanics and conflict
+resolutions for drafting. No unanswered drafting choice remains in this scope;
+ratification is still required before implementation.
 The maintainer records numbered decisions and narrow amendments through the
 [authority protocol](../AGENTS.md#adr-commit-protocol). Agents neither set the
 authority environment variable nor commit authority files. Separate implementation
@@ -426,40 +430,42 @@ commit is neither ratification nor an implementation-complete marker.
 
 ## Conflict review of all 12 payload worksheet answers
 
-Answers below are the worksheet's **recommendations**, not received answers.
-**Consistent** means no conflict; **Open** means a choice needs the maintainer.
-Repeated ruling requirements are identified. No unreviewed answer is approved.
+This table retains every original worksheet recommendation and records its
+resolution after the 2026-10-14 follow-up. **Consistent** identifies alignment
+with the ruling/accepted constraints; **Resolved for drafting** closes a former
+Open choice through the specified recorded answer. Neither label ratifies an ADR.
 
-| Q | Recommended answer | Classification and disposition |
+| Q | Worksheet recommendation | Classification and recorded disposition |
 |---|---|---|
-| 1 | C | Consistent; explicitly selected for drafting. |
-| 2 | Yes: historical bytes/meaning | Consistent; required by R-S3. No retroactive strict scan. |
-| 3 | Yes: exact old duplicate retry | Consistent with history/ADR 0030; S5 retains original-contract retrieval. Additional "4" retrieval is a proposed mechanic within remaining question 1. |
-| 4 | Yes: recorded envelope/new projector | Consistent with C/R-S4. Exact identifiers, base semantics and schema remain Open; V1-V9 recommend one bundle. |
+| 1 | C | Consistent; selected by the initial ruling for drafting. |
+| 2 | Yes: historical bytes/meaning | Consistent; R-S3 requires it. No retroactive strict scan. |
+| 3 | Yes: exact old duplicate retry | Consistent with history/ADR 0030. Follow-up strict answer 1 also confirms S5's additional "4" retrieval exception within V1-V9. |
+| 4 | Yes: recorded envelope/new projector | Resolved for drafting: strict answer 1 confirms the exact V1-V9 identifier, base-semantics and schema bundle. |
 | 5 | Yes: recursive objects/arrays | Consistent; required by R-S2. |
-| 6 | Exact: decoded, no normalization | Consistent; decoded equality is ruled, exact case/Unicode preserves accepted identity/serialization. |
-| 7 | Yes: equal-value duplicates refuse | Consistent; key repetition, not unequal values, triggers R-S1/R-S2. |
-| 8 | No: canonical input not required | Open. S4 recommends permissive unique-key spellings. Canonical-only also satisfies duplicate refusal but narrows admission; decide explicitly. |
-| 9 | No: no original-text commitment | Open. S4 recommends unchanged canonical-content hashing. Raw authentication is separate option-D work, never a silent payload_hash change. |
-| 10 | Yes: numbers/B2/resources outside | Consistent with narrow scope/blockers. Confirm the scoped mechanics rather than importing a Proposed codec. |
-| 11 | Yes: independent optional diagnostic | Open on inclusion. R-S5 requires independence if included; S7 recommends that operation, never a gate. |
-| 12 | Yes: working-copy/prefix proof | Consistent with history and ADR 0034 precedent; Open adoption choice. V7 recommends it explicitly with source/prefix limits. |
+| 6 | Exact: decoded, no normalization | Consistent with the initial ruling and exact identity/serialization; strict answer 4 confirms S2-S6 mechanics. |
+| 7 | Yes: equal-value duplicates refuse | Consistent; repetition, not unequal values, triggers R-S1/R-S2. |
+| 8 | No: canonical input not required | Resolved for drafting: strict answer 2 is Permissive; otherwise valid unique-key spellings remain admissible under S4. Canonical-only was not selected. |
+| 9 | No: no original-text commitment | Resolved for drafting: strict answer 3 is Yes to retaining canonical-content commitments without a raw-text commitment. Option D is not selected. |
+| 10 | Yes: numbers/B2/resources outside | Consistent; strict answer 4 confirms this exclusion and the scoped parser/error/raw-replay package. No Proposed private codec is imported. |
+| 11 | Yes: independent optional diagnostic | Resolved for drafting: strict answer 5 is Yes to S7's separately optional, read-only diagnostic; it is never a rollout gate. |
+| 12 | Yes: working-copy/prefix proof | Resolved for drafting: strict answer 1 confirms V7's explicit adoption and source/prefix limits. |
 
-None of the 12 recommended answers directly conflicts with the binding ruling.
-Treating Open choices as approved, conflating this profile with canonical private
-input, or promising frozen cutoff access through an unknown later envelope would
-conflict with S4/S8/V5. A different canonical-input/raw-commitment answer requires
-rewriting S4 and its acceptance cases before ratification.
+No recommended answer directly conflicts with the binding ruling. All former Open
+choices above now have recorded drafting answers. The separate B2 private-codec
+boundary and frozen unknown-envelope cutoff refusals remain S4/S8/V5; the follow-up
+does not alter those limits or ratify other Proposed contracts.
 
-The companion O3 draft individually reviews all 19 O3 answers, including its
-projector-scope tension. Both use V1-V9; neither imports unapproved recommendations
-as authority. Together these reviews cover all 31 worksheet questions.
+The companion O3 draft individually reviews all 19 O3 answers and records the
+follow-up resolutions of its scope/order tensions. Together the reviews cover all
+31 worksheet questions. Choices are supported by the initial ruling or explicit
+follow-up packages, never by treating consistency alone as approval.
 
 ## Prospective acceptance cases
 
 No tests are added. A future implementation MUST pass these cases, full pytest
-and the documentation checker against the ratified contract. Changed answers
-require changed clauses/tests, not implementation guesses.
+and the documentation checker against the ratified contract. Any later change
+to a confirmed choice requires an explicit contract/test revision, not an
+implementation guess.
 
 | Test | Inputs/boundaries | Required observation |
 |---|---|---|
@@ -487,17 +493,23 @@ D needs separate exact-text commitments. Sharing O3's semantic version would
 alter frozen "2"/"3" or needlessly require strict adoption for discovery;
 V1 instead versions the index separately and integrates storage/publication.
 
-Implementation remains blocked until open mechanics/shared bundle are explicitly
-ratified. ADR numbering and the maintainer authority commit are administrative
-prerequisites, not permission supplied by these questions.
+All five remaining strict-payload drafting questions are answered. Implementation
+remains blocked until this contract and the shared bundle are explicitly ratified.
+ADR numbering and the maintainer authority commit are administrative prerequisites;
+recording the answers does not grant implementation authority.
 
-## Remaining maintainer questions
+## Recorded maintainer answers
 
-Each accepts one word; recommended answers are in parentheses. Confirmation
-covers the identified package, not any Proposed ADR elsewhere.
+Source: Josh's 2026-10-14 follow-up at the end of
+`D:\ProjectNyx\scratch\nyx-ruling-2026-10-14-c-b.md`: "all recommended."
+These are the five remaining strict-payload questions, now answered:
 
-1. Approve V1-V9's proposed identifier/version/mixed-store/adoption bundle, including S5's "4" old-retry retrieval exception? **Yes/No** (`Yes`).
-2. For otherwise valid unique-key plaintext, allow noncanonical spellings or require canonical input? **Permissive/Canonical** (`Permissive`).
-3. Preserve canonical-content commitments without an original-text commitment in this decision? **Yes/No** (`Yes`).
-4. Approve S2-S6 parser/error/raw-replay mechanics, leaving envelope JSON, numbers, B2 and resource decisions outside this change? **Yes/No** (`Yes`).
-5. Include S7's independently optional read-only diagnostic? **Yes/No** (`Yes`).
+1. **Yes** - approve V1-V9's identifier/version/mixed-store/adoption bundle, including S5's "4" old-retry retrieval exception.
+2. **Permissive** - allow otherwise valid unique-key noncanonical plaintext spellings.
+3. **Yes** - preserve canonical-content commitments without adding an original-text commitment.
+4. **Yes** - approve S2-S6 parser/error/raw-replay mechanics, leaving envelope JSON, numbers, B2 and resource decisions outside this change.
+5. **Yes** - include S7's independently optional read-only diagnostic.
+
+No unanswered maintainer drafting questions remain in this scope. This design
+record remains Proposed and unratified; the follow-up authorizes preparation of
+Proposed ADR files only, not implementation or acceptance of other Proposed ADRs.
