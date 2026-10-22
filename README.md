@@ -2,7 +2,8 @@
 
 Nyx is an epistemic kernel: a core for recording assertions, preserving their
 provenance, and deriving what a system currently believes. This repository
-contains a Python/SQLite Phase 1 walking skeleton, exercised through Python APIs,
+contains a Python/SQLite implementation of the legacy walking skeleton and
+[stage two](decisions/0023-stage-two-contract.md), exercised through Python APIs,
 a read-only inspection CLI, and tests.
 
 ## Model and current implementation
@@ -52,8 +53,9 @@ Proposed redaction draft: [ADR 0028](decisions/0028-redaction-and-crypto-shreddi
 subject, and a `constitutive` link with no numeric confidence. Observations name
 that mention and subject, an exact opaque `property_id`, the current `belief_id`,
 and fresh `claim_candidate_id` values. Each ClaimCandidate retains its own support
-and verification. Version `"0"` remains the default with its original fold,
-correction behavior, lineage, and byte fixtures.
+and verification. Version `"0"` retains the allowlisted legacy defaults under
+[ADR 0032](decisions/0032-explicit-stage-two-projector-selection.md), with its original
+fold, correction behavior, lineage, and byte fixtures.
 
 Version `"1"` exposes candidate collections with
 [no authoritative head](decisions/0024-no-authoritative-head.md). Later observations

@@ -1,4 +1,4 @@
-﻿# ProjectNyx agent instructions
+# ProjectNyx agent instructions
 
 Read [AGENTS.md](AGENTS.md) for repository authority and contribution rules.
 
