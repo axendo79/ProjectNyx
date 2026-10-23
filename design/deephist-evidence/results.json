@@ -1,0 +1,3717 @@
+{
+  "measurements": [
+    {
+      "shape": "concentrated",
+      "events": 1000,
+      "version": "2",
+      "operation": "append_and_publication",
+      "seconds": 5.524159500142559,
+      "final_window": 64,
+      "median_ms": 5.364000040572137,
+      "p95_ms": 10.512899956665933,
+      "file_bytes": 13492224,
+      "nodes": 20655,
+      "node_bytes": 7828829,
+      "profiled": false
+    },
+    {
+      "shape": "concentrated",
+      "events": 16,
+      "version": "2",
+      "operation": "append_and_publication",
+      "seconds": 0.06251379998866469,
+      "final_window": 16,
+      "median_ms": 3.8549500168301165,
+      "p95_ms": 4.5149000361561775,
+      "file_bytes": 319488,
+      "nodes": 139,
+      "node_bytes": 71903,
+      "profiled": false
+    },
+    {
+      "shape": "concentrated",
+      "events": 2000,
+      "version": "2",
+      "operation": "append_and_publication",
+      "seconds": 12.791728702490218,
+      "final_window": 64,
+      "median_ms": 5.782300082501024,
+      "p95_ms": 8.423299994319677,
+      "file_bytes": 28770304,
+      "nodes": 45407,
+      "node_bytes": 16770969,
+      "profiled": false
+    },
+    {
+      "shape": "concentrated",
+      "events": 250,
+      "version": "2",
+      "operation": "append_and_publication",
+      "seconds": 1.1975718998583034,
+      "final_window": 64,
+      "median_ms": 4.849850025493652,
+      "p95_ms": 6.585700088180602,
+      "file_bytes": 3031040,
+      "nodes": 4133,
+      "node_bytes": 1676618,
+      "profiled": false
+    },
+    {
+      "shape": "concentrated",
+      "events": 500,
+      "version": "2",
+      "operation": "append_and_publication",
+      "seconds": 2.6082300016423687,
+      "final_window": 64,
+      "median_ms": 5.243749998044223,
+      "p95_ms": 5.9816999128088355,
+      "file_bytes": 6348800,
+      "nodes": 9309,
+      "node_bytes": 3637461,
+      "profiled": false
+    },
+    {
+      "shape": "spread",
+      "events": 1000,
+      "version": "2",
+      "operation": "append_and_publication",
+      "seconds": 7.459894101484679,
+      "final_window": 64,
+      "median_ms": 7.294600014574826,
+      "p95_ms": 25.43620008509606,
+      "file_bytes": 18866176,
+      "nodes": 32047,
+      "node_bytes": 10892353,
+      "profiled": false
+    },
+    {
+      "shape": "spread",
+      "events": 16,
+      "version": "2",
+      "operation": "append_and_publication",
+      "seconds": 0.06107400020118803,
+      "final_window": 16,
+      "median_ms": 3.810449969023466,
+      "p95_ms": 4.430099972523749,
+      "file_bytes": 344064,
+      "nodes": 184,
+      "node_bytes": 83844,
+      "profiled": false
+    },
+    {
+      "shape": "spread",
+      "events": 2000,
+      "version": "2",
+      "operation": "append_and_publication",
+      "seconds": 14.80501819809433,
+      "final_window": 64,
+      "median_ms": 6.496949994470924,
+      "p95_ms": 23.667800007387996,
+      "file_bytes": 40546304,
+      "nodes": 70773,
+      "node_bytes": 23599637,
+      "profiled": false
+    },
+    {
+      "shape": "spread",
+      "events": 250,
+      "version": "2",
+      "operation": "append_and_publication",
+      "seconds": 1.377686700085178,
+      "final_window": 64,
+      "median_ms": 5.718700005672872,
+      "p95_ms": 8.74900002963841,
+      "file_bytes": 4116480,
+      "nodes": 6363,
+      "node_bytes": 2274606,
+      "profiled": false
+    },
+    {
+      "shape": "spread",
+      "events": 500,
+      "version": "2",
+      "operation": "append_and_publication",
+      "seconds": 3.097918398329057,
+      "final_window": 64,
+      "median_ms": 6.756449991371483,
+      "p95_ms": 8.990800008177757,
+      "file_bytes": 8790016,
+      "nodes": 14374,
+      "node_bytes": 4997402,
+      "profiled": false
+    },
+    {
+      "shape": "transitions",
+      "events": 1000,
+      "version": "3",
+      "operation": "append_and_publication",
+      "seconds": 131.04121999710333,
+      "final_window": 64,
+      "median_ms": 267.79464998980984,
+      "p95_ms": 313.9790999703109,
+      "file_bytes": 19808256,
+      "nodes": 32422,
+      "node_bytes": 11927275,
+      "profiled": false
+    },
+    {
+      "shape": "transitions",
+      "events": 16,
+      "version": "3",
+      "operation": "append_and_publication",
+      "seconds": 0.08030410029459745,
+      "final_window": 16,
+      "median_ms": 5.317900038789958,
+      "p95_ms": 6.20940001681447,
+      "file_bytes": 372736,
+      "nodes": 210,
+      "node_bytes": 103919,
+      "profiled": false
+    },
+    {
+      "shape": "transitions",
+      "events": 2000,
+      "version": "3",
+      "operation": "append_and_publication",
+      "seconds": 528.2238616032992,
+      "final_window": 64,
+      "median_ms": 553.1249499763362,
+      "p95_ms": 598.090200102888,
+      "file_bytes": 42385408,
+      "nodes": 71064,
+      "node_bytes": 25545770,
+      "profiled": false
+    },
+    {
+      "shape": "transitions",
+      "events": 250,
+      "version": "3",
+      "operation": "append_and_publication",
+      "seconds": 5.729108299827203,
+      "final_window": 64,
+      "median_ms": 37.05835004802793,
+      "p95_ms": 78.80819996353239,
+      "file_bytes": 4370432,
+      "nodes": 6534,
+      "node_bytes": 2553265,
+      "profiled": false
+    },
+    {
+      "shape": "transitions",
+      "events": 500,
+      "version": "3",
+      "operation": "append_and_publication",
+      "seconds": 24.486202899599448,
+      "final_window": 64,
+      "median_ms": 97.30220003984869,
+      "p95_ms": 136.30719995126128,
+      "file_bytes": 9318400,
+      "nodes": 14711,
+      "node_bytes": 5555203,
+      "profiled": false
+    },
+    {
+      "operation": "in_memory_reduce_and_apply",
+      "events": 1000,
+      "prefixes_equal": 1000,
+      "baseline_seconds": 5.660294700181112,
+      "prototype_seconds": 1.1942218015901744,
+      "baseline_final_median_ms": 13.245500042103231,
+      "prototype_final_median_ms": 2.027450071182102,
+      "prefix_chain_digest": "ba62809694a6bdd2e0e269feda3fdd17a01e20c8f8407f74b7646075697e815f"
+    },
+    {
+      "operation": "in_memory_reduce_and_apply",
+      "events": 16,
+      "prefixes_equal": 16,
+      "baseline_seconds": 0.01034729985985905,
+      "prototype_seconds": 0.009654600056819618,
+      "baseline_final_median_ms": 0.7036000024527311,
+      "prototype_final_median_ms": 0.6358000100590289,
+      "prefix_chain_digest": "254ddc296ceb68ab04bed99a0d0e0c2b2471a9809b2a31753b7a1fa1d90992a4"
+    },
+    {
+      "operation": "in_memory_reduce_and_apply",
+      "events": 2000,
+      "prefixes_equal": 2000,
+      "baseline_seconds": 26.81102719833143,
+      "prototype_seconds": 3.4220711005618796,
+      "baseline_final_median_ms": 24.565899977460504,
+      "prototype_final_median_ms": 2.1763499826192856,
+      "prefix_chain_digest": "fe09bcb0969b423f0288f9887fff38511f0839ee87b493280395f670928b66bd"
+    },
+    {
+      "operation": "in_memory_reduce_and_apply",
+      "events": 250,
+      "prefixes_equal": 250,
+      "baseline_seconds": 0.36912329914048314,
+      "prototype_seconds": 0.1918377997353673,
+      "baseline_final_median_ms": 2.0640999427996576,
+      "prototype_final_median_ms": 0.8082999847829342,
+      "prefix_chain_digest": "052eaada75d7979d85d860863f66959216cbd2206360fe91480a36f9ea53ab75"
+    },
+    {
+      "operation": "in_memory_reduce_and_apply",
+      "events": 500,
+      "prefixes_equal": 500,
+      "baseline_seconds": 1.1329803997650743,
+      "prototype_seconds": 0.41269120015203953,
+      "baseline_final_median_ms": 3.494650009088218,
+      "prototype_final_median_ms": 0.8896999643184245,
+      "prefix_chain_digest": "6059f938fb82776d064a83bacf57d08ed7682b7a1a135e4672d0c8d421da5100"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "concentrated",
+      "events": 1000,
+      "version": "2",
+      "prefixes_equal": 1000,
+      "baseline_seconds": 170.96757039765362,
+      "prototype_seconds": 0.521154101472348,
+      "speedup": 328.0556939197859,
+      "prefix_chain_digest": "658d40579b7ed682e683ca9c14dceff8f1b9f8f31c4ae62ae8352901a7a01b74"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "concentrated",
+      "events": 16,
+      "version": "2",
+      "prefixes_equal": 16,
+      "baseline_seconds": 0.012049399898387492,
+      "prototype_seconds": 0.0026917001232504845,
+      "speedup": 4.4765015962612855,
+      "prefix_chain_digest": "9eafa4e768b6f7b188e5a0615bb87b14f076fab5716b46963dce737e63c63e5d"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "concentrated",
+      "events": 2000,
+      "version": "2",
+      "prefixes_equal": 2000,
+      "baseline_seconds": 818.9119068974396,
+      "prototype_seconds": 1.3456604981329292,
+      "speedup": 608.5575879158671,
+      "prefix_chain_digest": "976177183cec76154856d3803517c584dd05594b2a86a1e80f38a2e5053adeb0"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "concentrated",
+      "events": 250,
+      "version": "2",
+      "prefixes_equal": 250,
+      "baseline_seconds": 5.778541601030156,
+      "prototype_seconds": 0.0732271004235372,
+      "speedup": 78.91260977981827,
+      "prefix_chain_digest": "bc69158b7f4117db09a5bb1a8379628e81b737f73dabbb96423002e86f2c1e64"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "concentrated",
+      "events": 500,
+      "version": "2",
+      "prefixes_equal": 500,
+      "baseline_seconds": 36.795883898157626,
+      "prototype_seconds": 0.21933530026581138,
+      "speedup": 167.76088415118258,
+      "prefix_chain_digest": "9ca479d1c5e81580b9d5b4374150f20e3b2c94603f6adf77c61ac8b29387fe26"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "spread",
+      "events": 1000,
+      "version": "2",
+      "prefixes_equal": 1000,
+      "baseline_seconds": 0.29991939873434603,
+      "prototype_seconds": 0.13989709818270057,
+      "speedup": 2.1438571823888877,
+      "prefix_chain_digest": "b8239e5e11217706ee38afe0d9d73c1377b9ef7a59fe67b28b0db600a8958279"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "spread",
+      "events": 16,
+      "version": "2",
+      "prefixes_equal": 16,
+      "baseline_seconds": 0.004299200023524463,
+      "prototype_seconds": 0.0021797000663354993,
+      "speedup": 1.972381471159129,
+      "prefix_chain_digest": "b6e15e39b4d5fabca68064e8d12157fea54fc4da51ee026d9f5e71b5d33922e2"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "spread",
+      "events": 2000,
+      "version": "2",
+      "prefixes_equal": 2000,
+      "baseline_seconds": 0.717977799475193,
+      "prototype_seconds": 0.33348890021443367,
+      "speedup": 2.152928625251193,
+      "prefix_chain_digest": "03eb0bcb49a5f7f56c498ed306928bf878cdb94ea2eccfd61d1d4cadb5dfc062"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "spread",
+      "events": 250,
+      "version": "2",
+      "prefixes_equal": 250,
+      "baseline_seconds": 0.07717839896213263,
+      "prototype_seconds": 0.0376444011926651,
+      "speedup": 2.050195952570249,
+      "prefix_chain_digest": "162f83272d1be3aa71bd07aab9b57104d3424e7eb5f72c1bc8ee455f737d84dd"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "spread",
+      "events": 500,
+      "version": "2",
+      "prefixes_equal": 500,
+      "baseline_seconds": 0.15718870074488223,
+      "prototype_seconds": 0.07339670194778591,
+      "speedup": 2.1416316615521165,
+      "prefix_chain_digest": "4e825755b4db5c1e83ebffa85f2a3d342d41f5625492c68536f14d5e6a107c99"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "transitions",
+      "events": 1000,
+      "version": "3",
+      "prefixes_equal": 1000,
+      "baseline_seconds": 186.89779079868458,
+      "prototype_seconds": 1.2211953989462927,
+      "speedup": 153.04495165961907,
+      "prefix_chain_digest": "cb3f55b45e83e3fe0a0707638255c4e31b40d1fd5d810c00510114faf0e89e83"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "transitions",
+      "events": 16,
+      "version": "3",
+      "prefixes_equal": 16,
+      "baseline_seconds": 0.01159189990721643,
+      "prototype_seconds": 0.0036657003220170736,
+      "speedup": 3.162260656604334,
+      "prefix_chain_digest": "c24e63ff780c5b3fa91312e45acca4ece3350e1159e5f95b9a046a98fcaeae85"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "transitions",
+      "events": 2000,
+      "version": "3",
+      "prefixes_equal": 2000,
+      "baseline_seconds": 791.1468944008229,
+      "prototype_seconds": 3.394321996252984,
+      "speedup": 233.07950609110614,
+      "prefix_chain_digest": "d1313ab4346c4ed15056d7ef628cf3afe7bca0672a2ba89c9cc304f6247c8a59"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "transitions",
+      "events": 250,
+      "version": "3",
+      "prefixes_equal": 250,
+      "baseline_seconds": 5.027639200096019,
+      "prototype_seconds": 0.10456009954214096,
+      "speedup": 48.083726221681,
+      "prefix_chain_digest": "f28b3ca1a85a0185af65777ae0930da2d964ea34a348d6efd3a21fff8065f11b"
+    },
+    {
+      "operation": "prefix_replay",
+      "shape": "transitions",
+      "events": 500,
+      "version": "3",
+      "prefixes_equal": 500,
+      "baseline_seconds": 37.38724229997024,
+      "prototype_seconds": 0.3924468009499833,
+      "speedup": 95.26703290603503,
+      "prefix_chain_digest": "844f8debd72508ea84eb89435fcc5f705373797d43492785794aacda98cc1e05"
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "concentrated",
+      "events": 1000,
+      "version": "2",
+      "candidates": 999,
+      "seconds": [
+        0.13058710005134344,
+        0.13152789999730885,
+        0.13253800000529736
+      ],
+      "median_seconds": 0.13152789999730885
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "concentrated",
+      "events": 16,
+      "version": "2",
+      "candidates": 15,
+      "seconds": [
+        0.002428899984806776,
+        0.0021819000830873847,
+        0.00266100000590086
+      ],
+      "median_seconds": 0.002428899984806776
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "concentrated",
+      "events": 2000,
+      "version": "2",
+      "candidates": 1999,
+      "seconds": [
+        0.2935935999266803,
+        0.30086419999133795,
+        0.30595750000793487
+      ],
+      "median_seconds": 0.30086419999133795
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "concentrated",
+      "events": 250,
+      "version": "2",
+      "candidates": 249,
+      "seconds": [
+        0.03449399990495294,
+        0.03353610006161034,
+        0.03511259995866567
+      ],
+      "median_seconds": 0.03449399990495294
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "concentrated",
+      "events": 500,
+      "version": "2",
+      "candidates": 499,
+      "seconds": [
+        0.06431499996688217,
+        0.06494680000469089,
+        0.06418530002702028
+      ],
+      "median_seconds": 0.06431499996688217
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "spread",
+      "events": 1000,
+      "version": "2",
+      "candidates": 5,
+      "seconds": [
+        0.00163569999858737,
+        0.0014597000554203987,
+        0.0012790999608114362
+      ],
+      "median_seconds": 0.0014597000554203987
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "spread",
+      "events": 16,
+      "version": "2",
+      "candidates": 5,
+      "seconds": [
+        0.0013545999536290765,
+        0.0010001999326050282,
+        0.0011057999217882752
+      ],
+      "median_seconds": 0.0011057999217882752
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "spread",
+      "events": 2000,
+      "version": "2",
+      "candidates": 5,
+      "seconds": [
+        0.0017121999990195036,
+        0.0013667000457644463,
+        0.0014573000371456146
+      ],
+      "median_seconds": 0.0014573000371456146
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "spread",
+      "events": 250,
+      "version": "2",
+      "candidates": 5,
+      "seconds": [
+        0.0013476000167429447,
+        0.0012320000678300858,
+        0.001109899953007698
+      ],
+      "median_seconds": 0.0012320000678300858
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "spread",
+      "events": 500,
+      "version": "2",
+      "candidates": 5,
+      "seconds": [
+        0.0015159000176936388,
+        0.0014391000149771571,
+        0.0013279999839141965
+      ],
+      "median_seconds": 0.0014391000149771571
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "transitions",
+      "events": 1000,
+      "version": "3",
+      "candidates": 999,
+      "seconds": [
+        0.1417663999600336,
+        0.13794730009976774,
+        0.1379375000251457
+      ],
+      "median_seconds": 0.13794730009976774
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "transitions",
+      "events": 16,
+      "version": "3",
+      "candidates": 15,
+      "seconds": [
+        0.002688599983230233,
+        0.0026408000849187374,
+        0.0029412999283522367
+      ],
+      "median_seconds": 0.002688599983230233
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "transitions",
+      "events": 2000,
+      "version": "3",
+      "candidates": 1999,
+      "seconds": [
+        0.291151599958539,
+        0.2870360999368131,
+        0.2928133000386879
+      ],
+      "median_seconds": 0.291151599958539
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "transitions",
+      "events": 250,
+      "version": "3",
+      "candidates": 249,
+      "seconds": [
+        0.035105800023302436,
+        0.03279800002928823,
+        0.03249040001537651
+      ],
+      "median_seconds": 0.03279800002928823
+    },
+    {
+      "operation": "full_belief_read",
+      "shape": "transitions",
+      "events": 500,
+      "version": "3",
+      "candidates": 499,
+      "seconds": [
+        0.06949420005548745,
+        0.07138069998472929,
+        0.06473660003393888
+      ],
+      "median_seconds": 0.06949420005548745
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "concentrated",
+      "events": 1000,
+      "version": "2",
+      "prototype": false,
+      "seconds": 293.0640924000181,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 1000,
+        "event_schema": 3000,
+        "chain": 1000,
+        "payload_hash": 2000,
+        "idempotency_key": 1000,
+        "recorded_at": 1000,
+        "coverage": 3017001,
+        "freshness": 6,
+        "merkle": 1086621,
+        "lineage": 2999,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 20655,
+        "distinct_roots_rebuilt": 2004,
+        "lineage_headers": 1000
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "concentrated",
+      "events": 1000,
+      "version": "2",
+      "prototype": true,
+      "seconds": 120.27104759996291,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 1000,
+        "event_schema": 3000,
+        "chain": 1000,
+        "payload_hash": 2000,
+        "idempotency_key": 1000,
+        "recorded_at": 1000,
+        "coverage": 3017001,
+        "freshness": 6,
+        "merkle": 1086621,
+        "lineage": 2999,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 20655,
+        "distinct_roots_rebuilt": 2004,
+        "lineage_headers": 1000
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "concentrated",
+      "events": 16,
+      "version": "2",
+      "prototype": false,
+      "seconds": 0.030087499995715916,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 1041,
+        "freshness": 6,
+        "merkle": 877,
+        "lineage": 47,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 139,
+        "distinct_roots_rebuilt": 36,
+        "lineage_headers": 16
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "concentrated",
+      "events": 16,
+      "version": "2",
+      "prototype": true,
+      "seconds": 0.01930970000103116,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 1041,
+        "freshness": 6,
+        "merkle": 877,
+        "lineage": 47,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 139,
+        "distinct_roots_rebuilt": 36,
+        "lineage_headers": 16
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "concentrated",
+      "events": 2000,
+      "version": "2",
+      "prototype": true,
+      "seconds": 631.8887691000709,
+      "ok": true,
+      "profiled": false,
+      "paired_report_equal": null,
+      "checks": {
+        "envelope_hash": 2000,
+        "event_schema": 6000,
+        "chain": 2000,
+        "payload_hash": 4000,
+        "idempotency_key": 2000,
+        "recorded_at": 2000,
+        "coverage": 12034001,
+        "freshness": 6,
+        "merkle": 4189629,
+        "lineage": 5999,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 45407,
+        "distinct_roots_rebuilt": 4004,
+        "lineage_headers": 2000
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "concentrated",
+      "events": 250,
+      "version": "2",
+      "prototype": false,
+      "seconds": 12.710961799952202,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 250,
+        "event_schema": 750,
+        "chain": 250,
+        "payload_hash": 500,
+        "idempotency_key": 250,
+        "recorded_at": 250,
+        "coverage": 191751,
+        "freshness": 6,
+        "merkle": 80033,
+        "lineage": 749,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 4133,
+        "distinct_roots_rebuilt": 504,
+        "lineage_headers": 250
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "concentrated",
+      "events": 250,
+      "version": "2",
+      "prototype": true,
+      "seconds": 4.147337700007483,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 250,
+        "event_schema": 750,
+        "chain": 250,
+        "payload_hash": 500,
+        "idempotency_key": 250,
+        "recorded_at": 250,
+        "coverage": 191751,
+        "freshness": 6,
+        "merkle": 80033,
+        "lineage": 749,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 4133,
+        "distinct_roots_rebuilt": 504,
+        "lineage_headers": 250
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "concentrated",
+      "events": 500,
+      "version": "2",
+      "prototype": false,
+      "seconds": 128.06339670007583,
+      "ok": true,
+      "profiled": true,
+      "paired_report_equal": null,
+      "checks": {
+        "envelope_hash": 500,
+        "event_schema": 1500,
+        "chain": 500,
+        "payload_hash": 1000,
+        "idempotency_key": 500,
+        "recorded_at": 500,
+        "coverage": 758501,
+        "freshness": 6,
+        "merkle": 289237,
+        "lineage": 1499,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 9309,
+        "distinct_roots_rebuilt": 1004,
+        "lineage_headers": 500
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "concentrated",
+      "events": 500,
+      "version": "2",
+      "prototype": false,
+      "seconds": 72.37242840009276,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 500,
+        "event_schema": 1500,
+        "chain": 500,
+        "payload_hash": 1000,
+        "idempotency_key": 500,
+        "recorded_at": 500,
+        "coverage": 758501,
+        "freshness": 6,
+        "merkle": 289237,
+        "lineage": 1499,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 9309,
+        "distinct_roots_rebuilt": 1004,
+        "lineage_headers": 500
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "concentrated",
+      "events": 500,
+      "version": "2",
+      "prototype": true,
+      "seconds": 57.810596400056966,
+      "ok": true,
+      "profiled": true,
+      "paired_report_equal": true,
+      "checks": {
+        "envelope_hash": 500,
+        "event_schema": 1500,
+        "chain": 500,
+        "payload_hash": 1000,
+        "idempotency_key": 500,
+        "recorded_at": 500,
+        "coverage": 758501,
+        "freshness": 6,
+        "merkle": 289237,
+        "lineage": 1499,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 9309,
+        "distinct_roots_rebuilt": 1004,
+        "lineage_headers": 500
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "concentrated",
+      "events": 500,
+      "version": "2",
+      "prototype": true,
+      "seconds": 30.46500169998035,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 500,
+        "event_schema": 1500,
+        "chain": 500,
+        "payload_hash": 1000,
+        "idempotency_key": 500,
+        "recorded_at": 500,
+        "coverage": 758501,
+        "freshness": 6,
+        "merkle": 289237,
+        "lineage": 1499,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 9309,
+        "distinct_roots_rebuilt": 1004,
+        "lineage_headers": 500
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "spread",
+      "events": 1000,
+      "version": "2",
+      "prototype": false,
+      "seconds": 1.6254180000396445,
+      "ok": true,
+      "profiled": false,
+      "paired_report_equal": null,
+      "checks": {
+        "envelope_hash": 1000,
+        "event_schema": 3000,
+        "chain": 1000,
+        "payload_hash": 2000,
+        "idempotency_key": 1000,
+        "recorded_at": 1000,
+        "coverage": 39762,
+        "freshness": 404,
+        "merkle": 139778,
+        "lineage": 3397,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 32047,
+        "distinct_roots_rebuilt": 2006,
+        "lineage_headers": 1199
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "spread",
+      "events": 1000,
+      "version": "2",
+      "prototype": true,
+      "seconds": 1.3479293000418693,
+      "ok": true,
+      "profiled": false,
+      "paired_report_equal": true,
+      "checks": {
+        "envelope_hash": 1000,
+        "event_schema": 3000,
+        "chain": 1000,
+        "payload_hash": 2000,
+        "idempotency_key": 1000,
+        "recorded_at": 1000,
+        "coverage": 39762,
+        "freshness": 404,
+        "merkle": 139778,
+        "lineage": 3397,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 32047,
+        "distinct_roots_rebuilt": 2006,
+        "lineage_headers": 1199
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "spread",
+      "events": 16,
+      "version": "2",
+      "prototype": false,
+      "seconds": 0.01521920005325228,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 609,
+        "freshness": 10,
+        "merkle": 915,
+        "lineage": 51,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 184,
+        "distinct_roots_rebuilt": 38,
+        "lineage_headers": 18
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "spread",
+      "events": 16,
+      "version": "2",
+      "prototype": true,
+      "seconds": 0.013897700002416968,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 609,
+        "freshness": 10,
+        "merkle": 915,
+        "lineage": 51,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 184,
+        "distinct_roots_rebuilt": 38,
+        "lineage_headers": 18
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "spread",
+      "events": 2000,
+      "version": "2",
+      "prototype": false,
+      "seconds": 3.7831641000229865,
+      "ok": true,
+      "profiled": false,
+      "paired_report_equal": null,
+      "checks": {
+        "envelope_hash": 2000,
+        "event_schema": 6000,
+        "chain": 2000,
+        "payload_hash": 4000,
+        "idempotency_key": 2000,
+        "recorded_at": 2000,
+        "coverage": 79562,
+        "freshness": 804,
+        "merkle": 306282,
+        "lineage": 6797,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 70773,
+        "distinct_roots_rebuilt": 4006,
+        "lineage_headers": 2399
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "spread",
+      "events": 2000,
+      "version": "2",
+      "prototype": true,
+      "seconds": 3.1622546000871807,
+      "ok": true,
+      "profiled": false,
+      "paired_report_equal": true,
+      "checks": {
+        "envelope_hash": 2000,
+        "event_schema": 6000,
+        "chain": 2000,
+        "payload_hash": 4000,
+        "idempotency_key": 2000,
+        "recorded_at": 2000,
+        "coverage": 79562,
+        "freshness": 804,
+        "merkle": 306282,
+        "lineage": 6797,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 70773,
+        "distinct_roots_rebuilt": 4006,
+        "lineage_headers": 2399
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "spread",
+      "events": 250,
+      "version": "2",
+      "prototype": false,
+      "seconds": 0.3484840999590233,
+      "ok": true,
+      "profiled": false,
+      "paired_report_equal": null,
+      "checks": {
+        "envelope_hash": 250,
+        "event_schema": 750,
+        "chain": 250,
+        "payload_hash": 500,
+        "idempotency_key": 250,
+        "recorded_at": 250,
+        "coverage": 9912,
+        "freshness": 104,
+        "merkle": 28342,
+        "lineage": 847,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 6363,
+        "distinct_roots_rebuilt": 506,
+        "lineage_headers": 299
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "spread",
+      "events": 250,
+      "version": "2",
+      "prototype": true,
+      "seconds": 0.3100037999683991,
+      "ok": true,
+      "profiled": false,
+      "paired_report_equal": true,
+      "checks": {
+        "envelope_hash": 250,
+        "event_schema": 750,
+        "chain": 250,
+        "payload_hash": 500,
+        "idempotency_key": 250,
+        "recorded_at": 250,
+        "coverage": 9912,
+        "freshness": 104,
+        "merkle": 28342,
+        "lineage": 847,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 6363,
+        "distinct_roots_rebuilt": 506,
+        "lineage_headers": 299
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "spread",
+      "events": 500,
+      "version": "2",
+      "prototype": false,
+      "seconds": 0.7171957999235019,
+      "ok": true,
+      "profiled": false,
+      "paired_report_equal": null,
+      "checks": {
+        "envelope_hash": 500,
+        "event_schema": 1500,
+        "chain": 500,
+        "payload_hash": 1000,
+        "idempotency_key": 500,
+        "recorded_at": 500,
+        "coverage": 19862,
+        "freshness": 204,
+        "merkle": 63286,
+        "lineage": 1697,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 14374,
+        "distinct_roots_rebuilt": 1006,
+        "lineage_headers": 599
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "spread",
+      "events": 500,
+      "version": "2",
+      "prototype": true,
+      "seconds": 0.6594388999510556,
+      "ok": true,
+      "profiled": false,
+      "paired_report_equal": true,
+      "checks": {
+        "envelope_hash": 500,
+        "event_schema": 1500,
+        "chain": 500,
+        "payload_hash": 1000,
+        "idempotency_key": 500,
+        "recorded_at": 500,
+        "coverage": 19862,
+        "freshness": 204,
+        "merkle": 63286,
+        "lineage": 1697,
+        "relations": 0
+      },
+      "merkle_inventory": {
+        "retained_nodes": 14374,
+        "distinct_roots_rebuilt": 1006,
+        "lineage_headers": 599
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "transitions",
+      "events": 16,
+      "version": "3",
+      "prototype": false,
+      "seconds": 0.03240849997382611,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 1175,
+        "freshness": 8,
+        "merkle": 1147,
+        "lineage": 47,
+        "relations": 16
+      },
+      "merkle_inventory": {
+        "retained_nodes": 210,
+        "distinct_roots_rebuilt": 36,
+        "lineage_headers": 16
+      }
+    },
+    {
+      "operation": "whole_store_verify",
+      "shape": "transitions",
+      "events": 16,
+      "version": "3",
+      "prototype": true,
+      "seconds": 0.02218249998986721,
+      "ok": true,
+      "profiled": false,
+      "checks": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 1175,
+        "freshness": 8,
+        "merkle": 1147,
+        "lineage": 47,
+        "relations": 16
+      },
+      "merkle_inventory": {
+        "retained_nodes": 210,
+        "distinct_roots_rebuilt": 36,
+        "lineage_headers": 16
+      }
+    }
+  ],
+  "verifier_reports": [
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\concentrated-2-1000.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 1000,
+        "event_schema": 3000,
+        "chain": 1000,
+        "payload_hash": 2000,
+        "idempotency_key": 1000,
+        "recorded_at": 1000,
+        "coverage": 3017001,
+        "freshness": 6,
+        "merkle": 1086621,
+        "lineage": 2999,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 1000,
+      "merkle_inventory": {
+        "retained_nodes": 20655,
+        "distinct_roots_rebuilt": 2004,
+        "lineage_headers": 1000
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 1000,
+        "append_position": 1000,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\concentrated-2-1000.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 1000,
+        "event_schema": 3000,
+        "chain": 1000,
+        "payload_hash": 2000,
+        "idempotency_key": 1000,
+        "recorded_at": 1000,
+        "coverage": 3017001,
+        "freshness": 6,
+        "merkle": 1086621,
+        "lineage": 2999,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 1000,
+      "merkle_inventory": {
+        "retained_nodes": 20655,
+        "distinct_roots_rebuilt": 2004,
+        "lineage_headers": 1000
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 1000,
+        "append_position": 1000,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\concentrated-2-16.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 1041,
+        "freshness": 6,
+        "merkle": 877,
+        "lineage": 47,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 16,
+      "merkle_inventory": {
+        "retained_nodes": 139,
+        "distinct_roots_rebuilt": 36,
+        "lineage_headers": 16
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 16,
+        "append_position": 16,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\concentrated-2-16.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 1041,
+        "freshness": 6,
+        "merkle": 877,
+        "lineage": 47,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 16,
+      "merkle_inventory": {
+        "retained_nodes": 139,
+        "distinct_roots_rebuilt": 36,
+        "lineage_headers": 16
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 16,
+        "append_position": 16,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\concentrated-2-2000.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 2000,
+        "event_schema": 6000,
+        "chain": 2000,
+        "payload_hash": 4000,
+        "idempotency_key": 2000,
+        "recorded_at": 2000,
+        "coverage": 12034001,
+        "freshness": 6,
+        "merkle": 4189629,
+        "lineage": 5999,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 2000,
+      "merkle_inventory": {
+        "retained_nodes": 45407,
+        "distinct_roots_rebuilt": 4004,
+        "lineage_headers": 2000
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 2000,
+        "append_position": 2000,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\concentrated-2-250.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 250,
+        "event_schema": 750,
+        "chain": 250,
+        "payload_hash": 500,
+        "idempotency_key": 250,
+        "recorded_at": 250,
+        "coverage": 191751,
+        "freshness": 6,
+        "merkle": 80033,
+        "lineage": 749,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 250,
+      "merkle_inventory": {
+        "retained_nodes": 4133,
+        "distinct_roots_rebuilt": 504,
+        "lineage_headers": 250
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 250,
+        "append_position": 250,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\concentrated-2-250.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 250,
+        "event_schema": 750,
+        "chain": 250,
+        "payload_hash": 500,
+        "idempotency_key": 250,
+        "recorded_at": 250,
+        "coverage": 191751,
+        "freshness": 6,
+        "merkle": 80033,
+        "lineage": 749,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 250,
+      "merkle_inventory": {
+        "retained_nodes": 4133,
+        "distinct_roots_rebuilt": 504,
+        "lineage_headers": 250
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 250,
+        "append_position": 250,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\concentrated-2-500.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 500,
+        "event_schema": 1500,
+        "chain": 500,
+        "payload_hash": 1000,
+        "idempotency_key": 500,
+        "recorded_at": 500,
+        "coverage": 758501,
+        "freshness": 6,
+        "merkle": 289237,
+        "lineage": 1499,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 500,
+      "merkle_inventory": {
+        "retained_nodes": 9309,
+        "distinct_roots_rebuilt": 1004,
+        "lineage_headers": 500
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 500,
+        "append_position": 500,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\concentrated-2-500.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 500,
+        "event_schema": 1500,
+        "chain": 500,
+        "payload_hash": 1000,
+        "idempotency_key": 500,
+        "recorded_at": 500,
+        "coverage": 758501,
+        "freshness": 6,
+        "merkle": 289237,
+        "lineage": 1499,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 500,
+      "merkle_inventory": {
+        "retained_nodes": 9309,
+        "distinct_roots_rebuilt": 1004,
+        "lineage_headers": 500
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 500,
+        "append_position": 500,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\spread-2-1000.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 1000,
+        "event_schema": 3000,
+        "chain": 1000,
+        "payload_hash": 2000,
+        "idempotency_key": 1000,
+        "recorded_at": 1000,
+        "coverage": 39762,
+        "freshness": 404,
+        "merkle": 139778,
+        "lineage": 3397,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 1000,
+      "merkle_inventory": {
+        "retained_nodes": 32047,
+        "distinct_roots_rebuilt": 2006,
+        "lineage_headers": 1199
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 1000,
+        "append_position": 1000,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\spread-2-1000.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 1000,
+        "event_schema": 3000,
+        "chain": 1000,
+        "payload_hash": 2000,
+        "idempotency_key": 1000,
+        "recorded_at": 1000,
+        "coverage": 39762,
+        "freshness": 404,
+        "merkle": 139778,
+        "lineage": 3397,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 1000,
+      "merkle_inventory": {
+        "retained_nodes": 32047,
+        "distinct_roots_rebuilt": 2006,
+        "lineage_headers": 1199
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 1000,
+        "append_position": 1000,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\spread-2-16.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 609,
+        "freshness": 10,
+        "merkle": 915,
+        "lineage": 51,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 16,
+      "merkle_inventory": {
+        "retained_nodes": 184,
+        "distinct_roots_rebuilt": 38,
+        "lineage_headers": 18
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 16,
+        "append_position": 16,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\spread-2-16.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 609,
+        "freshness": 10,
+        "merkle": 915,
+        "lineage": 51,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 16,
+      "merkle_inventory": {
+        "retained_nodes": 184,
+        "distinct_roots_rebuilt": 38,
+        "lineage_headers": 18
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 16,
+        "append_position": 16,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\spread-2-2000.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 2000,
+        "event_schema": 6000,
+        "chain": 2000,
+        "payload_hash": 4000,
+        "idempotency_key": 2000,
+        "recorded_at": 2000,
+        "coverage": 79562,
+        "freshness": 804,
+        "merkle": 306282,
+        "lineage": 6797,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 2000,
+      "merkle_inventory": {
+        "retained_nodes": 70773,
+        "distinct_roots_rebuilt": 4006,
+        "lineage_headers": 2399
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 2000,
+        "append_position": 2000,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\spread-2-2000.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 2000,
+        "event_schema": 6000,
+        "chain": 2000,
+        "payload_hash": 4000,
+        "idempotency_key": 2000,
+        "recorded_at": 2000,
+        "coverage": 79562,
+        "freshness": 804,
+        "merkle": 306282,
+        "lineage": 6797,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 2000,
+      "merkle_inventory": {
+        "retained_nodes": 70773,
+        "distinct_roots_rebuilt": 4006,
+        "lineage_headers": 2399
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 2000,
+        "append_position": 2000,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\spread-2-250.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 250,
+        "event_schema": 750,
+        "chain": 250,
+        "payload_hash": 500,
+        "idempotency_key": 250,
+        "recorded_at": 250,
+        "coverage": 9912,
+        "freshness": 104,
+        "merkle": 28342,
+        "lineage": 847,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 250,
+      "merkle_inventory": {
+        "retained_nodes": 6363,
+        "distinct_roots_rebuilt": 506,
+        "lineage_headers": 299
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 250,
+        "append_position": 250,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\spread-2-250.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 250,
+        "event_schema": 750,
+        "chain": 250,
+        "payload_hash": 500,
+        "idempotency_key": 250,
+        "recorded_at": 250,
+        "coverage": 9912,
+        "freshness": 104,
+        "merkle": 28342,
+        "lineage": 847,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 250,
+      "merkle_inventory": {
+        "retained_nodes": 6363,
+        "distinct_roots_rebuilt": 506,
+        "lineage_headers": 299
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 250,
+        "append_position": 250,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\spread-2-500.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 500,
+        "event_schema": 1500,
+        "chain": 500,
+        "payload_hash": 1000,
+        "idempotency_key": 500,
+        "recorded_at": 500,
+        "coverage": 19862,
+        "freshness": 204,
+        "merkle": 63286,
+        "lineage": 1697,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 500,
+      "merkle_inventory": {
+        "retained_nodes": 14374,
+        "distinct_roots_rebuilt": 1006,
+        "lineage_headers": 599
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 500,
+        "append_position": 500,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\spread-2-500.sqlite",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 500,
+        "event_schema": 1500,
+        "chain": 500,
+        "payload_hash": 1000,
+        "idempotency_key": 500,
+        "recorded_at": 500,
+        "coverage": 19862,
+        "freshness": 204,
+        "merkle": 63286,
+        "lineage": 1697,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 500,
+      "merkle_inventory": {
+        "retained_nodes": 14374,
+        "distinct_roots_rebuilt": 1006,
+        "lineage_headers": 599
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 500,
+        "append_position": 500,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\transitions-3-16.sqlite",
+      "projector": "3",
+      "checked": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 1175,
+        "freshness": 8,
+        "merkle": 1147,
+        "lineage": 47,
+        "relations": 16
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 16,
+      "merkle_inventory": {
+        "retained_nodes": 210,
+        "distinct_roots_rebuilt": 36,
+        "lineage_headers": 16
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 16,
+        "append_position": 16,
+        "unpublished_events": 0
+      }
+    },
+    {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\transitions-3-16.sqlite",
+      "projector": "3",
+      "checked": {
+        "envelope_hash": 16,
+        "event_schema": 48,
+        "chain": 16,
+        "payload_hash": 32,
+        "idempotency_key": 16,
+        "recorded_at": 16,
+        "coverage": 1175,
+        "freshness": 8,
+        "merkle": 1147,
+        "lineage": 47,
+        "relations": 16
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 16,
+      "merkle_inventory": {
+        "retained_nodes": 210,
+        "distinct_roots_rebuilt": 36,
+        "lineage_headers": 16
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 16,
+        "append_position": 16,
+        "unpublished_events": 0
+      }
+    }
+  ],
+  "existing_nondetection_reports": {
+    "mutation-nondetection-0-32.json": {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\mutations\\mutant-0-32.db",
+      "projector": "0",
+      "checked": {
+        "envelope_hash": 12,
+        "event_schema": 36,
+        "chain": 12,
+        "payload_hash": 24,
+        "idempotency_key": 12,
+        "recorded_at": 12,
+        "coverage": 38,
+        "freshness": 6,
+        "merkle": 0,
+        "lineage": 0,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "freshness",
+          "location": "entity_event_index.updated_at",
+          "message": "operational clock diagnostic is not committed by Layer A"
+        },
+        {
+          "check": "merkle",
+          "location": "0",
+          "message": "this projector has no ADR 0025 Merkle representation"
+        },
+        {
+          "check": "lineage",
+          "location": "0",
+          "message": "no separately retained historical lineage records; final lineage compared with reconstructed belief under coverage"
+        },
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 12,
+      "freshness": {
+        "state": "current",
+        "applied_position": 12,
+        "append_position": 12,
+        "unpublished_events": 0
+      }
+    },
+    "mutation-nondetection-0-40.json": {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\mutations\\mutant-0-40.db",
+      "projector": "0",
+      "checked": {
+        "envelope_hash": 12,
+        "event_schema": 36,
+        "chain": 12,
+        "payload_hash": 24,
+        "idempotency_key": 12,
+        "recorded_at": 12,
+        "coverage": 32,
+        "freshness": 6,
+        "merkle": 0,
+        "lineage": 0,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "freshness",
+          "location": "entity_event_index.updated_at",
+          "message": "operational clock diagnostic is not committed by Layer A"
+        },
+        {
+          "check": "coverage",
+          "location": "derived_progress",
+          "message": "legacy materialization has no recorded applied position"
+        },
+        {
+          "check": "coverage",
+          "location": "projection equality",
+          "message": "complete reconstruction or valid publication prefix unavailable"
+        },
+        {
+          "check": "merkle",
+          "location": "0",
+          "message": "this projector has no ADR 0025 Merkle representation"
+        },
+        {
+          "check": "lineage",
+          "location": "0",
+          "message": "no separately retained historical lineage records; final lineage compared with reconstructed belief under coverage"
+        },
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 12,
+      "freshness": {
+        "state": "unknown",
+        "applied_position": null,
+        "append_position": 12,
+        "unpublished_events": null
+      }
+    },
+    "mutation-nondetection-0-46.json": {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\mutations\\mutant-0-46.db",
+      "projector": "0",
+      "checked": {
+        "envelope_hash": 12,
+        "event_schema": 36,
+        "chain": 12,
+        "payload_hash": 24,
+        "idempotency_key": 12,
+        "recorded_at": 12,
+        "coverage": 32,
+        "freshness": 6,
+        "merkle": 0,
+        "lineage": 0,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "freshness",
+          "location": "entity_event_index.updated_at",
+          "message": "operational clock diagnostic is not committed by Layer A"
+        },
+        {
+          "check": "coverage",
+          "location": "derived_progress",
+          "message": "legacy materialization has no recorded applied position"
+        },
+        {
+          "check": "coverage",
+          "location": "projection equality",
+          "message": "complete reconstruction or valid publication prefix unavailable"
+        },
+        {
+          "check": "merkle",
+          "location": "0",
+          "message": "this projector has no ADR 0025 Merkle representation"
+        },
+        {
+          "check": "lineage",
+          "location": "0",
+          "message": "no separately retained historical lineage records; final lineage compared with reconstructed belief under coverage"
+        },
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 12,
+      "freshness": {
+        "state": "unknown",
+        "applied_position": null,
+        "append_position": 12,
+        "unpublished_events": null
+      }
+    },
+    "mutation-nondetection-0-70.json": {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\mutations\\mutant-0-70.db",
+      "projector": "0",
+      "checked": {
+        "envelope_hash": 12,
+        "event_schema": 36,
+        "chain": 12,
+        "payload_hash": 24,
+        "idempotency_key": 12,
+        "recorded_at": 12,
+        "coverage": 38,
+        "freshness": 6,
+        "merkle": 0,
+        "lineage": 0,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "freshness",
+          "location": "entity_event_index.updated_at",
+          "message": "operational clock diagnostic is not committed by Layer A"
+        },
+        {
+          "check": "merkle",
+          "location": "0",
+          "message": "this projector has no ADR 0025 Merkle representation"
+        },
+        {
+          "check": "lineage",
+          "location": "0",
+          "message": "no separately retained historical lineage records; final lineage compared with reconstructed belief under coverage"
+        },
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 12,
+      "freshness": {
+        "state": "current",
+        "applied_position": 12,
+        "append_position": 12,
+        "unpublished_events": 0
+      }
+    },
+    "mutation-nondetection-0-71.json": {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\mutations\\mutant-0-71.db",
+      "projector": "0",
+      "checked": {
+        "envelope_hash": 12,
+        "event_schema": 36,
+        "chain": 12,
+        "payload_hash": 24,
+        "idempotency_key": 12,
+        "recorded_at": 12,
+        "coverage": 38,
+        "freshness": 6,
+        "merkle": 0,
+        "lineage": 0,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "freshness",
+          "location": "entity_event_index.updated_at",
+          "message": "operational clock diagnostic is not committed by Layer A"
+        },
+        {
+          "check": "merkle",
+          "location": "0",
+          "message": "this projector has no ADR 0025 Merkle representation"
+        },
+        {
+          "check": "lineage",
+          "location": "0",
+          "message": "no separately retained historical lineage records; final lineage compared with reconstructed belief under coverage"
+        },
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 12,
+      "freshness": {
+        "state": "current",
+        "applied_position": 12,
+        "append_position": 12,
+        "unpublished_events": 0
+      }
+    },
+    "mutation-nondetection-0-82.json": {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\mutations\\mutant-0-82.db",
+      "projector": "0",
+      "checked": {
+        "envelope_hash": 12,
+        "event_schema": 36,
+        "chain": 12,
+        "payload_hash": 24,
+        "idempotency_key": 12,
+        "recorded_at": 12,
+        "coverage": 38,
+        "freshness": 6,
+        "merkle": 0,
+        "lineage": 0,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "freshness",
+          "location": "entity_event_index.updated_at",
+          "message": "operational clock diagnostic is not committed by Layer A"
+        },
+        {
+          "check": "merkle",
+          "location": "0",
+          "message": "this projector has no ADR 0025 Merkle representation"
+        },
+        {
+          "check": "lineage",
+          "location": "0",
+          "message": "no separately retained historical lineage records; final lineage compared with reconstructed belief under coverage"
+        },
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 12,
+      "freshness": {
+        "state": "current",
+        "applied_position": 12,
+        "append_position": 12,
+        "unpublished_events": 0
+      }
+    },
+    "mutation-nondetection-0-83.json": {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\mutations\\mutant-0-83.db",
+      "projector": "0",
+      "checked": {
+        "envelope_hash": 12,
+        "event_schema": 36,
+        "chain": 12,
+        "payload_hash": 24,
+        "idempotency_key": 12,
+        "recorded_at": 12,
+        "coverage": 38,
+        "freshness": 6,
+        "merkle": 0,
+        "lineage": 0,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "freshness",
+          "location": "entity_event_index.updated_at",
+          "message": "operational clock diagnostic is not committed by Layer A"
+        },
+        {
+          "check": "merkle",
+          "location": "0",
+          "message": "this projector has no ADR 0025 Merkle representation"
+        },
+        {
+          "check": "lineage",
+          "location": "0",
+          "message": "no separately retained historical lineage records; final lineage compared with reconstructed belief under coverage"
+        },
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 12,
+      "freshness": {
+        "state": "current",
+        "applied_position": 12,
+        "append_position": 12,
+        "unpublished_events": 0
+      }
+    },
+    "mutation-nondetection-1-32.json": {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\mutations\\mutant-1-32.db",
+      "projector": "1",
+      "checked": {
+        "envelope_hash": 12,
+        "event_schema": 36,
+        "chain": 12,
+        "payload_hash": 24,
+        "idempotency_key": 12,
+        "recorded_at": 12,
+        "coverage": 431,
+        "freshness": 26,
+        "merkle": 0,
+        "lineage": 0,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "merkle",
+          "location": "1",
+          "message": "this projector has no ADR 0025 Merkle representation"
+        },
+        {
+          "check": "lineage",
+          "location": "1",
+          "message": "no separately retained historical lineage records; final lineage compared with reconstructed belief under coverage"
+        },
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 12,
+      "freshness": {
+        "state": "current",
+        "applied_position": 12,
+        "append_position": 12,
+        "unpublished_events": 0
+      }
+    },
+    "mutation-nondetection-2-32.json": {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\mutations\\mutant-2-32.db",
+      "projector": "2",
+      "checked": {
+        "envelope_hash": 12,
+        "event_schema": 36,
+        "chain": 12,
+        "payload_hash": 24,
+        "idempotency_key": 12,
+        "recorded_at": 12,
+        "coverage": 793,
+        "freshness": 26,
+        "merkle": 1584,
+        "lineage": 87,
+        "relations": 0
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 12,
+      "merkle_inventory": {
+        "retained_nodes": 335,
+        "distinct_roots_rebuilt": 55,
+        "lineage_headers": 32
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 12,
+        "append_position": 12,
+        "unpublished_events": 0
+      }
+    },
+    "mutation-nondetection-3-32.json": {
+      "ok": true,
+      "db": "D:\\ProjectNyx-wt-deephist-2026-10-22\\scratch\\deephist\\mutations\\mutant-3-32.db",
+      "projector": "3",
+      "checked": {
+        "envelope_hash": 12,
+        "event_schema": 36,
+        "chain": 12,
+        "payload_hash": 24,
+        "idempotency_key": 12,
+        "recorded_at": 12,
+        "coverage": 457,
+        "freshness": 26,
+        "merkle": 806,
+        "lineage": 46,
+        "relations": 11
+      },
+      "failures": [],
+      "unchecked": [
+        {
+          "check": "coverage",
+          "location": "projected_as_of",
+          "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+        }
+      ],
+      "pending": [],
+      "event_count": 12,
+      "merkle_inventory": {
+        "retained_nodes": 172,
+        "distinct_roots_rebuilt": 34,
+        "lineage_headers": 17
+      },
+      "freshness": {
+        "state": "current",
+        "applied_position": 12,
+        "append_position": 12,
+        "unpublished_events": 0
+      }
+    }
+  },
+  "prefix_checkpoints": [
+    {
+      "operation": "prefix_checkpoint",
+      "shape": "spread",
+      "events": 1000,
+      "version": "2",
+      "prefixes_equal": 1000,
+      "baseline_seconds": 0.29991939873434603,
+      "prototype_seconds": 0.13989709818270057,
+      "prefix_chain_digest": "b8239e5e11217706ee38afe0d9d73c1377b9ef7a59fe67b28b0db600a8958279"
+    },
+    {
+      "operation": "prefix_checkpoint",
+      "shape": "spread",
+      "events": 2000,
+      "version": "2",
+      "prefixes_equal": 2000,
+      "baseline_seconds": 0.717977799475193,
+      "prototype_seconds": 0.33348890021443367,
+      "prefix_chain_digest": "03eb0bcb49a5f7f56c498ed306928bf878cdb94ea2eccfd61d1d4cadb5dfc062"
+    },
+    {
+      "operation": "prefix_checkpoint",
+      "shape": "transitions",
+      "events": 1000,
+      "version": "3",
+      "prefixes_equal": 1000,
+      "baseline_seconds": 186.89779079868458,
+      "prototype_seconds": 1.2211953989462927,
+      "prefix_chain_digest": "cb3f55b45e83e3fe0a0707638255c4e31b40d1fd5d810c00510114faf0e89e83"
+    },
+    {
+      "operation": "prefix_checkpoint",
+      "shape": "transitions",
+      "events": 2000,
+      "version": "3",
+      "prefixes_equal": 2000,
+      "baseline_seconds": 791.1468944008229,
+      "prototype_seconds": 3.394321996252984,
+      "prefix_chain_digest": "d1313ab4346c4ed15056d7ef628cf3afe7bca0672a2ba89c9cc304f6247c8a59"
+    }
+  ],
+  "jobs": [
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "concentrated",
+        "--count",
+        "250",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 1.4264443999854848,
+      "log": "job-00.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify",
+        "--shape",
+        "concentrated",
+        "--count",
+        "250",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 12.885314899962395,
+      "log": "job-01.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify-prototype",
+        "--shape",
+        "concentrated",
+        "--count",
+        "250",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 4.372541000018828,
+      "log": "job-02.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "concentrated",
+        "--count",
+        "250",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 6.099245500052348,
+      "log": "job-03.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "concentrated",
+        "--count",
+        "250",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.30947960005141795,
+      "log": "job-04.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "concentrated",
+        "--count",
+        "500",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 2.8669794000452384,
+      "log": "job-05.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify",
+        "--shape",
+        "concentrated",
+        "--count",
+        "500",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 72.55717439996079,
+      "log": "job-06.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify-prototype",
+        "--shape",
+        "concentrated",
+        "--count",
+        "500",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 30.700877900002524,
+      "log": "job-07.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "concentrated",
+        "--count",
+        "500",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 37.57257289998233,
+      "log": "job-08.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "concentrated",
+        "--count",
+        "500",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.3968151999870315,
+      "log": "job-09.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "concentrated",
+        "--count",
+        "1000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 5.829348400002345,
+      "log": "job-10.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify",
+        "--shape",
+        "concentrated",
+        "--count",
+        "1000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 293.2474284999771,
+      "log": "job-11.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify-prototype",
+        "--shape",
+        "concentrated",
+        "--count",
+        "1000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 120.48268869996537,
+      "log": "job-12.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "concentrated",
+        "--count",
+        "1000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 173.01065059995744,
+      "log": "job-13.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "concentrated",
+        "--count",
+        "1000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.6080908000003546,
+      "log": "job-14.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "concentrated",
+        "--count",
+        "2000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 13.246418799972162,
+      "log": "job-15.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify",
+        "--shape",
+        "concentrated",
+        "--count",
+        "2000",
+        "--version",
+        "2"
+      ],
+      "status": "censored",
+      "seconds": 1200.0100898999954,
+      "limit_seconds": 1200,
+      "log": "job-16.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify-prototype",
+        "--shape",
+        "concentrated",
+        "--count",
+        "2000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 632.093398099998,
+      "log": "job-17.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "concentrated",
+        "--count",
+        "2000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 829.1621559000341,
+      "log": "job-18.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "concentrated",
+        "--count",
+        "2000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 1.1500705999787897,
+      "log": "job-19.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "spread",
+        "--count",
+        "250",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 1.6216911000665277,
+      "log": "job-20.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify",
+        "--shape",
+        "spread",
+        "--count",
+        "250",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.538863499998115,
+      "log": "job-21.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify-prototype",
+        "--shape",
+        "spread",
+        "--count",
+        "250",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.48831239994615316,
+      "log": "job-22.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "spread",
+        "--count",
+        "250",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.35245720006059855,
+      "log": "job-23.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "spread",
+        "--count",
+        "250",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.20024289994034916,
+      "log": "job-24.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "spread",
+        "--count",
+        "500",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 3.3900444000028074,
+      "log": "job-25.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify",
+        "--shape",
+        "spread",
+        "--count",
+        "500",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.8996872999705374,
+      "log": "job-26.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify-prototype",
+        "--shape",
+        "spread",
+        "--count",
+        "500",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.8437682000221685,
+      "log": "job-27.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "spread",
+        "--count",
+        "500",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.6227234000107273,
+      "log": "job-28.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "spread",
+        "--count",
+        "500",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.2182369000511244,
+      "log": "job-29.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "spread",
+        "--count",
+        "1000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 7.8391135999700055,
+      "log": "job-30.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify",
+        "--shape",
+        "spread",
+        "--count",
+        "1000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 1.8188072999473661,
+      "log": "job-31.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify-prototype",
+        "--shape",
+        "spread",
+        "--count",
+        "1000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 1.5254491000669077,
+      "log": "job-32.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "spread",
+        "--count",
+        "1000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 1.3821998999919742,
+      "log": "job-33.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "spread",
+        "--count",
+        "1000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.1947158999973908,
+      "log": "job-34.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "spread",
+        "--count",
+        "2000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 15.394243699964136,
+      "log": "job-35.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify",
+        "--shape",
+        "spread",
+        "--count",
+        "2000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 3.9752838000422344,
+      "log": "job-36.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify-prototype",
+        "--shape",
+        "spread",
+        "--count",
+        "2000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 3.350689599988982,
+      "log": "job-37.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "spread",
+        "--count",
+        "2000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 5.769556700019166,
+      "log": "job-38.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "spread",
+        "--count",
+        "2000",
+        "--version",
+        "2"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.20322610007133335,
+      "log": "job-39.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "transitions",
+        "--count",
+        "250",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 6.031130000017583,
+      "log": "job-40.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "transitions",
+        "--count",
+        "250",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 5.3595741000026464,
+      "log": "job-41.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "transitions",
+        "--count",
+        "250",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.28970740002114326,
+      "log": "job-42.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "index",
+        "--count",
+        "250"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.7587043000385165,
+      "log": "job-43.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "transitions",
+        "--count",
+        "500",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 24.77636470005382,
+      "log": "job-44.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "transitions",
+        "--count",
+        "500",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 38.3475961999502,
+      "log": "job-45.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "transitions",
+        "--count",
+        "500",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.40589820011518896,
+      "log": "job-46.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "index",
+        "--count",
+        "500"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 1.7876537999836728,
+      "log": "job-47.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "transitions",
+        "--count",
+        "1000",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 131.4368836999638,
+      "log": "job-48.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "transitions",
+        "--count",
+        "1000",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 190.31538030004594,
+      "log": "job-49.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "transitions",
+        "--count",
+        "1000",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.6586019999813288,
+      "log": "job-50.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "index",
+        "--count",
+        "1000"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 7.3364860999863595,
+      "log": "job-51.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "transitions",
+        "--count",
+        "2000",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 528.8382084000623,
+      "log": "job-52.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "prefix",
+        "--shape",
+        "transitions",
+        "--count",
+        "2000",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 803.743364199996,
+      "log": "job-53.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "read",
+        "--shape",
+        "transitions",
+        "--count",
+        "2000",
+        "--version",
+        "3"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 1.1070786999771371,
+      "log": "job-54.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "index",
+        "--count",
+        "2000"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 31.065696500008926,
+      "log": "job-55.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify",
+        "--shape",
+        "concentrated",
+        "--count",
+        "500",
+        "--version",
+        "2",
+        "--profile"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 128.24556710000616,
+      "log": "job-56.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "verify-prototype",
+        "--shape",
+        "concentrated",
+        "--count",
+        "500",
+        "--version",
+        "2",
+        "--profile"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 58.0059748000931,
+      "log": "job-57.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "mixed-index"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 0.42632649990264326,
+      "log": "job-58.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "append-profile"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 30.881207400001585,
+      "log": "job-59.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "mutations"
+      ],
+      "status": "completed",
+      "returncode": 0,
+      "seconds": 19.704004500061274,
+      "log": "job-60.txt"
+    },
+    {
+      "command": [
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\.venv\\Scripts\\python.exe",
+        "-B",
+        "D:\\ProjectNyx-wt-deephist-2026-10-22\\design\\deephist_experiment.py",
+        "build",
+        "--shape",
+        "transitions",
+        "--count",
+        "10000",
+        "--version",
+        "3"
+      ],
+      "status": "censored",
+      "seconds": 1200.0215914000291,
+      "limit_seconds": 1200,
+      "log": "job-61.txt"
+    }
+  ],
+  "raw_job_stdout_local": "scratch/deephist/raw-evidence",
+  "note": "Timers exclude assertion/digest/checkpoint work; censoring uses process wall time."
+}

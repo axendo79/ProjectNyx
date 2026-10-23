@@ -1,0 +1,4593 @@
+[
+  {
+    "projector": "0",
+    "case": "events/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/event_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/idempotency_key/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/idempotency_key/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/schema_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash",
+      "event_schema"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/schema_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/event_type/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/event_type/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/occurred_at/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/occurred_at/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/recorded_at/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash",
+      "recorded_at"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/recorded_at/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/source/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/source/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/source_class/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/source_class/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/origin_type/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash",
+      "event_schema"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/origin_type/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/payload_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/payload_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/entity_refs/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/entity_refs/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/prev_event_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/prev_event_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/event_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/event_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/event_id/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "events/event_id/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "event_schema",
+      "payload_hash",
+      "recorded_at"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/event_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "idempotency_key",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/payload_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/payload_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/canonical_entity_id/flip",
+    "changed": true,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/canonical_entity_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/ciphertext/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/ciphertext/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "idempotency_key",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/redacted/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/redacted/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/event_id/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "payloads/event_id/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "derived_progress/projector_version/flip",
+    "changed": true,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "derived_progress/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "derived_progress/log_position/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "derived_progress/log_position/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "derived_progress/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "derived_progress/event_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "derived_progress/projector_version/delete",
+    "changed": true,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "derived_progress/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/belief_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/belief_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/current_value/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/current_value/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/value_occurred_at/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/value_occurred_at/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/verification_state/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/verification_state/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/verifiability/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/verifiability/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/display_origin/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/display_origin/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/supporting_events/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/supporting_events/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/opposing_events/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/opposing_events/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/superseding_events/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/superseding_events/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/resolution_basis/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/resolution_basis/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/view_version_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/view_version_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/projected_as_of/flip",
+    "changed": true,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/projected_as_of/swap",
+    "changed": true,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/updated_at/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/updated_at/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/belief_id/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "resolved_beliefs/belief_id/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "entity_event_index/entity_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "entity_event_index/entity_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "entity_event_index/latest_event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "entity_event_index/latest_event_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "entity_event_index/latest_event_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "entity_event_index/latest_event_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "entity_event_index/updated_at/flip",
+    "changed": true,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "entity_event_index/updated_at/swap",
+    "changed": true,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "entity_event_index/entity_id/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "entity_event_index/entity_id/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "publication/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "freshness/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "freshness/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "legacy/idempotency_key/rehash",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "0",
+    "case": "legacy/schema_version/rehash",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "event_schema"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/event_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/idempotency_key/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/idempotency_key/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/schema_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "event_schema"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/schema_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/event_type/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/event_type/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/occurred_at/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/occurred_at/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/recorded_at/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "recorded_at"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/recorded_at/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/source/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/source/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/source_class/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/source_class/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/origin_type/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "event_schema"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/origin_type/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/payload_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/payload_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/entity_refs/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/entity_refs/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/prev_event_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/prev_event_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/event_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/event_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/event_id/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "events/event_id/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "event_schema",
+      "payload_hash",
+      "recorded_at"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/event_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "idempotency_key",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/payload_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/payload_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/canonical_entity_id/flip",
+    "changed": true,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/canonical_entity_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/ciphertext/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/ciphertext/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "idempotency_key",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/redacted/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/redacted/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/event_id/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "payloads/event_id/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "derived_progress/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "derived_progress/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "derived_progress/log_position/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "derived_progress/log_position/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "derived_progress/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "derived_progress/event_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "derived_progress/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "derived_progress/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_beliefs/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_beliefs/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_beliefs/belief_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_beliefs/belief_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_beliefs/content/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_beliefs/content/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_beliefs/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_beliefs/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "identity_event_index/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "identity_event_index/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "identity_event_index/subject_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "identity_event_index/subject_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "identity_event_index/latest_event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "identity_event_index/latest_event_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "identity_event_index/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "identity_event_index/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "belief_event_index/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "belief_event_index/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "belief_event_index/belief_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "belief_event_index/belief_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "belief_event_index/subject_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "belief_event_index/subject_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "belief_event_index/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "belief_event_index/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entities/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entities/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entities/subject_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entities/subject_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entities/content/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entities/content/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entities/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entities/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_mentions/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_mentions/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_mentions/mention_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_mentions/mention_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_mentions/content/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_mentions/content/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_mentions/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_mentions/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/mention_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/mention_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/content/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/content/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/link_state/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/link_state/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/entity_link_confidence/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/entity_link_confidence/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_entity_links/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_claim_candidates/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_claim_candidates/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_claim_candidates/claim_candidate_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_claim_candidates/claim_candidate_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_claim_candidates/content/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_claim_candidates/content/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_claim_candidates/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_claim_candidates/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_events/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_events/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_events/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_events/event_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_events/content/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_events/content/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_events/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "projected_events/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "publication/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "freshness/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "1",
+    "case": "freshness/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/event_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/idempotency_key/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/idempotency_key/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/schema_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "event_schema",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/schema_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/event_type/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/event_type/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/occurred_at/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/occurred_at/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/recorded_at/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage",
+      "recorded_at"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/recorded_at/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/source/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/source/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/source_class/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/source_class/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/origin_type/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "event_schema",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/origin_type/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/payload_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/payload_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/entity_refs/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/entity_refs/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/prev_event_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/prev_event_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/event_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/event_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/event_id/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "events/event_id/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "event_schema",
+      "payload_hash",
+      "recorded_at"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/event_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "idempotency_key",
+      "lineage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/payload_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/payload_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/canonical_entity_id/flip",
+    "changed": true,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/canonical_entity_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/ciphertext/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/ciphertext/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "idempotency_key",
+      "lineage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/redacted/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/redacted/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/event_id/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "payloads/event_id/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "derived_progress/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "derived_progress/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "derived_progress/log_position/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "derived_progress/log_position/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "derived_progress/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "derived_progress/event_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "derived_progress/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "derived_progress/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "projected_beliefs/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "projected_beliefs/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "projected_beliefs/belief_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "projected_beliefs/belief_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "projected_beliefs/content/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "projected_beliefs/content/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "projected_beliefs/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "projected_beliefs/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "identity_event_index/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "identity_event_index/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "identity_event_index/subject_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "identity_event_index/subject_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "identity_event_index/latest_event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "identity_event_index/latest_event_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "identity_event_index/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "identity_event_index/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "belief_event_index/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "belief_event_index/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "belief_event_index/belief_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "belief_event_index/belief_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "belief_event_index/subject_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "belief_event_index/subject_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "belief_event_index/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "belief_event_index/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_nodes/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_nodes/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_nodes/node_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_nodes/node_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_nodes/content/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_nodes/content/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_nodes/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_nodes/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_roots/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_roots/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_roots/kind/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_roots/kind/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_roots/root_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_roots/root_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_roots/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "committed_roots/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "publication/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "freshness/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "freshness/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "2",
+    "case": "nodes/branch/rehash",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/event_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/idempotency_key/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/idempotency_key/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/schema_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "event_schema",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/schema_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/event_type/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/event_type/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/occurred_at/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/occurred_at/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/recorded_at/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage",
+      "recorded_at"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/recorded_at/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/source/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/source/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "idempotency_key",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/source_class/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/source_class/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/origin_type/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "event_schema",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/origin_type/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/payload_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/payload_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/entity_refs/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/entity_refs/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/prev_event_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/prev_event_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/event_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/event_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "envelope_hash",
+      "lineage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/event_id/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "events/event_id/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "chain",
+      "coverage",
+      "event_schema",
+      "payload_hash",
+      "recorded_at"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/event_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "idempotency_key",
+      "lineage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/payload_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/payload_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/canonical_entity_id/flip",
+    "changed": true,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/canonical_entity_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/ciphertext/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/ciphertext/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "idempotency_key",
+      "lineage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/redacted/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/redacted/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/event_id/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "payloads/event_id/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "payload_hash"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "derived_progress/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "derived_progress/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "derived_progress/log_position/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "derived_progress/log_position/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "derived_progress/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "derived_progress/event_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "derived_progress/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "derived_progress/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "projected_beliefs/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "projected_beliefs/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "projected_beliefs/belief_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "projected_beliefs/belief_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "projected_beliefs/content/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "projected_beliefs/content/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "projected_beliefs/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "projected_beliefs/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "identity_event_index/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "identity_event_index/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "identity_event_index/subject_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "identity_event_index/subject_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "identity_event_index/latest_event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "identity_event_index/latest_event_id/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "identity_event_index/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "identity_event_index/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "belief_event_index/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "belief_event_index/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "belief_event_index/belief_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "belief_event_index/belief_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "belief_event_index/subject_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "belief_event_index/subject_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "belief_event_index/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "belief_event_index/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_nodes/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_nodes/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_nodes/node_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_nodes/node_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_nodes/content/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_nodes/content/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_nodes/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_nodes/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_roots/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_roots/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_roots/kind/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_roots/kind/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_roots/root_hash/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_roots/root_hash/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_roots/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "committed_roots/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/projector_version/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "relations"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/projector_version/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/target_candidate_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "relations"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/target_candidate_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "relations"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/event_id/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "relations"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/event_id/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "relations"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/relation/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "relations"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/relation/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "relations"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/log_position/flip",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "relations"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/log_position/swap",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "relations"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/projector_version/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "relations"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidate_relations/projector_version/duplicate",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "relations"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "publication/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "freshness/delete",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "freshness"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "freshness/swap",
+    "changed": false,
+    "baseline_ok": true,
+    "prototype_ok": true,
+    "checks": [],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "nodes/branch/rehash",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "merkle"
+    ],
+    "failures_equal": true
+  },
+  {
+    "projector": "3",
+    "case": "candidates/live_status/rehash",
+    "changed": true,
+    "baseline_ok": false,
+    "prototype_ok": false,
+    "checks": [
+      "coverage",
+      "relations"
+    ],
+    "failures_equal": true
+  }
+]

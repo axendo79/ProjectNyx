@@ -1,0 +1,49 @@
+         73553397 function calls (67071231 primitive calls) in 57.811 seconds
+
+   Ordered by: cumulative time
+   List reduced from 601 to 35 due to restriction <35>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.013    0.013   57.811   57.811 verify_store.py:781(verify_store)
+        1    0.003    0.003   57.757   57.757 verify_store.py:656(verify_connection)
+        1    1.031    1.031   56.972   56.972 verify_store.py:563(check_headers)
+     1507    0.130    0.000   49.715    0.033 verify_store.py:249(root)
+     1004    0.276    0.000   49.577    0.049 merkle.py:173(rebuild)
+1091120/252001    2.916    0.000   49.486    0.000 merkle.py:119(put)
+  1336663    2.826    0.000   23.855    0.000 merkle.py:69(_create)
+  2948607    1.397    0.000   21.967    0.000 hashing.py:24(canonical_json)
+  2948607    4.159    0.000   20.570    0.000 __init__.py:185(dumps)
+  1085658    2.264    0.000   20.223    0.000 merkle.py:84(_branch)
+   251005    0.920    0.000   16.612    0.000 merkle.py:77(_leaf)
+  2948607    2.836    0.000   15.571    0.000 encoder.py:185(encode)
+  1605475   11.217    0.000   11.217    0.000 encoder.py:207(iterencode)
+  1343129    1.622    0.000    9.740    0.000 merkle.py:55(route)
+  2692599    2.340    0.000    8.369    0.000 hashing.py:65(_sha256_hex)
+6557445/1009495    4.531    0.000    5.792    0.000 verify_store.py:337(references)
+  2692599    3.258    0.000    3.258    0.000 {built-in method _hashlib.openssl_sha256}
+  1336663    2.742    0.000    3.118    0.000 <string>:2(__init__)
+   261814    0.280    0.000    2.996    0.000 __init__.py:304(loads)
+   261814    0.466    0.000    2.625    0.000 decoder.py:340(decode)
+ 16563419    2.292    0.000    2.292    0.000 {built-in method builtins.isinstance}
+  2692599    1.963    0.000    1.963    0.000 {method 'hexdigest' of '_hashlib.HASH' objects}
+   261814    1.612    0.000    1.612    0.000 decoder.py:351(raw_decode)
+   839119    0.884    0.000    1.318    0.000 merkle.py:93(_child)
+  2948607    0.840    0.000    0.840    0.000 encoder.py:105(__init__)
+  2693606    0.808    0.000    0.808    0.000 {method 'encode' of 'str' objects}
+  1956001    0.549    0.000    0.549    0.000 merkle.py:61(prefix)
+        1    0.002    0.002    0.473    0.473 verify_store.py:266(load_projection)
+  1959460    0.405    0.000    0.405    0.000 merkle.py:65(direction)
+   523628    0.391    0.000    0.391    0.000 {method 'match' of 're.Pattern' objects}
+  1085658    0.376    0.000    0.376    0.000 merkle.py:28(<lambda>)
+  1606716    0.368    0.000    0.368    0.000 {method 'join' of 'str' objects}
+        1    0.044    0.044    0.365    0.365 verify_store.py:158(__init__)
+  1343132    0.334    0.000    0.334    0.000 {built-in method _json.encode_basestring}
+  2173817    0.238    0.000    0.238    0.000 merkle.py:46(digest)
+
+
+   Ordered by: cumulative time
+   List reduced from 601 to 1 due to restriction <'rebuild'>
+
+Function                was called by...
+                            ncalls  tottime  cumtime
+merkle.py:173(rebuild)  <-    1004    0.276   49.577  verify_store.py:249(root)

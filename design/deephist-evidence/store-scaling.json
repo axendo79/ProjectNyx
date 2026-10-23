@@ -1,0 +1,91 @@
+{
+  "python": "3.14.2",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "workload": "one mention + five observations per subject; one property; 200-byte values",
+  "content_bytes": "UTF-8 committed_nodes.content only; retained nodes included; zero for 1",
+  "file_bytes": "main SQLite file after TRUNCATE checkpoint and writer close",
+  "samples": [
+    {
+      "projector_version": "2",
+      "requested_events": 250,
+      "events": 252,
+      "subjects": 42,
+      "ingestion_seconds": 4.785500400001183,
+      "verifier_seconds": 0.5001427000388503,
+      "committed_nodes": 6332,
+      "node_content_bytes": 2216560,
+      "content_bytes_per_event": 8795.873015873016,
+      "file_bytes": 4018176,
+      "file_bytes_per_event": 15945.142857142857,
+      "verified": true
+    },
+    {
+      "projector_version": "2",
+      "requested_events": 500,
+      "events": 498,
+      "subjects": 83,
+      "ingestion_seconds": 3.711887199897319,
+      "verifier_seconds": 1.104367799940519,
+      "committed_nodes": 14135,
+      "node_content_bytes": 4820004,
+      "content_bytes_per_event": 9678.722891566265,
+      "file_bytes": 8486912,
+      "file_bytes_per_event": 17041.991967871487,
+      "verified": true
+    },
+    {
+      "projector_version": "2",
+      "requested_events": 1000,
+      "events": 1002,
+      "subjects": 167,
+      "ingestion_seconds": 10.127825999981724,
+      "verifier_seconds": 2.8606673000613227,
+      "committed_nodes": 31809,
+      "node_content_bytes": 10611450,
+      "content_bytes_per_event": 10590.269461077844,
+      "file_bytes": 18448384,
+      "file_bytes_per_event": 18411.560878243512,
+      "verified": true
+    },
+    {
+      "projector_version": "2",
+      "requested_events": 2000,
+      "events": 1998,
+      "subjects": 333,
+      "ingestion_seconds": 19.804002900025807,
+      "verifier_seconds": 6.8191508000018075,
+      "committed_nodes": 70201,
+      "node_content_bytes": 22996611,
+      "content_bytes_per_event": 11509.815315315316,
+      "file_bytes": 39686144,
+      "file_bytes_per_event": 19862.934934934936,
+      "verified": true
+    }
+  ],
+  "skipped": [
+    {
+      "projector_version": "1",
+      "requested_events": 250,
+      "events": 252,
+      "reason": "explicit projector-1 skip/cap"
+    },
+    {
+      "projector_version": "1",
+      "requested_events": 500,
+      "events": 498,
+      "reason": "explicit projector-1 skip/cap"
+    },
+    {
+      "projector_version": "1",
+      "requested_events": 1000,
+      "events": 1002,
+      "reason": "explicit projector-1 skip/cap"
+    },
+    {
+      "projector_version": "1",
+      "requested_events": 2000,
+      "events": 1998,
+      "reason": "explicit projector-1 skip/cap"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+         46249511 function calls (44607629 primitive calls) in 30.036 seconds
+
+   Ordered by: cumulative time
+   List reduced from 140 to 35 due to restriction <35>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      128    0.000    0.000   29.800    0.233 forward.py:65(reduce)
+      128    0.006    0.000   29.800    0.233 forward.py:71(reduce_transition)
+      128    0.423    0.003   28.863    0.225 transition_dependencies.py:9(check_transition_dependencies)
+      128    0.028    0.000   28.336    0.221 committed.py:118(records)
+     1920    0.081    0.000   28.309    0.015 {built-in method builtins.sorted}
+1754378/132032    0.704    0.000   28.228    0.000 merkle.py:162(items)
+   283092    0.340    0.000   26.732    0.000 merkle.py:93(_child)
+   285932    0.244    0.000   26.330    0.000 merkle.py:39(resolve)
+   285932    0.894    0.000   26.086    0.000 committed_storage.py:40(load)
+   266802    1.922    0.000   19.668    0.000 merkle.py:226(decode)
+       64    0.002    0.000   15.507    0.242 storage.py:953(materialize_pending)
+       64    0.000    0.000   15.030    0.235 storage.py:314(safe_append_event)
+       64    0.002    0.000   15.020    0.235 storage.py:486(_append_stage_two)
+       64    0.002    0.000   14.833    0.232 storage.py:495(_append_stage_two_locked)
+   565750    0.295    0.000    6.991    0.000 hashing.py:24(canonical_json)
+   565750    0.909    0.000    6.696    0.000 __init__.py:185(dumps)
+   403464    3.144    0.000    5.752    0.000 merkle.py:50(valid_hash)
+   565750    0.635    0.000    5.607    0.000 encoder.py:185(encode)
+   536268    0.479    0.000    5.048    0.000 __init__.py:304(loads)
+   419276    4.665    0.000    4.665    0.000 encoder.py:207(iterencode)
+   536268    0.801    0.000    4.401    0.000 decoder.py:340(decode)
+   401736    0.163    0.000    3.947    0.000 merkle.py:239(<genexpr>)
+   273463    3.855    0.000    3.855    0.000 {method 'execute' of 'sqlite3.Connection' objects}
+   536268    2.798    0.000    2.798    0.000 decoder.py:351(raw_decode)
+ 26225160    2.499    0.000    2.499    0.000 merkle.py:52(<genexpr>)
+   429417    0.398    0.000    1.448    0.000 hashing.py:65(_sha256_hex)
+   146090    0.188    0.000    1.072    0.000 merkle.py:55(route)
+   429417    0.573    0.000    0.573    0.000 {built-in method _hashlib.openssl_sha256}
+  1072536    0.546    0.000    0.546    0.000 {method 'match' of 're.Pattern' objects}
+     2304    0.002    0.000    0.533    0.000 merkle.py:114(get)
+     2432    0.014    0.000    0.520    0.000 merkle.py:102(get_leaf)
+      192    0.503    0.003    0.503    0.003 {method '__exit__' of 'sqlite3.Connection' objects}
+     1152    0.001    0.000    0.467    0.000 committed.py:113(record)
+   269298    0.443    0.000    0.443    0.000 {method 'fetchone' of 'sqlite3.Cursor' objects}
+  2482908    0.367    0.000    0.367    0.000 {built-in method builtins.isinstance}

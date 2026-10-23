@@ -1,0 +1,11 @@
+Python 3.14.2 | Windows-11-10.0.26200-SP0
+Content = retained node UTF-8 bytes; file = checkpointed database bytes.
+projector events ingest_s verify_s nodes content_bytes content_B/event file_bytes file_B/event
+1 252 SKIPPED (explicit projector-1 skip/cap)
+1 498 SKIPPED (explicit projector-1 skip/cap)
+1 1002 SKIPPED (explicit projector-1 skip/cap)
+1 1998 SKIPPED (explicit projector-1 skip/cap)
+2 252 4.785500 0.500143 6332 2216560 8795.87 4018176 15945.14
+2 498 3.711887 1.104368 14135 4820004 9678.72 8486912 17041.99
+2 1002 10.127826 2.860667 31809 10611450 10590.27 18448384 18411.56
+2 1998 19.804003 6.819151 70201 22996611 11509.82 39686144 19862.93

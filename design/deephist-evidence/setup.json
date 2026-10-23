@@ -1,0 +1,41 @@
+{
+  "task_class": "C: investigation; experiments only, not for merge",
+  "branch": "sol/deephist-investigation-2026-10-22",
+  "base": "89e3ca875e2bcb098d5ec7679c9c428dbac1ac41",
+  "gaps_source": "origin/docs/state-refresh-2026-10-22",
+  "gaps_source_commit": "2049daf9092622340e3829711f55912bbcb9d559",
+  "pinned_checkout": "D:\\ProjectNyx",
+  "pinned_head_before_and_after_setup": "5acc188a96de60bbed51534b48156214101a13bb",
+  "pinned_porcelain_before_and_after_setup": "",
+  "worktree": "D:\\ProjectNyx-wt-deephist-2026-10-22",
+  "machine": {
+    "manufacturer": "LENOVO",
+    "model": "83LY",
+    "cpu": "Intel(R) Core(TM) i7-14700HX",
+    "cores": 20,
+    "logical_processors": 28,
+    "total_physical_memory_bytes": 34070192128
+  },
+  "setup_commands": [
+    "git -C D:\\ProjectNyx rev-parse HEAD",
+    "git -C D:\\ProjectNyx status --porcelain=v1",
+    "git -C D:\\ProjectNyx fetch origin",
+    "git -C D:\\ProjectNyx rev-parse origin/main",
+    "git -C D:\\ProjectNyx worktree add -b sol/deephist-investigation-2026-10-22 D:\\ProjectNyx-wt-deephist-2026-10-22 origin/main",
+    "py -3.14 -m venv .venv",
+    ".\\.venv\\Scripts\\python.exe -m pip install -e .",
+    ".\\.venv\\Scripts\\python.exe -c \"import sys, nyx; from pathlib import Path; print(sys.version); print(nyx.__file__); assert Path(nyx.__file__).resolve().is_relative_to(Path.cwd())\"",
+    ".\\.venv\\Scripts\\python.exe scripts/check_docs.py --status",
+    "git show origin/docs/state-refresh-2026-10-22:GAPS.md"
+  ],
+  "tests_dependency_note": "No pytest download: PYTHONPATH appends D:\\ProjectNyx\\.venv\\Lib\\site-packages read-only; local src and design precede it. PYTHONDONTWRITEBYTECODE=1. nyx import was confirmed in the new worktree before any test.",
+  "initial_harness_run": "14 failed, 2246 passed, 9 skipped in 573.06s: all 14 were missing required beliefs argument in the new index-test Snapshot constructor; corrected and all 26 investigation tests passed in 21.29s. Full corrected baseline: 2260 passed, 9 skipped in 436.45s.",
+  "skipped_requested_operations": [],
+  "pinned_head_after_experiments": "5acc188a96de60bbed51534b48156214101a13bb",
+  "pinned_porcelain_after_experiments": "",
+  "pinned_status_checked_at": "2026-10-22T21:52:01.907893-04:00",
+  "completed_jobs": 60,
+  "censored_jobs": 2,
+  "full_suite_passed_each": 2260,
+  "full_suite_skipped_each": 9
+}
