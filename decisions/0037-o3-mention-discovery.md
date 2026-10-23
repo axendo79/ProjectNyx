@@ -1,16 +1,20 @@
 # ADR 0037: O3 Public Mention Discovery in a Same-Database Derived Index
 
-Status: Proposed - draft for review; not ratified and does not authorize implementation
+Status: Accepted — ratified by the maintainer, 2026-10-22
 
 Date: 2026-10-14
 
-Implementation: None. No listing API, search index, schema migration, test or usage recorder is implemented by this Proposed ADR.
+Implementation: None
 
-Supersedes on acceptance: Nothing yet. Proposed database compatibility amendments are limited by the shared V6 contract. Frozen projector semantics, hashes and existing APIs remain unchanged.
+No listing API, search index, schema migration, test or usage recorder is implemented by this accepted ADR.
 
-Related: [O3 worksheet](../design/2026-10-14-o3-listing-search-worksheet.md), Proposed [ADR 0036](0036-strict-payload-keys.md), [ADR 0010](0010-projection-parameters.md), [ADR 0011](0011-database-schema-versioning.md), [ADR 0012](0012-whole-view-equality.md), [ADR 0013](0013-cross-belief-identity-semantics.md), [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md), [ADR 0015](0015-candidate-scoped-verification.md), [ADR 0019](0019-identity-bootstrap.md), [ADR 0021](0021-bootstrap-link-treatment.md), [ADR 0022](0022-belief-container-uniqueness.md), [ADR 0023](0023-stage-two-contract.md), [ADR 0024](0024-no-authoritative-head.md), [ADR 0025](0025-incremental-result-commitment.md), [ADR 0026](0026-usage-is-not-evidence.md), [ADR 0030](0030-sole-writer-and-positional-fields.md), [ADR 0031](0031-source-report-claims.md), [ADR 0032](0032-explicit-stage-two-projector-selection.md), [ADR 0034](0034-forward-state-transitions.md), [ADR 0035](0035-adr-0034-implementation-boundaries.md).
+Supersedes: Nothing directly. Its database compatibility amendments are carried by the shared V6 contract in [ADR 0036](0036-strict-payload-keys.md#shared-version-boundary). Frozen projector semantics, hashes and existing APIs remain unchanged.
 
-Source design: [Finalized O3 design record](../design/2026-10-14-adr-draft-o3-discovery.md). The recorded choices are confirmed for Proposed review only.
+Related: [O3 worksheet](../design/2026-10-14-o3-listing-search-worksheet.md), [ADR 0036](0036-strict-payload-keys.md), [ADR 0010](0010-projection-parameters.md), [ADR 0011](0011-database-schema-versioning.md), [ADR 0012](0012-whole-view-equality.md), [ADR 0013](0013-cross-belief-identity-semantics.md), [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md), [ADR 0015](0015-candidate-scoped-verification.md), [ADR 0019](0019-identity-bootstrap.md), [ADR 0021](0021-bootstrap-link-treatment.md), [ADR 0022](0022-belief-container-uniqueness.md), [ADR 0023](0023-stage-two-contract.md), [ADR 0024](0024-no-authoritative-head.md), [ADR 0025](0025-incremental-result-commitment.md), [ADR 0026](0026-usage-is-not-evidence.md), [ADR 0030](0030-sole-writer-and-positional-fields.md), [ADR 0031](0031-source-report-claims.md), [ADR 0032](0032-explicit-stage-two-projector-selection.md), [ADR 0034](0034-forward-state-transitions.md), [ADR 0035](0035-adr-0034-implementation-boundaries.md).
+
+Source design: [Finalized O3 design record](../design/2026-10-14-adr-draft-o3-discovery.md). The recorded choices are accepted.
+
+Ratification: Ratified 2026-10-22 by the maintainer: O1–O12, the same shared V1–V9 bundle referenced from [ADR 0036](0036-strict-payload-keys.md#shared-version-boundary) and acceptance cases A1–A12, as written. Ratified jointly with ADR 0036. Implementation requires separate maintainer authorization and proceeds per the [25-slice plan](../design/2026-10-14-adr-0036-0037-implementation-plan.md) in dependency order.
 
 ## Context
 
@@ -27,15 +31,15 @@ for Proposed drafting only: a public same-database index published with the
 complete derived delta. In the recorded follow-up on the same date, Josh answered
 all seven remaining O3 questions with the recommended answers: **Yes, Text, Yes,
 All, Label, Yes (100/1,000), Yes**. The recorded answers below confirm the drafting
-choices. MUST clauses remain a Proposed contract, not ratification or authority
-to code.
+choices. MUST clauses are accepted requirements; implementation requires separate
+maintainer authorization.
 
 ## Maintainer rulings recorded 2026-10-14
 
 1. **R-O1 — Total order and stable pagination:** include an explicit tie-breaker
    and define continuation. O5-O6; acceptance A4.
 2. **R-O2 — Projection changes:** invalidate cursors or retain a real snapshot;
-   never silently skip or duplicate. The confirmed proposal restarts on changed publication,
+   never silently skip or duplicate. The accepted contract restarts on changed publication,
    with no retained snapshots. O6; A4/A5.
 3. **R-O3 — Unavailable versus empty:** missing index is unavailable; a valid
    zero-match search is empty. O3/O7/O9; A3/A7.
@@ -44,7 +48,7 @@ to code.
    O8-O10 and shared V5; A6/A7.
 5. **R-O5 — Page limits:** the initial ruling left 100 default and 1,000 maximum
    subject to confirmation. Follow-up O3 answer 6 confirms both limits for the
-   Proposed contract. O5 and conflict Q12; acceptance A3.
+   accepted contract. O5 and conflict Q12; acceptance A3.
 6. **R-O6 — Preserve every matching mention:** no canonical entity, deduplication
    by text/value or truth selection. O1-O4; A1/A2/A8.
 7. **R-O7 — No read side effects:** no usage/exposure records or other search
@@ -56,9 +60,9 @@ to code.
 ## Shared version boundary by reference
 
 Adopt the **single shared section V1-V9** in the
-Proposed [ADR 0036](0036-strict-payload-keys.md#shared-version-boundary).
-This is the same confirmed proposed contract S1 references there, not a second version.
-It separates the index format from belief-projector semantics, proposes schema 6
+accepted [ADR 0036](0036-strict-payload-keys.md#shared-version-boundary).
+This is the same accepted contract S1 references there, not a second version.
+It separates the index format from belief-projector semantics, specifies schema 6
 and isolated "2"/"3"/"4" rows, and specifies ingestion, enrollment, atomic
 publication, mixed-log refusal, replay, working-copy migration and recovery.
 
@@ -67,11 +71,10 @@ strict-validates old envelopes. Strict "4" operates with O3 disabled; enrolled
 "4" publishes strict projection and index together. O3 under "2"/"3" is
 unavailable after a strict-schema append under V4; old rows survive, and "4"
 handles the mixed history. Frozen replay may refuse unknown formats even beyond
-an earlier cutoff. Both proposals require ratification of the single proposed schema-6 layout
-before implementation; these identifiers are confirmed drafting choices, not
-runtime support.
+an earlier cutoff. Both ADRs ratify the single schema-6 layout; implementation requires separate
+maintainer authorization. These identifiers are accepted choices, not runtime support.
 
-## Proposed discovery contract
+## Accepted discovery contract
 
 ### O1. Corpus, identity and evidence boundary
 
@@ -98,7 +101,7 @@ added. Discovery is an index of mentions and associations, never a truth mechani
 
 ### O2. Operations and scope
 
-Proposed new read-only Python operation shapes, with keyword-only arguments:
+Accepted new read-only Python operation shapes, with keyword-only arguments:
 
 | Operation | Required inputs beyond connection | Optional inputs |
 |---|---|---|
@@ -110,7 +113,7 @@ Proposed new read-only Python operation shapes, with keyword-only arguments:
 
 There is no projector default. Support "2"/"3", plus "4" only with the shared
 strict bundle; "0"/"1"/unknown selection refuses before work. Names above are
-proposed API contract. Any new CLI mirrors these semantics, requires
+accepted API contract. Any new CLI mirrors these semantics, requires
 `--projector-version`, and keeps the existing inspection CLI's defaults intact.
 
 A supplied scope ID/property must be a nonempty string in its declared scope;
@@ -206,7 +209,7 @@ bounds response size, not a universal latency, bytes or examined-row guarantee.
 
 ### O6. Cursor binding and publication change
 
-Use keyset continuation, never offsets. Proposed cursor encoding is unpadded
+Use keyset continuation, never offsets. Accepted cursor encoding is unpadded
 base64url of canonical JSON with exactly `format`, `query`, `genesis`, `prefix`
 and `last_key`. Require canonical encoding on decode (including lowercase hex
 keys); refuse equivalent but differently encoded tokens. `genesis` has exactly
@@ -282,7 +285,7 @@ Responses other than `ok` never carry a purported complete successful item page.
 A format/prefix marker establishes publication association, not completeness
 against arbitrary corruption. Query checks validate metadata and returned rows;
 explicit exhaustive replay verification (O10) detects omitted/extra rows even
-when metadata looks intact. This proposal claims neither per-query full-log
+when metadata looks intact. This ADR claims neither per-query full-log
 verification nor tamper-proof indexes. Detected invalidity makes readiness unusable
 until explicit reconstruction; no query writes an invalidation marker.
 
@@ -295,7 +298,7 @@ an inner join through beliefs or copy candidate values/snippets/source text.
 All records come from the complete replay snapshot, not incomplete
 `projected_mentions` under "2"/"3". Deltas incrementally update the same function.
 
-Propose the following **schema-6 additions**, alongside V6's precise committed
+Specify the following **schema-6 additions**, alongside V6's precise committed
 constraint amendment. This is reviewable prospective DDL, not shipped schema.
 Columns holding ID keys/text bytes are BLOBs containing exact UTF-8; logical
 validation independently checks the associated strings and source records.
@@ -389,7 +392,7 @@ a discovery fact or alteration of envelope bytes/triggers/hash material.
 No build timestamp, random generation ID, read count or clock enters logical
 membership. Disabling an index removes only its own ready/row set atomically.
 Retained tree nodes and all old version rows stay untouched. Exact addition
-layout and identifiers are confirmed for drafting with V6; ordinary opens never install
+layout and identifiers are accepted with V6; ordinary opens never install
 these tables or index.
 
 ### O9. Publication, explicit migration and history
@@ -424,7 +427,7 @@ All failure states/source preservation/committed-table constraints follow V6/V7.
 On schema 6, replay rebuild atomically replaces only the selected projection/index
 pair, ignoring damaged old rows. Preserve other versions and no checkpoint shortcut.
 
-Historical discovery is a separately named explicit operation, proposed
+Historical discovery is a separately named explicit operation, accepted as
 `replay_discovery(raw_log, *, as_of, projector_version, query, cursor=None)`.
 It validates the full raw input and applies the inclusive recording-time cutoff,
 then enumerates O8 in memory. It never queries today's index for an earlier answer
@@ -442,7 +445,7 @@ return restart_required. An append beyond the cutoff may change tip/staleness wh
 the same resolved prefix remains valid. Live publication alone does not invalidate
 a replay cursor. Never accept live/replay cursors interchangeably or claim to retain
 an old index snapshot. Frozen full-log refusals remain V5; "4" handles supported
-mixed historical replay. Follow-up O3 answer 7 confirms these proposed mechanics.
+mixed historical replay. Follow-up O3 answer 7 confirms these accepted mechanics.
 
 ### O10. Determinism, completeness and independent verification
 
@@ -478,7 +481,7 @@ Restore preserves bundle inputs, validates schema/anchors/rows and proves
 rebuild equivalence on an isolated working copy; never auto-enroll from query code.
 
 ADR 0026 excludes usage from evidence. Proposed [ADR 0029](0029-dream-emission-semantics.md)
-remains unratified; this draft defines no retrieval/activation/Dream logging.
+remains unratified; this ADR defines no retrieval/activation/Dream logging.
 
 ### O12. Complexity, limits and scope
 
@@ -501,7 +504,7 @@ This table retains each original recommendation and records the 2026-10-14
 follow-up. **Consistent** means aligned with the ruling/accepted constraints;
 **Resolved for drafting** closes a former Open choice. **Conflict resolved for
 drafting** records a difference and the maintainer's chosen resolution. These
-are confirmed Proposed choices, not ADR ratification.
+choices are accepted by the separate ratification recorded above.
 
 | Q | Worksheet recommendation | Classification and recorded resolution |
 |---|---|---|
@@ -527,10 +530,10 @@ are confirmed Proposed choices, not ADR ratification.
 
 The Q2 scope and Q9 ordering tensions are resolved by explicit follow-up answers,
 not by inferring approval from the selection of option B. All former Open choices
-are answered for drafting. The selected V1-V9/O5 design remains unratified.
+are answered for drafting. The selected V1-V9/O5 design is ratified.
 
 All 12 payload worksheet answers are separately classified in the
-Proposed [ADR 0036 conflict review](0036-strict-payload-keys.md#conflict-review-of-all-12-payload-worksheet-answers).
+Accepted [ADR 0036 conflict review](0036-strict-payload-keys.md#conflict-review-of-all-12-payload-worksheet-answers).
 Together the reviews cover all 31 worksheet questions. Every formerly unapproved
 mechanic is now tied to the recorded follow-up package or a binding initial rule;
 other Proposed contracts are not approved by association.
@@ -558,7 +561,7 @@ oracles must not use the new index or production query to prove themselves.
 
 ## Consequences and alternatives
 
-The proposal supplies public discovery without making an index authoritative.
+This ADR supplies public discovery without making an index authoritative.
 Option B's transaction gives one complete published prefix; crashes between Layer A
 and publication are visible as lag. Working-copy schema adoption and exhaustive
 replay verification add operational work. Restart pagination can require repeated
@@ -572,10 +575,10 @@ the single referenced V1-V9 section separates those versions while making joint
 "4" publication explicit.
 
 All seven remaining O3 drafting questions are answered. Before implementation
-the maintainer must ratify this contract and shared bundle and commit the
+the maintainer must separately authorize implementation and commit the
 numbered authority records through
 [AGENTS.md](../AGENTS.md#adr-commit-protocol). Separate implementation and
-maintainer completion-marker commits follow. Recording this Proposed ADR closes
+maintainer completion-marker commits follow. Recording this accepted ADR closes
 no gap and marks no implementation complete.
 
 ## Recorded maintainer answers
@@ -593,5 +596,5 @@ These are the seven remaining O3 questions, now answered:
 7. **Yes** - approve O6-O12's restart cursors, explicit historical replay, enrollment/recovery, read-only/copy and verification mechanics.
 
 No unanswered maintainer drafting questions remain in this scope. This ADR
-remains Proposed and unratified; the follow-up authorizes preparation of
-Proposed ADR files only, not implementation or acceptance of other Proposed ADRs.
+is accepted; the 2026-10-14 follow-up authorized drafting only, not implementation
+or acceptance of other Proposed ADRs.
