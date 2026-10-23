@@ -1,0 +1,35 @@
+[
+  {
+    "seed": 0,
+    "prefixes_equal": 24,
+    "kinds": {
+      "entity_mention_recorded": 3,
+      "observation_recorded": 6,
+      "correction_appended": 5,
+      "candidate_replaced": 5,
+      "candidate_expired": 5
+    }
+  },
+  {
+    "seed": 17,
+    "prefixes_equal": 24,
+    "kinds": {
+      "entity_mention_recorded": 3,
+      "observation_recorded": 6,
+      "correction_appended": 5,
+      "candidate_replaced": 5,
+      "candidate_expired": 5
+    }
+  },
+  {
+    "seed": 902467,
+    "prefixes_equal": 24,
+    "kinds": {
+      "entity_mention_recorded": 3,
+      "observation_recorded": 6,
+      "correction_appended": 5,
+      "candidate_replaced": 5,
+      "candidate_expired": 5
+    }
+  }
+]

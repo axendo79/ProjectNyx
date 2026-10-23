@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "db": "scratch/deephist/concentrated-2-250.sqlite",
+  "projector": "2",
+  "checked": {
+    "envelope_hash": 250,
+    "event_schema": 750,
+    "chain": 250,
+    "payload_hash": 500,
+    "idempotency_key": 250,
+    "recorded_at": 250,
+    "coverage": 191751,
+    "freshness": 6,
+    "merkle": 80033,
+    "lineage": 749,
+    "relations": 0
+  },
+  "failures": [],
+  "unchecked": [
+    {
+      "check": "coverage",
+      "location": "projected_as_of",
+      "message": "evaluation-only time is not compared; no shared evaluation time was requested"
+    }
+  ],
+  "pending": [],
+  "event_count": 250,
+  "merkle_inventory": {
+    "retained_nodes": 4133,
+    "distinct_roots_rebuilt": 504,
+    "lineage_headers": 250
+  },
+  "freshness": {
+    "state": "current",
+    "applied_position": 250,
+    "append_position": 250,
+    "unpublished_events": 0
+  }
+}
