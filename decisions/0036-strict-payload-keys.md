@@ -1,16 +1,20 @@
 # ADR 0036: Strict Payload Keys Under a New Explicit Projector
 
-Status: Proposed - draft for review; not ratified and does not authorize implementation
+Status: Accepted — ratified by the maintainer, 2026-10-22
 
 Date: 2026-10-14
 
-Implementation: None. Proposed ADR only; no parser, projector, schema, diagnostic or migration is implemented by this file.
+Implementation: None
 
-Supersedes on acceptance: Nothing yet. Proposed additive envelope/projector dispatch and database compatibility amendments are enumerated below. No frozen projector is tightened.
+Accepted ADR only; no parser, projector, schema, diagnostic or migration is implemented by this file.
 
-Related: Proposed [ADR 0037](0037-o3-mention-discovery.md), [payload worksheet](../design/2026-10-14-duplicate-key-payloads-worksheet.md), [ADR 0002](0002-payload-stored-plaintext-in-v0.md), [ADR 0003](0003-genesis-sentinels-and-hash-material-delimiters.md), [ADR 0007](0007-payloads-keyed-by-event-id-not-payload-hash.md), [ADR 0010](0010-projection-parameters.md), [ADR 0011](0011-database-schema-versioning.md), [ADR 0012](0012-whole-view-equality.md), [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md), [ADR 0015](0015-candidate-scoped-verification.md), [ADR 0023](0023-stage-two-contract.md), [ADR 0024](0024-no-authoritative-head.md), [ADR 0025](0025-incremental-result-commitment.md), [ADR 0026](0026-usage-is-not-evidence.md), [ADR 0030](0030-sole-writer-and-positional-fields.md), [ADR 0031](0031-source-report-claims.md), [ADR 0032](0032-explicit-stage-two-projector-selection.md), [ADR 0034](0034-forward-state-transitions.md), [ADR 0035](0035-adr-0034-implementation-boundaries.md).
+Supersedes: In part, [ADR 0035](0035-adr-0034-implementation-boundaries.md) section 1, only to admit database schema 6, select fresh schema 6 and define explicit working-copy migration (V6). Additive envelope/projector dispatch and database compatibility amendments are enumerated below. No frozen projector is tightened.
 
-Source design: [Finalized strict-payload design record](../design/2026-10-14-adr-draft-strict-payload-keys.md). The recorded choices are confirmed for Proposed review only.
+Related: [ADR 0037](0037-o3-mention-discovery.md), [payload worksheet](../design/2026-10-14-duplicate-key-payloads-worksheet.md), [ADR 0002](0002-payload-stored-plaintext-in-v0.md), [ADR 0003](0003-genesis-sentinels-and-hash-material-delimiters.md), [ADR 0007](0007-payloads-keyed-by-event-id-not-payload-hash.md), [ADR 0010](0010-projection-parameters.md), [ADR 0011](0011-database-schema-versioning.md), [ADR 0012](0012-whole-view-equality.md), [ADR 0014](0014-cross-belief-reducer-and-hash-lineage.md), [ADR 0015](0015-candidate-scoped-verification.md), [ADR 0023](0023-stage-two-contract.md), [ADR 0024](0024-no-authoritative-head.md), [ADR 0025](0025-incremental-result-commitment.md), [ADR 0026](0026-usage-is-not-evidence.md), [ADR 0030](0030-sole-writer-and-positional-fields.md), [ADR 0031](0031-source-report-claims.md), [ADR 0032](0032-explicit-stage-two-projector-selection.md), [ADR 0034](0034-forward-state-transitions.md), [ADR 0035](0035-adr-0034-implementation-boundaries.md).
+
+Source design: [Finalized strict-payload design record](../design/2026-10-14-adr-draft-strict-payload-keys.md). The recorded choices are accepted.
+
+Ratification: Ratified 2026-10-22 by the maintainer: S1–S8, the shared V1–V9 bundle and acceptance cases T1–T10, as written. Ratified jointly with [ADR 0037](0037-o3-mention-discovery.md), on which the V1–V9 bundle depends. Implementation requires separate maintainer authorization and proceeds per the [25-slice plan](../design/2026-10-14-adr-0036-0037-implementation-plan.md) in dependency order.
 
 ## Context
 
@@ -21,13 +25,13 @@ replay checks. Last occurrence wins under the shipped decoder. This is parser
 information loss, not a hash collision or a demonstrated breach of the accepted
 canonical-content commitment.
 
-This draft transcribes Josh's binding-for-drafting ruling in
+This ADR transcribes Josh's binding-for-drafting ruling in
 `D:\ProjectNyx\scratch\nyx-ruling-2026-10-14-c-b.md`, dated 2026-10-14. It selects
 worksheet option C and grants drafting authority only. In the recorded follow-up
 on the same date, Josh answered all five remaining strict-payload questions with
 the recommended answers: **Yes, Permissive, Yes, Yes, Yes**. The recorded answers
 below confirm the drafting choices, not ADR ratification or implementation. MUST
-clauses remain prospective. Historical text and interpretation stay protected.
+clauses are accepted requirements. Historical text and interpretation stay protected.
 
 ## Maintainer rulings recorded 2026-10-14
 
@@ -46,16 +50,16 @@ clauses remain prospective. Historical text and interpretation stay protected.
    resolve the O3/projector boundary and review every worksheet answer without
    implied approval. S3-S8/V1-V9, conflict review, T2-T10.
 
-## Proposed contract
+## Accepted contract
 
 ### S1. Recorded profile and explicit selection
 
-The confirmed proposed contract uses a new plaintext profile selected by recorded envelope
+The accepted contract uses a new plaintext profile selected by recorded envelope
 `schema_version = "1"` and explicitly selected `projector_version = "4"`.
-These identifiers are **confirmed for this Proposed contract**, not shipped or ratified.
+These identifiers are **accepted for this contract**, not shipped.
 Today's envelope version is `"0"`, distinct from database schema 4/5.
 [Shared version boundary](#shared-version-boundary) supplies the single V1-V9
-contract referenced by both ADR drafts.
+contract referenced by both accepted ADRs.
 
 Every new selector requires `projector_version`, without a default, environment
 inference or fallback. New command parsers require `--projector-version`.
@@ -134,7 +138,7 @@ Use an `IntegrityError` subtype with reason `duplicate_payload_key`, the decoded
 repeated key and an unambiguous object path: a sequence of decoded string names
 and integer array indexes, empty at root. Report the second occurrence in a
 deterministic left-to-right traversal, without entire payload values. The subtype
-name is an implementation detail; reason/path meanings are proposed API contract.
+name is an implementation detail; reason/path meanings are accepted API contract.
 Malformed JSON, unsupported profile, hash mismatch and deferred semantics remain
 distinguishable failures. Syntax may fail before key checking on invalid JSON;
 syntactically valid duplicate-bearing JSON MUST yield the duplicate reason.
@@ -157,7 +161,7 @@ A committed retry is retrieval, not new admission. Verify the stored pair under
 its recorded profile and compare every ADR 0030 caller-owned semantic field,
 including schema, exact ciphertext and source.config. Exact old-profile retries
 return the original pair under their original supported writer contract.
-The confirmed proposed contract also permits "4" to return an exact committed schema-"0" pair,
+The accepted contract also permits "4" to return an exact committed schema-"0" pair,
 using old decoding solely to identify/verify that record. If no exact committed
 match exists, the old-schema submission to "4" refuses. This exception never
 admits a new old-format event as strict.
@@ -217,23 +221,22 @@ canonical private input or resolves numeric/resource blockers. No gap is closed.
 
 ## Shared version boundary
 
-This is the **single shared section V1-V9** for Proposed ADR 0036 and
-Proposed [ADR 0037](0037-o3-mention-discovery.md). S1 references it here;
-Proposed ADR 0037 references this same section rather than copying a second version. Josh confirmed the complete V1-V9 bundle for Proposed
-drafting in both sets of follow-up answers on 2026-10-14. These confirmed choices
-remain unratified; both Proposed records carry this shared contract by reference.
+This is the **single shared section V1-V9** for accepted ADR 0036 and
+accepted [ADR 0037](0037-o3-mention-discovery.md). S1 references it here;
+Accepted ADR 0037 references this same section rather than copying a second version. Josh confirmed the complete V1-V9 bundle for Proposed
+drafting in both sets of follow-up answers on 2026-10-14. These choices are ratified; both accepted records carry this shared contract by reference.
 
 ### V1. Separate semantic and index versions
 
-Use **separate version boundaries with integrated publication** in the Proposed contract. Strict
+Use **separate version boundaries with integrated publication** in the accepted contract. Strict
 payload support needs a new belief projector; discovery alone changes no frozen
 belief semantics/Merkle formats. O3 initially serves "2"/"3" on supported
 old-envelope histories and additionally "4" when strict adoption is authorized.
 Do not make "3" strict or renumber "2"/"3" for O3.
 
-Proposed bundle: projector `"4"`, strict envelope schema `"1"`, lineage
+Accepted bundle: projector `"4"`, strict envelope schema `"1"`, lineage
 `nyx-belief-lineage/4`, database schema `6`, index `nyx-o3-index/1`, response
-`nyx-o3-page/1`, cursor `nyx-o3-cursor/1`. The follow-up confirms this proposed identifier bundle; runtime support still awaits ratification and implementation.
+`nyx-o3-page/1`, cursor `nyx-o3-cursor/1`. This identifier bundle is ratified; runtime support still awaits separately authorized implementation.
 Database/envelope/projector/index versions are independent axes. Schema 6 has
 one layout containing the strict committed-table amendment and O3 tables;
 there cannot be two different layouts called 6. Implementing this bundle requires
@@ -241,13 +244,13 @@ both contracts ratified, even when index building is disabled for some versions.
 
 ### V2. Projector capability matrix
 
-| Projector | Replay envelope profiles | New append profile | Claim semantics | Proposed O3 |
+| Projector | Replay envelope profiles | New append profile | Claim semantics | O3 |
 |---|---|---|---|---|
 | "0" | "0", unchanged | "0", unchanged | Frozen legacy fold/refusals | Unsupported. |
 | "1" | "0", unchanged | "0", unchanged | Frozen stage two | Unsupported. |
 | "2" | "0", unchanged | "0", unchanged | Committed stage two; transitions refuse | Format 1 on a supported publication. |
 | "3" | "0", unchanged | "0", unchanged | ADRs 0034/0035 forward operations/refusals | Format 1 on a supported publication. |
-| Proposed "4" | "0" old decoding; "1" strict decoding | "1" only; exact old retrieval by S5 | Projector-3 claim semantics, separately tagged lineage and strict input domain | Same format 1, isolated "4" rows, including mixed histories. |
+| "4" | "0" old decoding; "1" strict decoding | "1" only; exact old retrieval by S5 | Projector-3 claim semantics, separately tagged lineage and strict input domain | Same format 1, isolated "4" rows, including mixed histories. |
 
 "4" inherits "3" refusals: merge/split, support attachment, undecided standing
 transitions and report-scoped transitions. It adds no report producer admission
@@ -290,7 +293,7 @@ operation builds requested missing indexes or removes disabled publications befo
 new acceptance; failure blocks new work, not exact committed retrieval. Restart
 repeats this explicit configuration/reconciliation; readiness loss never silently
 disables publication. No index row is the sole copy of a configuration/obligation.
-Old schema-4/5 owner behavior is unchanged. O9 in Proposed [ADR 0037](0037-o3-mention-discovery.md) supplies the same operational sequence; ordinary opening itself performs no backfill.
+Old schema-4/5 owner behavior is unchanged. O9 in accepted [ADR 0037](0037-o3-mention-discovery.md) supplies the same operational sequence; ordinary opening itself performs no backfill.
 
 ### V4. Complete publication and mixed stores
 
@@ -307,7 +310,7 @@ Compatible old-envelope appends can make multiple projections stale; strict
 appends manufacture no old-projector publication and do not change their frozen
 freshness-row rules. Discovery compares to the global tip directly.
 
-**Confirmed proposed mixed-log contract:** after the first strict-schema event commits,
+**Accepted mixed-log contract:** after the first strict-schema event commits,
 O3 selected as "2"/"3" returns `unavailable`, reason `unsupported_log_profile`,
 even if old rows remain. Preserve those rows as derivatives; do not silently
 serve them as the mixed-store discovery view. Query checks the recorded schema
@@ -354,10 +357,10 @@ Cursors are query state, not evidence or a durable replay obligation.
 |---|---|---|---|
 | 4 | "0"/"1"/"2" unchanged; "3" refuses | Unavailable without migration | Refuse unchanged. |
 | 5 | "0"-"3" unchanged | Unavailable without migration | Refuse unchanged. |
-| Proposed 6 | Frozen outputs/refusals on supported logs preserved | Explicit ready builds for supported "2"/"3"/"4" | Explicit "4", V2 profiles. |
+| 6 | Frozen outputs/refusals on supported logs preserved | Explicit ready builds for supported "2"/"3"/"4" | Explicit "4", V2 profiles. |
 | Other/missing/malformed | ADR 0011 refusal/preservation | No repair/fallback | No repair/fallback. |
 
-The confirmed proposal uses fresh 6 after joint acceptance; retain existing 4/5 without open-time
+The accepted contract uses fresh 6 after joint acceptance; retain existing 4/5 without open-time
 migration. Narrowly supersede ADR 0035 section 1 only to admit 6, choose fresh 6
 and define explicit working-copy migration. Keep ADR 0011 exact metadata checks.
 Today's software refuses 6; this is not a claim of present support.
@@ -365,7 +368,7 @@ Today's software refuses 6; this is not a claim of present support.
 Schema 6 preserves Layer A columns/bytes/triggers/positions/formulas. Rebuild
 exactly `committed_nodes`/`committed_roots` with
 `CHECK (projector_version IN ('2','3','4'))`, copy/verify every old row unchanged,
-and add O3's proposed tables/indexes. All other table DDL stays unchanged;
+and add O3's accepted tables/indexes. All other table DDL stays unchanged;
 `candidate_relations` already has a projector key. Keep positive-only
 `derived_progress` and no genesis row. Never silently widen schema-4/5 constraints.
 
@@ -375,7 +378,7 @@ and add O3's proposed tables/indexes. All other table DDL stays unchanged;
    inventory; preserve source/bundle. Copy to a distinct new working store.
    Do not migrate the only original or keep two continuing writers.
 2. Explicitly migrate a validated 4/5 copy to 6. For 4 apply exact accepted 4-to-5
-   then proposed 5-to-6 changes within one migration transaction. Verify old rows
+   then accepted 5-to-6 changes within one migration transaction. Verify old rows
    and unrelated DDL. Any failure rolls back all schema/metadata changes.
 3. Before strict appends, prove "4" versus "3" complete equivalence and own-lineage
    validity at every pre-existing position. If "3" cannot replay the source,
@@ -389,7 +392,7 @@ and add O3's proposed tables/indexes. All other table DDL stays unchanged;
 5. Strict writing may start after strict prefix proof without a diagnostic or
    index. When both are desired, independently prove "4" index equivalence
    before enrollment; test joint publication and backup/restore. The maintainer
-   later designates the adopted working store; this draft designates none.
+   later designates the adopted working store; this ADR designates none.
 
 Migration never labels history strict. A mixed log could contain later "0"
 envelopes from an explicitly selected older writer; "4" decodes them by recorded
@@ -418,15 +421,15 @@ claim of tamper-proof readiness is implied.
 
 ### V9. Ratification and delivery dependency
 
-Shared bundle, strict clauses and O3 schema/query clauses remain proposed.
+Shared bundle, strict clauses and O3 schema/query clauses are ratified.
 The 2026-10-14 follow-up confirms their identifiers, mechanics and conflict
 resolutions for drafting. No unanswered drafting choice remains in this scope;
-ratification is still required before implementation.
+separate maintainer authorization is still required before implementation.
 The maintainer records numbered decisions and narrow amendments through the
 [authority protocol](../AGENTS.md#adr-commit-protocol). Agents neither set the
 authority environment variable nor commit authority files. Separate implementation
-commits and separate maintainer completion markers follow acceptance. Recording this
-Proposed ADR is neither ratification nor an implementation-complete marker.
+commits and separate maintainer completion markers follow acceptance. This
+accepted ADR is not an implementation-complete marker.
 
 ## Conflict review of all 12 payload worksheet answers
 
@@ -455,7 +458,7 @@ choices above now have recorded drafting answers. The separate B2 private-codec
 boundary and frozen unknown-envelope cutoff refusals remain S4/S8/V5; the follow-up
 does not alter those limits or ratify other Proposed contracts.
 
-Proposed [ADR 0037](0037-o3-mention-discovery.md) individually reviews all 19 O3 answers and records the
+Accepted [ADR 0037](0037-o3-mention-discovery.md) individually reviews all 19 O3 answers and records the
 follow-up resolutions of its scope/order tensions. Together the reviews cover all
 31 worksheet questions. Choices are supported by the initial ruling or explicit
 follow-up packages, never by treating consistency alone as approval.
@@ -494,10 +497,10 @@ alter frozen "2"/"3" or needlessly require strict adoption for discovery;
 V1 instead versions the index separately and integrates storage/publication.
 
 All five remaining strict-payload drafting questions are answered. Implementation
-remains blocked until this contract and the shared bundle are explicitly ratified.
-This proposal is numbered 0036 and its companion proposal is numbered 0037.
-Maintainer authority commits and ratification remain prerequisites; recording
-the answers does not grant implementation authority.
+remains blocked until separately authorized by the maintainer.
+This accepted ADR is numbered 0036 and its accepted companion is numbered 0037.
+Maintainer authority commits and separate implementation authorization remain prerequisites;
+recording the answers does not grant implementation authority.
 
 ## Recorded maintainer answers
 
@@ -512,5 +515,5 @@ These are the five remaining strict-payload questions, now answered:
 5. **Yes** - include S7's independently optional read-only diagnostic.
 
 No unanswered maintainer drafting questions remain in this scope. This ADR
-remains Proposed and unratified; the follow-up authorizes preparation of
-Proposed ADR files only, not implementation or acceptance of other Proposed ADRs.
+is accepted; the 2026-10-14 follow-up authorized drafting only, not implementation
+or acceptance of other Proposed ADRs.

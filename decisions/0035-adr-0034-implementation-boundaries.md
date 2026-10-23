@@ -1,6 +1,6 @@
 # ADR 0035: ADR 0034 Implementation Boundaries — Schema, Dependencies, Report Corrections
 
-Status: Accepted — ratified by the maintainer, 2026-10-05; section 1 amended the same day for schema-5 committed-table constraints
+Status: Accepted — ratified by the maintainer, 2026-10-05; section 1 amended the same day for schema-5 committed-table constraints; section 1 superseded in part by [ADR 0036](0036-strict-payload-keys.md) V6 (ratified 2026-10-22), only to admit database schema 6, select fresh schema 6 and define explicit working-copy migration. Schema 6 remains unsupported until separately authorized implementation.
 
 Date: 2026-10-05
 
