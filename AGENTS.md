@@ -65,7 +65,9 @@ guessed decision is a failure that costs more to unwind than it saved.
 Halt cases (NYX_V0_IMPLEMENTATION.md section 7): backdated corrections;
 origin-to-state transitions beyond observed; unspecified cross-belief verification
 transitions. ADR 0014 supersedes ADR 0008; its reducer seam, lineage, progress,
-publication, and recovery are implemented for stage two under projector "1".
+publication, and recovery ship under projectors "1", "2" and "3"; projector "2"
+uses incremental commitments (ADR 0025), and projector "3" adds ordinary-claim
+forward corrections, replacements, and expiry (ADRs 0034/0035).
 For the superseded differing-state merge refusal, see
 [ADR 0015](decisions/0015-candidate-scoped-verification.md).
 Merge and split handlers remain unimplemented; current stage limits are governed by

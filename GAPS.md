@@ -336,6 +336,32 @@ actual-height and database-index costs. Ingestion, publication boundaries,
 retention, roots and bytes are unchanged; no policy or replacement algorithm
 is inferred from these single-workload measurements.
 
+### Deep-history verification and projector-3 append scaling — measured; no fix authorized
+
+**Non-authoritative supplied measurements:** the Dot's 2026-10-08 stress audit
+(source report STRESS_AUDIT_2026-10-08.md, Nyx baseline 73a9c00,
+cloud Linux / Python 3.14.8) reported:
+
+- Whole-store verify: 1.6 s at 1,000 events spread across many beliefs vs
+  176 s at 1,000 and 757 s at 2,000 events concentrated on one belief
+  (roughly quadratic).
+- In the 1,000-event profile, ~93% of verify time is in `merkle.rebuild` (5,001 calls). Those calls include both per-collection replay rebuilds and retained-root validation (scripts/verify_store.py lines 249–257 and 467–475); they are not one call per event.
+- Projector-3 append median: 41 ms at 1k events. A requested 10,000-event run completed only 2,518 events before timing out; the 97.59 ms median covers those completed events and is not a measurement at 10k depth.
+- Full-belief reads: 1.9 s at 10k depth.
+- Projector-2 appends (~5 ms) and named reads (~0.3 ms) stayed flat.
+- The 10k steady verify hit a 4 GB virtual-address cap, which overstates
+  resident memory, so that result is unresolved, not a finding.
+- 100k/500k runs did not complete.
+
+**Open questions:**
+
+- Does an incrementally maintained tree inside the verifier's own replay
+  preserve verifier independence?
+- Does [ADR 0035's R9 predicate](decisions/0035-adr-0034-implementation-boundaries.md#2-dependency-check-for-transitions-adr-0034-r9)
+  require a full scan or permit an index?
+
+These supplied measurements authorize no fix; neither question is answered here.
+
 ### Corpus restriction — R4, policy in force; erasure unbuilt
 **Public-corpus policy:** public corpus only until the erasure requirements
 (Gate 3 of proposed ADR 0027 together with proposed ADR 0028 9 and 11) are
@@ -677,7 +703,7 @@ source preservation; [tests/test_committed_schema_amendment.py](tests/test_commi
 covers constraints, row preservation and failure after table rebuilding. The
 existing schema/read suites cover versions and metadata.
 
-### Timestamp canonicalization belongs at the ingestion boundary
+### Timestamp canonicalization — boundary refusal resolved; spelling normalization open
 `src/nyx/immune.py` · follow-on from
 [ADR 0006](decisions/0006-occurred-at-comparison-is-instant-based-not-lexical.md)
 
