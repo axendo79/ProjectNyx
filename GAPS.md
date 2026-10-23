@@ -339,15 +339,14 @@ is inferred from these single-workload measurements.
 ### Deep-history verification and projector-3 append scaling — measured; no fix authorized
 
 **Non-authoritative supplied measurements:** the Dot's 2026-10-08 stress audit
-(cloud run) reported:
+(source report STRESS_AUDIT_2026-10-08.md, Nyx baseline 73a9c00,
+cloud Linux / Python 3.14.8) reported:
 
 - Whole-store verify: 1.6 s at 1,000 events spread across many beliefs vs
   176 s at 1,000 and 757 s at 2,000 events concentrated on one belief
   (roughly quadratic).
-- The profile attributes ~93% of verify time to `merkle.rebuild`, called once
-  per event touching the belief (5,001 calls).
-- Projector-3 append median: 41 ms at 1k vs 97 ms at 10k depth, with the
-  10k run timing out after 2,518 events.
+- In the 1,000-event profile, ~93% of verify time is in `merkle.rebuild` (5,001 calls). Those calls include both per-collection replay rebuilds and retained-root validation (scripts/verify_store.py lines 249–257 and 467–475); they are not one call per event.
+- Projector-3 append median: 41 ms at 1k events. A requested 10,000-event run completed only 2,518 events before timing out; the 97.59 ms median covers those completed events and is not a measurement at 10k depth.
 - Full-belief reads: 1.9 s at 10k depth.
 - Projector-2 appends (~5 ms) and named reads (~0.3 ms) stayed flat.
 - The 10k steady verify hit a 4 GB virtual-address cap, which overstates
