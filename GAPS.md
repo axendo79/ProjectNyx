@@ -186,14 +186,15 @@ a future derived index. R5 permits mention text for public corpora only as an
 inventoried copy rebuildable from Layer A; it does not implement the index or
 decide its schema, query API or publication mechanics.
 
-Proposed [ADR 0037](decisions/0037-o3-mention-discovery.md) records a public
-mention-discovery contract, with the shared version boundary in Proposed
+Accepted [ADR 0037](decisions/0037-o3-mention-discovery.md) records a public
+mention-discovery contract, with the shared version boundary in Accepted
 [ADR 0036](decisions/0036-strict-payload-keys.md#shared-version-boundary).
 The [O3 worksheet](design/2026-10-14-o3-listing-search-worksheet.md) and
 [O3 design record](design/2026-10-14-adr-draft-o3-discovery.md) retain the
-design and drafting history. Both proposals are not ratified; implementation
-awaits explicit ratification of both contracts and their shared schema/version
-bundle. These references close no gap and authorize no implementation.
+design and drafting history. Both were ratified jointly on 2026-10-22;
+implementation is None and requires separate maintainer authorization, per the
+[25-slice plan](design/2026-10-14-adr-0036-0037-implementation-plan.md). These
+references close no gap and authorize no implementation.
 
 ### Whole-store growth — O4, measurement available; retention deferred
 **Measured concern / deferred retention:** the
@@ -603,16 +604,17 @@ questions are in the
 [B2 brief, questions 4/8](design/0027-b2-private-value-codec-ruling-brief.md#additive-ruling-questions-and-overlap-with-questions-17).
 This entry supplies no fix or default.
 
-Proposed [ADR 0036](decisions/0036-strict-payload-keys.md) records strict
+Accepted [ADR 0036](decisions/0036-strict-payload-keys.md) records strict
 payload-key admission under a new explicitly selected projector, preserving
 old-profile interpretation and canonical-content commitments. The
 [payload worksheet](design/2026-10-14-duplicate-key-payloads-worksheet.md) and
 [strict-payload design record](design/2026-10-14-adr-draft-strict-payload-keys.md)
 retain the design and drafting history. Its shared version boundary also
-depends on Proposed [ADR 0037](decisions/0037-o3-mention-discovery.md).
-Both proposals are not ratified; implementation awaits explicit ratification
-of both contracts and their shared schema/version bundle. Recorded drafting
-answers do not authorize implementation or resolve this gap.
+depends on Accepted [ADR 0037](decisions/0037-o3-mention-discovery.md).
+Both were ratified jointly on 2026-10-22; implementation is None and requires
+separate maintainer authorization, per the
+[25-slice plan](design/2026-10-14-adr-0036-0037-implementation-plan.md).
+Recorded drafting answers do not authorize implementation or resolve this gap.
 
 ### Cross-language canonicalization and verifier independence remain unproven
 **Open / decision-blocked:** the proposed private-codec and conformance contract
