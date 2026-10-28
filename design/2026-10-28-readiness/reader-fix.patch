@@ -1,0 +1,105 @@
+--- a/src/nyx/reports.py
++++ b/src/nyx/reports.py
+@@ -119,7 +119,12 @@
+     progress = storage.read_projection_status(conn, projector_version)['derived_progress']
+     result, stale = [], False
+     for identifier in claim_candidate_ids:
+-        candidate = storage.read_claim_candidate(conn, identifier, projector_version)
++        try:
++            candidate = storage.read_claim_candidate(conn, identifier, projector_version)
++        except ValueError as exc:
++            if isinstance(exc, integrity.IntegrityError):
++                raise
++            raise integrity.IntegrityError(f'inconsistent report provenance: {exc}') from exc
+         if candidate is None: raise KeyError(identifier)
+         _require(isinstance(candidate, dict) and candidate.get('claim_candidate_id') == identifier,
+                  'named candidate slot identifies a different record')
+--- /dev/null
++++ b/tests/test_report_reader_errors.py
+@@ -0,0 +1,86 @@
++"""ADR 0031 section 8(g): named report corruption has a stable error type.
++
++Entirely synthetic history; no source acquisition or policy-admission claim.
++"""
++from contextlib import closing
++import json
++
++import pytest
++
++from nyx import events, hashing, integrity, reports, storage
++
++
++def _populate_report(conn, projector_version):
++    scope = 'repo-path:' + hashing.canonical_json(['urn:nyx:synthetic', 'synthetic.md'])
++    source = {'actor_id': 'synthetic-author', 'config': {
++        'report_vocabulary': {'identity': 'synthetic-vocabulary', 'version': '1',
++            'digest_algorithm': 'sha256', 'canonicalization_profile': 'nyx.canonical-json/1',
++            'definition_digest': 'c' * 64},
++        'report_artifact': {'kind': 'adr-path', 'repository': 'urn:nyx:synthetic',
++            'path': 'synthetic.md', 'revision': '1' * 40, 'blob': 'b' * 40,
++            'subject_scope': scope},
++        'extractor': 'nyx.adr-literal/1',
++        'report_locations': {'candidate': {'start_line': 1, 'end_line': 1,
++                                         'start_byte': 0, 'end_byte': 8}},
++    }}
++    entries = [
++        (events.ENTITY_MENTION_RECORDED,
++         {'mention_id': 'mention', 'subject_id': 'subject', 'text': scope,
++          'link_state': 'constitutive'}),
++        (events.OBSERVATION_RECORDED,
++         {'claims': [{'claim_candidate_id': 'candidate', 'belief_id': 'belief',
++             'mention_id': 'mention', 'subject_id': 'subject',
++             'property_id': 'adr.status.literal', 'value': 'Accepted',
++             'verifiability': 'externally_checkable'}]}),
++    ]
++    for position, (kind, payload) in enumerate(entries, 1):
++        stamp = f'2026-10-28T11:00:{position:02d}+00:00'
++        pair = events.build_event(event_type=kind, origin_type='observed', source=source,
++            source_class='synthetic', occurred_at=stamp, recorded_at=stamp,
++            payload=payload, prev_event_hash=storage.last_event_hash(conn),
++            entity_refs=['subject'], event_id=f'event-{position}')
++        storage.safe_append_event(conn, *pair, projector_version=projector_version)
++        storage.materialize_pending(conn, '2026-10-28T12:00:00+00:00', projector_version)
++
++
++@pytest.mark.parametrize('projector_version', ['1', '2'])
++@pytest.mark.parametrize('caller_transaction', [False, True])
++def test_candidate_storage_corruption_uses_report_integrity_error(
++        tmp_path, projector_version, caller_transaction):
++    # ADR 0031 section 8(g): corrupt provenance differs from an absent named ID.
++    with closing(storage.init_db(tmp_path / 'synthetic.db', create=True)) as conn:
++        _populate_report(conn, projector_version)
++        read = lambda names: reports.read_report_details(
++            conn, names, projector_version=projector_version)
++        assert read(['candidate'])['reports'][0]['value'] == 'Accepted'
++        with pytest.raises(KeyError):
++            read(['absent'])
++        with pytest.raises(ValueError) as invalid:
++            read([])
++        assert type(invalid.value) is ValueError
++        with pytest.raises(ValueError) as unsupported:
++            reports.read_report_details(conn, ['candidate'], projector_version='0')
++        assert type(unsupported.value) is ValueError
++        log = storage.read_all_events(conn)
++
++        with conn:
++            if projector_version == '1':
++                table, column = storage._RECORD_TABLES['claim_candidates']
++                conn.execute(f'UPDATE {table} SET content=? WHERE projector_version=? AND {column}=?',
++                             ('{', projector_version, 'candidate'))
++                expected_cause = json.JSONDecodeError
++            else:
++                root = conn.execute(
++                    "SELECT root_hash FROM committed_roots WHERE projector_version=? AND kind='claim_candidates'",
++                    (projector_version,)).fetchone()[0]
++                conn.execute('DELETE FROM committed_nodes WHERE projector_version=? AND node_hash=?',
++                             (projector_version, root))
++                expected_cause = ValueError
++        if caller_transaction:
++            conn.execute('BEGIN')
++        with pytest.raises(integrity.IntegrityError, match='inconsistent report provenance') as failure:
++            read(['candidate'])
++        assert isinstance(failure.value.__cause__, expected_cause)
++        assert conn.in_transaction is caller_transaction
++        assert storage.read_all_events(conn) == log
++        conn.rollback()

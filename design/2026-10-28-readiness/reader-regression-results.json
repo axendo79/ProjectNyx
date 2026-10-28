@@ -1,0 +1,33 @@
+{
+  "status": "unapplied proposal; focused synthetic validation only",
+  "reviewed_head": "cc7a0e336fe033bf8c054fd77725126765c92236",
+  "python": "3.14.2",
+  "baseline_exit_code": 1,
+  "baseline_expected_failures": 4,
+  "patched_isolated_copy_exit_code": 0,
+  "patched_isolated_copy_passes": 4,
+  "source_sha256": {
+    "src/nyx/reports.py": "f18b203272e46314f7b61ca65e2ff75a89d28f8659ad8fbd960f3aaaacfaf21f",
+    "src/nyx/storage.py": "8cea37576654e2dcf373c959a42a233751c939a6170378c8ccf5f357591ff925",
+    "src/nyx/committed_storage.py": "aee646b4c513565241d928c811fb02ff3364f43b240b3129e0ad38c3a2e0e707",
+    "decisions/0031-source-report-claims.md": "2dac0019e74cbce8d5c4a65cba409316944940d6e8cb357565b1f7dfb560a02a"
+  },
+  "cases": [
+    {"projector": "1", "caller_transaction": false, "corruption": "malformed candidate JSON", "baseline_error": "JSONDecodeError", "patched_error": "IntegrityError"},
+    {"projector": "2", "caller_transaction": false, "corruption": "missing candidate-map root node", "baseline_error": "ValueError", "patched_error": "IntegrityError"},
+    {"projector": "1", "caller_transaction": true, "corruption": "malformed candidate JSON", "baseline_error": "JSONDecodeError", "patched_error": "IntegrityError"},
+    {"projector": "2", "caller_transaction": true, "corruption": "missing candidate-map root node", "baseline_error": "ValueError", "patched_error": "IntegrityError"}
+  ],
+  "controls": [
+    "valid synthetic report",
+    "missing named ID remains KeyError",
+    "invalid arguments and unsupported version remain exact ValueError",
+    "original exception retained as cause",
+    "caller transaction ownership preserved",
+    "Layer A unchanged"
+  ],
+  "full_repository_pytest_run": false,
+  "production_source_modified": false,
+  "external_artifact_or_live_store_used": false,
+  "slice01_draft_executed": false
+}

@@ -1,0 +1,38 @@
+{
+  "review_date": "2026-10-28",
+  "reviewed_head": "cc7a0e336fe033bf8c054fd77725126765c92236",
+  "authority_commits": [
+    {
+      "adr": "0036",
+      "commit": "50297d7d53e88b2442ab3f5844e7e7bac5fb071a",
+      "git_date": "2026-10-23",
+      "recorded_ratification_date": "2026-10-22",
+      "changed_files": [
+        "decisions/0035-adr-0034-implementation-boundaries.md",
+        "decisions/0036-strict-payload-keys.md"
+      ],
+      "is_ancestor_exit_code": 0,
+      "status": "Accepted",
+      "implementation": "None"
+    },
+    {
+      "adr": "0037",
+      "commit": "1bf92a60fc7abb85614bf0b1783f754b2204c34b",
+      "git_date": "2026-10-23",
+      "recorded_ratification_date": "2026-10-22",
+      "changed_files": ["decisions/0037-o3-mention-discovery.md"],
+      "is_ancestor_exit_code": 0,
+      "status": "Accepted",
+      "implementation": "None"
+    }
+  ],
+  "verification": "Local read-only Git history, changed-file scope, ancestry and accepted text. Not cryptographic author verification or separate implementation authorization.",
+  "missing_parked_files": [
+    "scratch/pending-tests/test_adr0036_strict_payload_keys.py.pending",
+    "scratch/pending-tests/test_adr0037_o3_discovery.py.pending"
+  ],
+  "missing_file_evidence": "Targeted reads returned path-not-found in the reviewed checkout; no broad/private/worktree search.",
+  "replacement_provenance": "New limited review draft from explicit accepted API clauses; not recovered originals.",
+  "slice01_draft_executed": false,
+  "implementation_authorized_by_this_packet": false
+}
