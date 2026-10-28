@@ -82,6 +82,23 @@ ADR 0030's ordinary writer compares retained semantic contents and returns the
 original committed pair; the raw legacy wrapper retains the original event ID.
 No hash formula or accepted event semantics changed.
 
+### Report-detail candidate-load error classification
+**Open P3 (2026-10-28):** the initial candidate load in
+`src/nyx/reports.py` occurs outside the adapter's integrity-error conversion.
+Malformed projector-1 candidate JSON raises `JSONDecodeError`; a missing
+projector-2 candidate-map node raises plain `ValueError`. Accepted
+[ADR 0031 section 8(g)](decisions/0031-source-report-claims.md#g-named-reader-adapter-inputs-and-exact-return-shape)
+requires `IntegrityError` for absent/inconsistent report provenance and
+`KeyError` for an absent named candidate. Both observed corruption paths refuse;
+no silent corruption or Layer A mutation was demonstrated.
+
+The [review packet](design/2026-10-28-readiness/README.md) retains an unapplied
+source/test patch. Four synthetic baseline cases fail the expected error-type
+assertion; all four pass in an isolated patched copy, covering both projectors
+and caller/adapter transaction ownership. Source remains unchanged and full
+repository pytest was not run. This finding requires no new semantic ruling and
+remains open pending authorized implementation and its required validation.
+
 ### Typed identity freshness and `is_stale` — resolved for stage two
 **RESOLVED:** `storage.read_identity_status` and its typed wrappers disclose
 record presence, applied progress, and append freshness for versions "1"/"2".

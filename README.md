@@ -428,6 +428,11 @@ reports with each belief's `projected_as_of`, recorded provenance and literal
 source location. It reads published state without importing, replaying or
 choosing a current winner.
 
+The [2026-10-28 review handoff](design/2026-10-28-readiness/README.md) records an
+open report-reader error-classification finding, an unapplied patch with focused
+synthetic evidence, and review-only preparation for accepted ADRs 0036/0037
+slice 01. It changes no shipped behavior or implementation authorization.
+
 [scripts/backup_report_store.py](scripts/backup_report_store.py) provides `backup`
 and `restore` commands with required `--projector-version`. Backup uses the
 owning connection's SQLite backup API and includes saved requests, frozen policy,

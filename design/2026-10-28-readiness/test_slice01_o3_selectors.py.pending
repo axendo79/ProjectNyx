@@ -1,0 +1,80 @@
+"""NEW REVIEW DRAFT, 2026-10-28. NOT EXECUTED; NOT THE LOST PARKED ORIGINALS.
+
+Accepted ADR 0037 O2/O9 and ADR 0036 S1/V9 supply the tested signatures.
+This file is deliberately outside normal collection. It requires real bindings:
+  o3_operations: mapping of the five accepted O2 names to production functions.
+  replay_discovery: the accepted O9 production function.
+Fixture names are test adapters only; no production module path is prescribed.
+Do not bind them to stubs, fabricate metrics, or activate before authorization.
+These tests establish signatures/omission guards, not working discovery.
+"""
+import inspect
+
+import pytest
+
+
+O2 = {
+    'list_subjects': ({'projector_version'},
+        {'lifecycle': 'all', 'page_size': 100, 'cursor': None}),
+    'list_mentions': ({'projector_version'},
+        {'subject_id': None, 'lifecycle': 'all', 'page_size': 100, 'cursor': None}),
+    'find_mention': ({'text', 'mode', 'projector_version'},
+        {'subject_id': None, 'lifecycle': 'all', 'page_size': 100, 'cursor': None}),
+    'list_properties': ({'projector_version'},
+        {'subject_id': None, 'lifecycle': 'all', 'page_size': 100, 'cursor': None}),
+    'list_beliefs': ({'projector_version'},
+        {'subject_id': None, 'property_id': None, 'lifecycle': 'all',
+         'page_size': 100, 'cursor': None}),
+}
+
+
+@pytest.mark.parametrize('name', tuple(O2))
+def test_o2_declared_inputs_are_keyword_only_and_selection_is_required(o3_operations, name):
+    parameters = inspect.signature(o3_operations[name]).parameters
+    required, optional = O2[name]
+    for key in required | optional.keys():
+        assert parameters[key].kind is inspect.Parameter.KEYWORD_ONLY
+    for key in required:
+        assert parameters[key].default is inspect.Parameter.empty
+    for key, value in optional.items():
+        assert parameters[key].default == value
+        assert type(parameters[key].default) is type(value)
+
+
+@pytest.mark.parametrize('name', tuple(O2))
+def test_o2_omitted_projector_refuses_before_connection_access(o3_operations, name):
+    accesses = []
+
+    class NoConnectionAccess:
+        def __getattribute__(self, attribute):
+            accesses.append(attribute)
+            raise AssertionError('connection accessed before selector refusal')
+
+    supplied = {'text': 'synthetic', 'mode': 'exact'} if name == 'find_mention' else {}
+    # A required keyword-only argument must fail Python argument binding.
+    with pytest.raises(TypeError):
+        o3_operations[name](NoConnectionAccess(), **supplied)
+    assert accesses == []
+
+
+def test_o9_replay_requires_explicit_keyword_inputs(replay_discovery):
+    parameters = inspect.signature(replay_discovery).parameters
+    for name in ('as_of', 'projector_version', 'query'):
+        assert parameters[name].kind is inspect.Parameter.KEYWORD_ONLY
+        assert parameters[name].default is inspect.Parameter.empty
+    assert parameters['cursor'].kind is inspect.Parameter.KEYWORD_ONLY
+    assert parameters['cursor'].default is None
+
+
+def test_o9_omitted_projector_does_not_iterate_raw_log(replay_discovery):
+    iterations = []
+
+    class NoLogRead:
+        def __iter__(self):
+            iterations.append(True)
+            raise AssertionError('raw log read before selector refusal')
+
+    # query is intentionally opaque: omitted selector must refuse before its use.
+    with pytest.raises(TypeError):
+        replay_discovery(NoLogRead(), as_of='2026-10-28T12:00:00Z', query=object())
+    assert iterations == []
